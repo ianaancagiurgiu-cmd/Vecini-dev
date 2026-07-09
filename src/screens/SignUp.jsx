@@ -1,0 +1,42 @@
+import { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { useApp } from '../state/store.jsx';
+import { AuthShell, GoogleButton, Divider } from './AuthShell.jsx';
+
+export default function SignUp() {
+  const nav = useNavigate();
+  const { t, setAuthed, showToast } = useApp();
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [pw, setPw] = useState('');
+  const [err, setErr] = useState('');
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (!name.trim()) return setErr(t('auth_name'));
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return setErr(t('auth_email_bad'));
+    if (pw.length < 6) return setErr(t('auth_pw_weak'));
+    setAuthed(true);
+    showToast(t('auth_confirm_sent'));
+    nav('/join');
+  };
+  const google = () => { setAuthed(true); nav('/join'); };
+
+  return (
+    <AuthShell title={t('auth_signup_title')} sub={t('auth_signup_sub')}
+      footer={<span style={{ fontSize: 14, color: 'var(--ink-400)' }}>{t('auth_have_account')} <Link to="/login" style={{ color: 'var(--green-600)', fontWeight: 700 }}>{t('auth_login_link')}</Link></span>}>
+      <GoogleButton onClick={google} />
+      <Divider label={t('auth_or')} />
+      <form onSubmit={submit}>
+        <label className="field-label">{t('auth_name')}</label>
+        <input className="input" value={name} onChange={(e) => { setName(e.target.value); setErr(''); }} placeholder="Ana Popescu" style={{ marginBottom: 14 }} />
+        <label className="field-label">{t('auth_email')}</label>
+        <input className="input" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErr(''); }} placeholder="ana@exemplu.ro" style={{ marginBottom: 14 }} />
+        <label className="field-label">{t('auth_password')}</label>
+        <input className="input" type="password" value={pw} onChange={(e) => { setPw(e.target.value); setErr(''); }} placeholder="••••••••" style={{ marginBottom: 16 }} />
+        {err && <div style={{ color: 'var(--terracotta)', fontSize: 13.5, fontWeight: 600, marginBottom: 12 }}>{err}</div>}
+        <button className="btn btn--primary" type="submit">{t('auth_signup')}</button>
+      </form>
+    </AuthShell>
+  );
+}
