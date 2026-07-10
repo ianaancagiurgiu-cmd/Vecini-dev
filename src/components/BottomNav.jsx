@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { NavLink } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 
@@ -17,13 +19,13 @@ const items = [
 
 export default function BottomNav() {
   const { t } = useApp();
-  return (
-    <nav style={{
-      position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 100,
-      background: 'rgba(250,247,240,.92)', backdropFilter: 'blur(14px)',
-      borderTop: '1px solid var(--border)', display: 'flex',
-      padding: '8px 6px calc(8px + env(safe-area-inset-bottom, 0px))',
-    }}>
+  // Render into the fixed phone frame so the bar stays pinned to the bottom
+  // instead of scrolling with the page content.
+  const [host, setHost] = useState(null);
+  useEffect(() => { setHost(document.querySelector('.phone')); }, []);
+
+  const nav = (
+    <nav className="bottom-nav">
       {items.map((it) => (
         <NavLink key={it.to} to={it.to} end={it.end}
           style={({ isActive }) => ({
@@ -36,4 +38,6 @@ export default function BottomNav() {
       ))}
     </nav>
   );
+
+  return host ? createPortal(nav, host) : null;
 }

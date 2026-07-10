@@ -92,8 +92,19 @@ img { max-width: 100%; }
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   position: relative;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(47,107,79,.4) transparent;
+  scroll-behavior: smooth;
 }
-.phone__scroll::-webkit-scrollbar { width: 0; height: 0; }
+.phone__scroll::-webkit-scrollbar { width: 9px; }
+.phone__scroll::-webkit-scrollbar-track { background: transparent; }
+.phone__scroll::-webkit-scrollbar-thumb {
+  background: rgba(47,107,79,.35);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.phone__scroll::-webkit-scrollbar-thumb:hover { background: rgba(47,107,79,.55); background-clip: padding-box; }
 
 /* Status bar (9:41) */
 .statusbar {
@@ -194,6 +205,29 @@ textarea.input { resize: vertical; min-height: 96px; font-weight: 400; line-heig
 /* fade/slide for screen transitions */
 @keyframes screenIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .screen-anim { animation: screenIn .22s ease; }
+
+/* bottom nav — pinned to the phone frame, never scrolls with content */
+.bottom-nav {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 100;
+  display: flex;
+  background: rgba(250,247,240,.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-top: 1px solid var(--border);
+  padding: 8px 6px calc(8px + env(safe-area-inset-bottom, 0px));
+}
+
+/* sticky composer (reply/comment) sits just above the bottom nav */
+.composer-bar {
+  position: sticky;
+  bottom: 62px;
+  background: var(--app-bg);
+  border-top: 1px solid var(--border);
+  padding: 12px 20px;
+  display: flex;
+  gap: 9px;
+  z-index: 45;
+}
 
 /* toast */
 .toast-wrap { position: absolute; left: 0; right: 0; bottom: 92px; display: flex; justify-content: center; z-index: 200; pointer-events: none; }

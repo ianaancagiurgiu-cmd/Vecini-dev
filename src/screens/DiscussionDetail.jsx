@@ -52,7 +52,7 @@ export default function DiscussionDetail() {
       </div>
 
       {/* reply box */}
-      <div style={{ position: 'sticky', bottom: 0, background: 'var(--app-bg)', borderTop: '1px solid var(--border)', padding: '12px 20px', display: 'flex', gap: 9, marginTop: 20 }}>
+      <div className="composer-bar" style={{ marginTop: 20 }}>
         <input className="input" value={reply} onChange={(e) => setReply(e.target.value)} placeholder={t('disc_reply_ph')} style={{ flex: 1 }} onKeyDown={(e) => e.key === 'Enter' && send()} />
         <button className="btn btn--primary" onClick={send} disabled={!reply.trim()} style={{ width: 'auto', padding: '0 18px' }}>➤</button>
       </div>

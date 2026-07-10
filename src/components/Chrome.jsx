@@ -33,7 +33,7 @@ function RoleLangBar() {
     { k: 'admin', label: t('role_admin') },
   ];
   return (
-    <div style={{ position: 'absolute', left: 12, bottom: 78, zIndex: 120, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8 }}>
+    <div style={{ position: 'absolute', left: 12, bottom: 118, zIndex: 120, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8 }}>
       {open && (
         <div style={{ background: '#13211b', color: '#eaf3ed', borderRadius: 16, padding: 12, width: 210, boxShadow: '0 18px 40px -10px rgba(0,0,0,.5)' }}>
           <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: '#7fd1a8', marginBottom: 8 }}>{t('rolebar_hint')}</div>
@@ -66,7 +66,7 @@ function RoleLangBar() {
 }
 
 const floatBtn = {
-  position: 'absolute', left: 12, bottom: 78, zIndex: 120,
+  position: 'absolute', left: 12, bottom: 24, zIndex: 120,
   border: 'none', borderRadius: 999, padding: '10px 14px',
   background: '#13211b', color: '#eaf3ed', fontSize: 13, fontWeight: 700,
   boxShadow: '0 10px 24px -8px rgba(0,0,0,.5)', cursor: 'pointer',
