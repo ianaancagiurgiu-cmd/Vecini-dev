@@ -18,7 +18,26 @@ export default function IssueNew() {
 
   const onPhoto = (e) => {
     const f = e.target.files?.[0]; if (!f) return;
-    const r = new FileReader(); r.onload = () => setPhoto(r.result); r.readAsDataURL(f);
+    const r = new FileReader();
+    r.onload = () => {
+      // Downscale to keep the image small enough for browser storage.
+      const img = new Image();
+      img.onload = () => {
+        const max = 1200;
+        let { width, height } = img;
+        if (width > max || height > max) {
+          const s = max / Math.max(width, height);
+          width = Math.round(width * s); height = Math.round(height * s);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        setPhoto(canvas.toDataURL('image/jpeg', 0.7));
+      };
+      img.onerror = () => setPhoto(r.result);
+      img.src = r.result;
+    };
+    r.readAsDataURL(f);
   };
 
   return (

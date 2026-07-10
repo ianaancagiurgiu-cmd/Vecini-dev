@@ -36,8 +36,14 @@ export function AppProvider({ children }) {
   const [prefs, setPrefs] = useState(loadPrefs);
   const [toast, setToast] = useState(null);
 
-  useEffect(() => { localStorage.setItem(DATA_KEY, JSON.stringify(data)); }, [data]);
-  useEffect(() => { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); }, [prefs]);
+  useEffect(() => {
+    try { localStorage.setItem(DATA_KEY, JSON.stringify(data)); }
+    catch (e) { /* storage full — keep working in-memory this session */ }
+  }, [data]);
+  useEffect(() => {
+    try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); }
+    catch (e) { /* ignore */ }
+  }, [prefs]);
 
   const showToast = useCallback((msg) => {
     setToast(msg);
@@ -103,7 +109,7 @@ export function AppProvider({ children }) {
     addIssue: ({ title, category, location, description, photo }) => {
       const id = Math.floor(1000 + Math.random() * 9000);
       update((d) => {
-        d.issues.unshift({ id, category, location, description, photo: photo || null, reporterId: d.currentUserId, createdAt: Date.now(), status: 'new', supporters: [], comments: [], history: [{ status: 'new', note: STRINGS[lang].iss_submitted, byId: d.currentUserId, at: Date.now() }] });
+        d.issues.unshift({ id, title, category, location, description, photo: photo || null, reporterId: d.currentUserId, createdAt: Date.now(), status: 'new', supporters: [], comments: [], history: [{ status: 'new', note: STRINGS[lang].iss_submitted, byId: d.currentUserId, at: Date.now() }] });
         return d;
       });
       showToast(t('iss_submitted'));
