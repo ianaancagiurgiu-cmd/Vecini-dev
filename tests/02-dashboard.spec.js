@@ -43,4 +43,23 @@ test.describe('Epic 2 — Dashboard & Navigation', () => {
     });
     expect(Math.abs(gap)).toBeLessThan(3);
   });
+
+  // Regression: on a real phone the browser address bar can drag the whole
+  // page and make the nav drift. The outer shell must be locked so only the
+  // inner content scrolls and the nav never moves in the viewport.
+  test('US-06 outer page cannot scroll; nav is fixed in the viewport', async ({ page }) => {
+    await enterApp(page);
+    const navBefore = await page.evaluate(() => document.querySelector('.bottom-nav').getBoundingClientRect().bottom);
+    await page.evaluate(() => window.scrollBy(0, 600));
+    await page.evaluate(() => document.querySelector('.phone__scroll').scrollBy(0, 400));
+    await page.waitForTimeout(150);
+    const res = await page.evaluate(() => ({
+      windowScrollY: window.scrollY,
+      innerScrolled: document.querySelector('.phone__scroll').scrollTop,
+      navBottom: document.querySelector('.bottom-nav').getBoundingClientRect().bottom,
+    }));
+    expect(res.windowScrollY).toBe(0);          // outer shell locked
+    expect(res.innerScrolled).toBeGreaterThan(0); // inner content scrolls
+    expect(Math.abs(res.navBottom - navBefore)).toBeLessThan(2); // nav didn't move
+  });
 });

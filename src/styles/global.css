@@ -119,8 +119,25 @@ img { max-width: 100%; }
 
 /* ---------- Real phone: fill the screen ---------- */
 @media (max-width: 520px) {
+  /* Lock the outer shell to the exact (dynamic) viewport and stop it from
+     scrolling, so the browser address bar can't drag the page — only the
+     inner content scrolls, and the bottom nav stays truly pinned. */
+  html, body {
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+    position: fixed;
+    width: 100%;
+  }
   body { background: var(--app-bg); }
-  .stage { padding: 0; display: block; background: var(--app-bg); }
+  .stage {
+    padding: 0;
+    display: block;
+    background: var(--app-bg);
+    min-height: 0;
+    height: 100dvh;
+    overflow: hidden;
+  }
   .phone {
     width: 100%;
     height: 100dvh;
