@@ -88,6 +88,7 @@ img { max-width: 100%; }
 }
 .phone__scroll {
   flex: 1;
+  min-height: 0; /* let the flex child shrink so it scrolls instead of overflowing */
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
@@ -119,15 +120,13 @@ img { max-width: 100%; }
 
 /* ---------- Real phone: fill the screen ---------- */
 @media (max-width: 520px) {
-  /* Lock the outer shell to the exact (dynamic) viewport and stop it from
-     scrolling, so the browser address bar can't drag the page — only the
-     inner content scrolls, and the bottom nav stays truly pinned. */
+  /* Stop the document itself from scrolling (so the browser address bar
+     can't drag the page and shift the nav), while the inner content area
+     keeps scrolling normally. */
   html, body {
-    height: 100dvh;
+    height: 100%;
     overflow: hidden;
-    overscroll-behavior: none;
-    position: fixed;
-    width: 100%;
+    overscroll-behavior-y: none;
   }
   body { background: var(--app-bg); }
   .stage {
