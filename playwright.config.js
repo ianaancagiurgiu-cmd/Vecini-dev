@@ -1,5 +1,13 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// Point at the Chromium that's actually installed on this machine. Without
+// `channel: 'chromium'` Playwright tries to launch its bundled "headless
+// shell", which may be a different build number than what's on disk.
+const launchOptions = {
+  channel: 'chromium',
+  executablePath: process.env.PW_CHROMIUM || '/opt/pw-browsers/chromium',
+};
+
 // Emulate a phone by default (the app is a phone-first experience).
 export default defineConfig({
   testDir: './tests',
@@ -11,14 +19,16 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:4173',
     trace: 'on-first-retry',
-    launchOptions: {
-      executablePath: process.env.PW_CHROMIUM || '/opt/pw-browsers/chromium',
-    },
   },
   projects: [
     {
       name: 'mobile',
-      use: { ...devices['Pixel 7'], viewport: { width: 390, height: 844 } },
+      use: {
+        ...devices['Pixel 7'],
+        baseURL: 'http://localhost:4173',
+        viewport: { width: 390, height: 844 },
+        launchOptions,
+      },
     },
   ],
   webServer: {

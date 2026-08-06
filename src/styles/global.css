@@ -119,12 +119,13 @@ img { max-width: 100%; }
 .statusbar__icons { display: flex; align-items: center; gap: 6px; }
 
 /* ---------- Real phone: fill the screen ---------- */
-@media (max-width: 520px) {
-  /* Stop the document itself from scrolling (so the browser address bar
-     can't drag the page and shift the nav), while the inner content area
-     keeps scrolling normally. */
+@media (max-width: 700px) {
+  /* Height comes from --app-h, which JS measures from the *actually visible*
+     viewport. Some mobile/in-app browsers report 100dvh taller than what you
+     can see, which used to make the shell overflow, let the page scroll, and
+     drag the bottom nav into the middle of the screen. */
   html, body {
-    height: 100%;
+    height: var(--app-h, 100dvh);
     overflow: hidden;
     overscroll-behavior-y: none;
   }
@@ -134,16 +135,18 @@ img { max-width: 100%; }
     display: block;
     background: var(--app-bg);
     min-height: 0;
-    height: 100dvh;
+    height: var(--app-h, 100dvh);
     overflow: hidden;
   }
   .phone {
     width: 100%;
-    height: 100dvh;
+    height: var(--app-h, 100dvh);
     max-height: none;
     border-radius: 0;
     box-shadow: none;
   }
+  /* (the mobile .bottom-nav override lives after its base rule below, so it
+     actually wins the cascade) */
   .phone__notch { display: none; }
   .statusbar { height: env(safe-area-inset-top, 0px); padding: 0; }
   .statusbar__time, .statusbar__icons { display: none; }
@@ -231,6 +234,16 @@ textarea.input { resize: vertical; min-height: 96px; font-weight: 400; line-heig
   -webkit-backdrop-filter: blur(14px);
   border-top: 1px solid var(--border);
   padding: 8px 6px calc(8px + env(safe-area-inset-bottom, 0px));
+}
+
+/* On a real phone, anchor the nav to the visible viewport itself so it can
+   never drift — even if the browser mis-reports the viewport height and an
+   ancestor ends up taller than what the user can actually see. */
+@media (max-width: 700px) {
+  .bottom-nav {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+  }
 }
 
 /* sticky composer (reply/comment) sits just above the bottom nav */
