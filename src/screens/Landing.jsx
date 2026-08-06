@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 
 function Logo({ size = 40 }) {
@@ -24,7 +24,9 @@ function Feature({ icon, title, body }) {
 
 export default function Landing() {
   const nav = useNavigate();
-  const { t } = useApp();
+  const { t, authed, authLoading } = useApp();
+  if (authLoading) return null;
+  if (authed) return <Navigate to="/app" replace />;
   return (
     <div className="screen screen-anim" style={{ paddingBottom: 40 }}>
       {/* hero */}

@@ -5,19 +5,27 @@ import { AuthShell, GoogleButton, Divider } from './AuthShell.jsx';
 
 export default function Login() {
   const nav = useNavigate();
-  const { t, setAuthed } = useApp();
-  const [email, setEmail] = useState('ana@exemplu.ro');
+  const { t, signInEmail, signInGoogle } = useApp();
+  const [email, setEmail] = useState('');
   const [pw, setPw] = useState('');
   const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
+    setErr('');
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return setErr(t('auth_email_bad'));
-    if (pw.length < 6) return setErr(t('auth_bad_creds'));
-    setAuthed(true);
-    nav('/app');
+    setBusy(true);
+    try {
+      await signInEmail(email, pw);
+      nav('/app');
+    } catch (e2) {
+      setErr(t('auth_bad_creds'));
+    } finally {
+      setBusy(false);
+    }
   };
-  const google = () => { setAuthed(true); nav('/app'); };
+  const google = async () => { setErr(''); try { await signInGoogle(); } catch (e2) { setErr(e2.message); } };
 
   return (
     <AuthShell title={t('auth_welcome_back')} sub={t('auth_login_sub')}
@@ -33,7 +41,7 @@ export default function Login() {
           <Link to="/forgot" style={{ fontSize: 13.5, color: 'var(--green-600)', fontWeight: 600 }}>{t('auth_forgot')}</Link>
         </div>
         {err && <div style={{ color: 'var(--terracotta)', fontSize: 13.5, fontWeight: 600, marginBottom: 12 }}>{err}</div>}
-        <button className="btn btn--primary" type="submit">{t('auth_login')}</button>
+        <button className="btn btn--primary" type="submit" disabled={busy}>{t('auth_login')}</button>
       </form>
     </AuthShell>
   );

@@ -5,22 +5,35 @@ import { AuthShell, GoogleButton, Divider } from './AuthShell.jsx';
 
 export default function SignUp() {
   const nav = useNavigate();
-  const { t, setAuthed, showToast } = useApp();
+  const { t, signUpEmail, signInGoogle, showToast } = useApp();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [pw, setPw] = useState('');
   const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
+    setErr('');
     if (!name.trim()) return setErr(t('auth_name'));
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return setErr(t('auth_email_bad'));
     if (pw.length < 6) return setErr(t('auth_pw_weak'));
-    setAuthed(true);
-    showToast(t('auth_confirm_sent'));
-    nav('/join');
+    setBusy(true);
+    try {
+      const { needsConfirmation } = await signUpEmail(name.trim(), email, pw);
+      if (needsConfirmation) {
+        showToast(t('auth_confirm_sent'));
+        nav('/login');
+      } else {
+        nav('/join');
+      }
+    } catch (e2) {
+      setErr(e2.message?.includes('already registered') ? t('auth_email_taken') : e2.message);
+    } finally {
+      setBusy(false);
+    }
   };
-  const google = () => { setAuthed(true); nav('/join'); };
+  const google = async () => { setErr(''); try { await signInGoogle(); } catch (e2) { setErr(e2.message); } };
 
   return (
     <AuthShell title={t('auth_signup_title')} sub={t('auth_signup_sub')}
@@ -35,7 +48,7 @@ export default function SignUp() {
         <label className="field-label">{t('auth_password')}</label>
         <input className="input" type="password" value={pw} onChange={(e) => { setPw(e.target.value); setErr(''); }} placeholder="••••••••" style={{ marginBottom: 16 }} />
         {err && <div style={{ color: 'var(--terracotta)', fontSize: 13.5, fontWeight: 600, marginBottom: 12 }}>{err}</div>}
-        <button className="btn btn--primary" type="submit">{t('auth_signup')}</button>
+        <button className="btn btn--primary" type="submit" disabled={busy}>{t('auth_signup')}</button>
       </form>
     </AuthShell>
   );

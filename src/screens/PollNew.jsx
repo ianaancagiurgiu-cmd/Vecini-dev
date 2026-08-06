@@ -15,12 +15,18 @@ export default function PollNew() {
   const setOpt = (i, v) => setOpts((cur) => cur.map((o, idx) => (idx === i ? v : o)));
   const addOpt = () => setOpts((cur) => [...cur, '']);
   const removeOpt = (i) => setOpts((cur) => cur.filter((_, idx) => idx !== i));
+  const [busy, setBusy] = useState(false);
   const valid = q.trim() && opts.filter((o) => o.trim()).length >= 2 && end;
 
-  const submit = () => {
+  const submit = async () => {
     if (!valid) return;
-    const id = actions.addPoll({ question: q.trim(), options: opts.map((o) => o.trim()).filter(Boolean), multi, endsAt: new Date(end).getTime() });
-    nav('/app/polls/' + id);
+    setBusy(true);
+    try {
+      const id = await actions.addPoll({ question: q.trim(), options: opts.map((o) => o.trim()).filter(Boolean), multi, endsAt: new Date(end).getTime() });
+      nav('/app/polls/' + id);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -51,7 +57,7 @@ export default function PollNew() {
         <label className="field-label">{t('poll_f_end')} <span className="faint">· {t('required')}</span></label>
         <input className="input" type="date" value={end} onChange={(e) => setEnd(e.target.value)} style={{ marginBottom: 20 }} />
 
-        <button className="btn btn--primary" onClick={submit} disabled={!valid}>{t('poll_launch')}</button>
+        <button className="btn btn--primary" onClick={submit} disabled={!valid || busy}>{t('poll_launch')}</button>
       </div>
     </div>
   );

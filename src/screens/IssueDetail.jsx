@@ -21,12 +21,12 @@ export default function IssueDetail() {
   const cInfo = CATEGORIES[i.category] || CATEGORIES.other;
   const supported = i.supporters.includes(currentUser.id);
 
-  const sendComment = () => { if (!comment.trim()) return; actions.addIssueComment(i.id, comment.trim()); setComment(''); };
-  const applyStatus = () => { if (!newStatus || !note.trim()) return; actions.updateIssueStatus(i.id, newStatus, note.trim()); setNewStatus(''); setNote(''); };
+  const sendComment = async () => { if (!comment.trim()) return; const body = comment.trim(); setComment(''); await actions.addIssueComment(i.id, body); };
+  const applyStatus = async () => { if (!newStatus || !note.trim()) return; const s = newStatus, n = note.trim(); setNewStatus(''); setNote(''); await actions.updateIssueStatus(i.id, s, n); };
 
   return (
     <div className="screen">
-      <ScreenHeader title={`${t('iss_title')} #${i.id}`} onBack={() => nav('/app/issues')} />
+      <ScreenHeader title={t('iss_title')} onBack={() => nav('/app/issues')} />
       <div className="pad" style={{ paddingTop: 18 }}>
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
           <Badge bg={st.bg} fg={st.fg} dot>{t(st.key)}</Badge>

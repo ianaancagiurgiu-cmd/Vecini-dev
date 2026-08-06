@@ -4,7 +4,7 @@ import { ScreenHeader, Avatar } from '../components/ui.jsx';
 
 export default function Settings() {
   const nav = useNavigate();
-  const { t, lang, setLang, currentUser, role, isStaff, data, setAuthed, actions } = useApp();
+  const { t, lang, setLang, currentUser, role, isStaff, data, signOut } = useApp();
 
   const roleLabel = role === 'admin' ? t('role_admin') : role === 'moderator' ? t('role_moderator') : t('role_member');
   const roleBg = role === 'admin' ? '#13211b' : role === 'moderator' ? 'var(--status-new-bg)' : 'var(--section-bg)';
@@ -18,7 +18,7 @@ export default function Settings() {
     </button>
   );
 
-  const logout = () => { setAuthed(false); nav('/'); };
+  const logout = async () => { await signOut(); nav('/'); };
 
   return (
     <div className="screen">
@@ -47,7 +47,6 @@ export default function Settings() {
           <div className="eyebrow" style={{ margin: '14px 0 2px' }}>{t('set_account')}</div>
           <Item icon="🔔" label={t('notif_prefs')} onClick={() => nav('/app/notifications')} />
           {isStaff && <Item icon="🛡️" label={t('admin_title')} onClick={() => nav('/app/admin')} />}
-          <Item icon="🔄" label={lang === 'en' ? 'Reset demo data' : 'Resetează datele demo'} onClick={() => actions.resetDemo()} right={<span />} />
           <Item icon="↩︎" label={t('auth_logout')} onClick={logout} danger />
         </div>
       </div>

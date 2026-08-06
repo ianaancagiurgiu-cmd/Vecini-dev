@@ -14,12 +14,13 @@ function StatusBar() {
   );
 }
 
-// Floating pill: switch role (member/mod/admin) and language.
+// Floating pill: language toggle, plus a read-only badge showing your real
+// (server-enforced) role once you're signed in — there's no "pretend to be
+// admin" switch anymore, since permissions now come from the real database.
 function RoleLangBar() {
-  const { role, setRoleOverride, lang, setLang, t, authed } = useApp();
+  const { role, lang, setLang, t, authed } = useApp();
   const [open, setOpen] = useState(false);
   if (!authed) {
-    // Only language toggle before login
     return (
       <button onClick={() => setLang(lang === 'ro' ? 'en' : 'ro')}
         style={floatBtn} title="Language">
@@ -27,25 +28,10 @@ function RoleLangBar() {
       </button>
     );
   }
-  const roles = [
-    { k: 'member', label: t('role_member') },
-    { k: 'moderator', label: t('role_moderator') },
-    { k: 'admin', label: t('role_admin') },
-  ];
   return (
-    <div style={{ position: 'absolute', left: 12, bottom: 118, zIndex: 120, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8 }}>
+    <div style={{ position: 'absolute', left: 12, bottom: 24, zIndex: 120, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8 }}>
       {open && (
-        <div style={{ background: '#13211b', color: '#eaf3ed', borderRadius: 16, padding: 12, width: 210, boxShadow: '0 18px 40px -10px rgba(0,0,0,.5)' }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: '#7fd1a8', marginBottom: 8 }}>{t('rolebar_hint')}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
-            {roles.map((r) => (
-              <button key={r.k} onClick={() => setRoleOverride(r.k)}
-                style={{ textAlign: 'left', padding: '9px 12px', borderRadius: 10, border: 'none', fontSize: 13.5, fontWeight: 700,
-                  background: role === r.k ? '#2f8c5f' : 'rgba(255,255,255,.08)', color: role === r.k ? '#fff' : '#cfe6d8' }}>
-                {role === r.k ? '● ' : ''}{r.label}
-              </button>
-            ))}
-          </div>
+        <div style={{ background: '#13211b', color: '#eaf3ed', borderRadius: 16, padding: 12, width: 190, boxShadow: '0 18px 40px -10px rgba(0,0,0,.5)' }}>
           <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: '#7fd1a8', marginBottom: 8 }}>{t('set_lang')}</div>
           <div style={{ display: 'flex', gap: 6 }}>
             {['ro', 'en'].map((l) => (
@@ -59,7 +45,7 @@ function RoleLangBar() {
         </div>
       )}
       <button onClick={() => setOpen((o) => !o)} style={{ ...floatBtn, background: '#13211b', color: '#7fd1a8', display: 'flex', alignItems: 'center', gap: 6 }}>
-        {open ? '✕' : '⚙︎'} <span style={{ fontSize: 12 }}>{role === 'admin' ? t('role_admin') : role === 'moderator' ? t('role_moderator') : t('role_member')}</span>
+        {open ? '✕' : (lang === 'ro' ? '🇷🇴' : '🇬🇧')} <span style={{ fontSize: 12 }}>{role === 'admin' ? t('role_admin') : role === 'moderator' ? t('role_moderator') : t('role_member')}</span>
       </button>
     </div>
   );

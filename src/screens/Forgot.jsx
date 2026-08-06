@@ -1,15 +1,14 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { AuthShell } from './AuthShell.jsx';
 
 export default function Forgot() {
-  const nav = useNavigate();
-  const { t } = useApp();
+  const { t, sendPasswordReset } = useApp();
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
 
-  const submit = (e) => { e.preventDefault(); setSent(true); };
+  const submit = async (e) => { e.preventDefault(); await sendPasswordReset(email); setSent(true); };
 
   return (
     <AuthShell title={t('auth_forgot_title')} sub={t('auth_forgot_sub')}

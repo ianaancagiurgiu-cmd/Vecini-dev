@@ -33,9 +33,13 @@ import Members from './screens/Members.jsx';
 import CommunitySettings from './screens/CommunitySettings.jsx';
 
 function AppLayout() {
-  const { authed } = useApp();
+  const { authed, authLoading, hasCommunity, membershipResolved, data } = useApp();
   const loc = useLocation();
+  if (authLoading) return null;
   if (!authed) return <Navigate to="/" replace state={{ from: loc.pathname }} />;
+  if (!membershipResolved) return null; // still checking whether you already belong to a community
+  if (!hasCommunity) return <Navigate to="/join" replace />;
+  if (!data.community) return null; // still loading the community's data for the first time
   return (
     <>
       <div className="phone__scrollinner" key={loc.pathname.split('/')[2] || 'home'}>

@@ -12,9 +12,19 @@ export default function IssueNew() {
   const [loc, setLoc] = useState('');
   const [desc, setDesc] = useState('');
   const [photo, setPhoto] = useState(null);
+  const [busy, setBusy] = useState(false);
 
   const valid = title.trim() && desc.trim() && cat;
-  const submit = () => { if (!valid) return; const id = actions.addIssue({ title: title.trim(), category: cat, location: loc.trim() || '—', description: desc.trim(), photo }); nav('/app/issues/' + id); };
+  const submit = async () => {
+    if (!valid) return;
+    setBusy(true);
+    try {
+      const id = await actions.addIssue({ title: title.trim(), category: cat, location: loc.trim() || '—', description: desc.trim(), photo });
+      nav('/app/issues/' + id);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const onPhoto = (e) => {
     const f = e.target.files?.[0]; if (!f) return;
@@ -66,7 +76,7 @@ export default function IssueNew() {
           <input type="file" accept="image/*" onChange={onPhoto} style={{ display: 'none' }} />
         </label>
 
-        <button className="btn btn--terracotta" onClick={submit} disabled={!valid}>{t('iss_submit')}</button>
+        <button className="btn btn--terracotta" onClick={submit} disabled={!valid || busy}>{t('iss_submit')}</button>
       </div>
     </div>
   );

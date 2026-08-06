@@ -13,7 +13,7 @@ export default function DiscussionDetail() {
   if (!d) return <div className="screen"><ScreenHeader title={t('disc_title')} onBack={() => nav('/app/discussions')} /></div>;
   const cInfo = CATEGORIES[d.category] || CATEGORIES.general;
 
-  const send = () => { if (!reply.trim()) return; actions.addReply(d.id, reply.trim()); setReply(''); };
+  const send = async () => { if (!reply.trim()) return; const body = reply.trim(); setReply(''); await actions.addReply(d.id, body); };
 
   return (
     <div className="screen">

@@ -8,12 +8,18 @@ export default function AnnouncementNew() {
   const { t, actions, isStaff } = useApp();
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [busy, setBusy] = useState(false);
   if (!isStaff) { nav('/app/announcements'); return null; }
 
-  const submit = () => {
+  const submit = async () => {
     if (!title.trim() || !body.trim()) return;
-    const id = actions.addAnnouncement({ title: title.trim(), body: body.trim() });
-    nav('/app/announcements/' + id);
+    setBusy(true);
+    try {
+      const id = await actions.addAnnouncement({ title: title.trim(), body: body.trim() });
+      nav('/app/announcements/' + id);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -24,7 +30,7 @@ export default function AnnouncementNew() {
         <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Curățenie generală scara A" style={{ marginBottom: 16 }} />
         <label className="field-label">{t('ann_f_body')} <span className="faint">· {t('required')}</span></label>
         <textarea className="input" value={body} onChange={(e) => setBody(e.target.value)} rows={8} placeholder="Scrie mesajul pentru vecini…" style={{ marginBottom: 20 }} />
-        <button className="btn btn--primary" onClick={submit} disabled={!title.trim() || !body.trim()}>{t('ann_publish')}</button>
+        <button className="btn btn--primary" onClick={submit} disabled={!title.trim() || !body.trim() || busy}>{t('ann_publish')}</button>
       </div>
     </div>
   );

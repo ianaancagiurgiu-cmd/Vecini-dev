@@ -7,11 +7,12 @@ export default function CommunitySettings() {
   const nav = useNavigate();
   const { data, t, lang, role, actions, showToast } = useApp();
   const c = data.community;
-  const [name, setName] = useState(c.name);
-  const [desc, setDesc] = useState(c.description || '');
-  const [joinMode, setJoinMode] = useState(c.joinMode);
+  const [name, setName] = useState(c?.name || '');
+  const [desc, setDesc] = useState(c?.description || '');
+  const [joinMode, setJoinMode] = useState(c?.joinMode || 'invite');
   const [confirmRegen, setConfirmRegen] = useState(false);
   if (role !== 'admin') { nav('/app/admin'); return null; }
+  if (!c) return null;
 
   const joinModes = [
     { k: 'open', label: t('admin_join_open') },
@@ -19,9 +20,9 @@ export default function CommunitySettings() {
     { k: 'approval', label: t('admin_join_approval') },
   ];
 
-  const save = () => actions.saveCommunity({ name: name.trim() || c.name, description: desc.trim(), joinMode });
+  const save = async () => { await actions.saveCommunity({ name: name.trim() || c.name, description: desc.trim(), joinMode }); };
   const copy = () => { navigator.clipboard?.writeText(c.code); showToast(t('admin_invite_copied')); };
-  const regen = () => { actions.regenCode(); setConfirmRegen(false); showToast(t('admin_saved')); };
+  const regen = async () => { setConfirmRegen(false); await actions.regenCode(); showToast(t('admin_saved')); };
 
   return (
     <div className="screen">

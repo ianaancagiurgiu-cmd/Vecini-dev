@@ -12,8 +12,18 @@ export default function DiscussionNew() {
   const [body, setBody] = useState('');
   const [preview, setPreview] = useState(false);
 
+  const [busy, setBusy] = useState(false);
   const valid = title.trim() && cat && body.trim();
-  const submit = () => { if (!valid) return; const id = actions.addDiscussion({ title: title.trim(), category: cat, body: body.trim() }); nav('/app/discussions/' + id); };
+  const submit = async () => {
+    if (!valid) return;
+    setBusy(true);
+    try {
+      const id = await actions.addDiscussion({ title: title.trim(), category: cat, body: body.trim() });
+      nav('/app/discussions/' + id);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="screen">
@@ -32,7 +42,7 @@ export default function DiscussionNew() {
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
               <button className="btn btn--ghost" onClick={() => setPreview(false)} style={{ flex: 1 }}>{t('edit')}</button>
-              <button className="btn btn--primary" onClick={submit} style={{ flex: 1 }}>{t('disc_publish')}</button>
+              <button className="btn btn--primary" onClick={submit} disabled={busy} style={{ flex: 1 }}>{t('disc_publish')}</button>
             </div>
           </>
         ) : (
@@ -49,7 +59,7 @@ export default function DiscussionNew() {
             <textarea className="input" value={body} onChange={(e) => setBody(e.target.value)} rows={6} placeholder="Descrie subiectul…" style={{ marginBottom: 20 }} />
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn btn--ghost" onClick={() => setPreview(true)} disabled={!valid} style={{ flex: 1 }}>{t('disc_preview')}</button>
-              <button className="btn btn--primary" onClick={submit} disabled={!valid} style={{ flex: 1 }}>{t('disc_publish')}</button>
+              <button className="btn btn--primary" onClick={submit} disabled={!valid || busy} style={{ flex: 1 }}>{t('disc_publish')}</button>
             </div>
           </>
         )}
