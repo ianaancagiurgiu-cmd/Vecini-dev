@@ -1,5 +1,23 @@
 import { useApp } from '../state/store.jsx';
 
+// Small, in-flow language switch — sits inline in a header row instead of
+// floating over the screen, so it never covers form fields.
+export function LangSwitch() {
+  const { lang, setLang } = useApp();
+  return (
+    <button
+      onClick={() => setLang(lang === 'ro' ? 'en' : 'ro')}
+      style={{
+        border: '1px solid var(--border)', borderRadius: 999, padding: '6px 12px',
+        background: 'var(--section-bg)', color: 'var(--ink-400)', fontSize: 12.5, fontWeight: 700,
+        cursor: 'pointer', whiteSpace: 'nowrap',
+      }}
+    >
+      {lang === 'ro' ? '🇷🇴 RO' : '🇬🇧 EN'}
+    </button>
+  );
+}
+
 export function Avatar({ user, size = 38 }) {
   const initials = (user?.name || '?').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
   return (

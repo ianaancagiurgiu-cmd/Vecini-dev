@@ -1,6 +1,3 @@
-import { useState } from 'react';
-import { useApp } from '../state/store.jsx';
-
 function StatusBar() {
   return (
     <div className="statusbar">
@@ -14,50 +11,6 @@ function StatusBar() {
   );
 }
 
-// Floating pill: language toggle, plus a read-only badge showing your real
-// (server-enforced) role once you're signed in — there's no "pretend to be
-// admin" switch anymore, since permissions now come from the real database.
-function RoleLangBar() {
-  const { role, lang, setLang, t, authed } = useApp();
-  const [open, setOpen] = useState(false);
-  if (!authed) {
-    return (
-      <button onClick={() => setLang(lang === 'ro' ? 'en' : 'ro')}
-        style={floatBtn} title="Language">
-        {lang === 'ro' ? '🇷🇴 RO' : '🇬🇧 EN'}
-      </button>
-    );
-  }
-  return (
-    <div style={{ position: 'absolute', left: 12, bottom: 24, zIndex: 120, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8 }}>
-      {open && (
-        <div style={{ background: '#13211b', color: '#eaf3ed', borderRadius: 16, padding: 12, width: 190, boxShadow: '0 18px 40px -10px rgba(0,0,0,.5)' }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: '#7fd1a8', marginBottom: 8 }}>{t('set_lang')}</div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {['ro', 'en'].map((l) => (
-              <button key={l} onClick={() => setLang(l)}
-                style={{ flex: 1, padding: '8px', borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 700,
-                  background: lang === l ? '#2f8c5f' : 'rgba(255,255,255,.08)', color: lang === l ? '#fff' : '#cfe6d8' }}>
-                {l === 'ro' ? '🇷🇴 RO' : '🇬🇧 EN'}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-      <button onClick={() => setOpen((o) => !o)} style={{ ...floatBtn, background: '#13211b', color: '#7fd1a8', display: 'flex', alignItems: 'center', gap: 6 }}>
-        {open ? '✕' : (lang === 'ro' ? '🇷🇴' : '🇬🇧')} <span style={{ fontSize: 12 }}>{role === 'admin' ? t('role_admin') : role === 'moderator' ? t('role_moderator') : t('role_member')}</span>
-      </button>
-    </div>
-  );
-}
-
-const floatBtn = {
-  position: 'absolute', left: 12, bottom: 24, zIndex: 120,
-  border: 'none', borderRadius: 999, padding: '10px 14px',
-  background: '#13211b', color: '#eaf3ed', fontSize: 13, fontWeight: 700,
-  boxShadow: '0 10px 24px -8px rgba(0,0,0,.5)', cursor: 'pointer',
-};
-
 export function PhoneChrome({ children }) {
   return (
     <div className="stage">
@@ -67,7 +20,6 @@ export function PhoneChrome({ children }) {
         <div className="phone__scroll">
           {children}
         </div>
-        <RoleLangBar />
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
+import { LangSwitch } from '../components/ui.jsx';
 
 function Logo({ size = 40 }) {
   return (
@@ -33,7 +34,10 @@ export default function Landing() {
       <div style={{ background: 'var(--section-bg)', borderBottom: '1px solid var(--border)', padding: '20px 20px 30px', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 90% 6%, rgba(47,107,79,.12) 0, transparent 45%)' }} />
         <div style={{ position: 'relative' }}>
-          <Logo />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Logo />
+            <LangSwitch />
+          </div>
           <div className="eyebrow" style={{ marginTop: 26, marginBottom: 12, color: 'var(--green-600)' }}>{t('landing_kicker')}</div>
           <h1 className="display" style={{ fontSize: 32, lineHeight: 1.08, margin: '0 0 12px' }}>{t('landing_title')}</h1>
           <p className="muted" style={{ fontSize: 15.5, lineHeight: 1.5, margin: 0 }}>{t('landing_sub')}</p>

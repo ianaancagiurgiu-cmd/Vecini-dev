@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
+import { LangSwitch } from '../components/ui.jsx';
 
 export function GoogleButton({ onClick }) {
   const { t } = useApp();
@@ -15,10 +16,11 @@ export function AuthShell({ title, sub, children, footer }) {
   const nav = useNavigate();
   return (
     <div className="screen screen-anim">
-      <div className="pad" style={{ paddingTop: 6 }}>
+      <div className="pad" style={{ paddingTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <button onClick={() => nav('/')} style={{ background: 'none', border: 'none', color: 'var(--green-600)', fontWeight: 700, fontSize: 15, padding: '8px 0', display: 'flex', alignItems: 'center', gap: 4 }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
+        <LangSwitch />
       </div>
       <div className="pad" style={{ paddingTop: 18 }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 9, marginBottom: 24 }}>
