@@ -347,22 +347,23 @@ export function AppProvider({ children }) {
     await sendPush(ids, type, title, body, link);
   };
   /*
-    Staff-only fan-out (a new issue should reach whoever can act on it).
-    Done as one call per person rather than a dedicated SQL function because
-    members and their roles are already readable here, and this avoids asking
-    for another database migration. Staff lists are a handful of people.
+    Fan-out to a specific set of people, de-duplicated and never to yourself.
+    One call per person rather than a dedicated SQL function: the membership,
+    comment and supporter lists are all readable here already, so this needs no
+    further database migration, and these sets are small by nature.
   */
-  const notifyStaff = async (type, title, body, link) => {
-    const staff = data.members.filter(
-      (m) => (m.role === 'admin' || m.role === 'moderator') && m.userId !== userId,
-    );
-    if (!staff.length) return;
+  const notifyUsers = async (targetIds, type, title, body, link) => {
+    const unique = [...new Set((targetIds || []).filter((id) => id && id !== userId))];
+    if (!unique.length) return;
     const notified = [];
-    for (const m of staff) {
-      notified.push(...(await insertNotifyUser(m.userId, type, title, body, link)));
+    for (const id of unique) {
+      notified.push(...(await insertNotifyUser(id, type, title, body, link)));
     }
     await sendPush(notified, type, title, body, link);
   };
+
+  const staffIds = () =>
+    data.members.filter((m) => m.role === 'admin' || m.role === 'moderator').map((m) => m.userId);
 
   const actions = useMemo(() => ({
     addAnnouncement: async ({ title, body }) => {
@@ -407,8 +408,9 @@ export function AppProvider({ children }) {
         .from('issue_history')
         .insert({ issue_id: row.id, status: 'new', note: STRINGS[lang].iss_submitted, by_id: userId });
       if (histError) console.error('issue_history insert failed', histError);
-      // Whoever can act on it needs to know, or the report just sits there.
-      await notifyStaff('issue', STRINGS[lang].notif_iss_new, title, '/app/issues/' + row.id);
+      // The whole neighbourhood hears about a new report — these are rare
+      // enough not to be noisy, and knowing about the burst pipe is the point.
+      await notifyMembers(userId, 'issue', STRINGS[lang].notif_iss_new, title, '/app/issues/' + row.id);
       await refreshAll();
       showToast(t('iss_submitted'));
       return row.id;
@@ -423,7 +425,22 @@ export function AppProvider({ children }) {
     addIssueComment: async (issueId, body) => {
       await supabase.from('issue_comments').insert({ issue_id: issueId, author_id: userId, body });
       const is = data.issues.find((x) => x.id === issueId);
-      if (is) await notifyUser(is.reporterId, 'issue', STRINGS[lang].notif_iss_comment, is.title, '/app/issues/' + issueId);
+      if (is) {
+        /*
+          Notify the people actually following this issue rather than everyone:
+          the reporter, anyone who already commented, anyone who pressed
+          "support" (that button is how you say "keep me posted"), and staff.
+          `data.issues` is still the pre-insert snapshot, so the new comment's
+          author is not in this list — and notifyUsers drops you anyway.
+        */
+        await notifyUsers(
+          [is.reporterId, ...is.comments.map((c) => c.authorId), ...(is.supporters || []), ...staffIds()],
+          'issue',
+          STRINGS[lang].notif_iss_comment,
+          is.title,
+          '/app/issues/' + issueId,
+        );
+      }
       await refreshAll();
     },
     updateIssueStatus: async (issueId, status, note) => {
