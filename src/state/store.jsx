@@ -313,7 +313,14 @@ export function AppProvider({ children }) {
   const PUSH_FUNCTION = import.meta.env.VITE_PUSH_FUNCTION || 'swift-api';
 
   const sendPush = async (userIds, type, title, body, link) => {
-    if (!userIds.length) return;
+    if (!userIds.length) {
+      console.info(`push: nobody to notify (type=${type})`);
+      return;
+    }
+    // Log the size of the recipient set too: the function's own reply cannot
+    // distinguish "nobody was notified" from "nobody was eligible", and that
+    // difference points at completely different causes.
+    console.info(`push: notifying ${userIds.length} user(s), type=${type}`);
     try {
       // invoke() reports HTTP failures via `error` rather than throwing, so a
       // missing or broken function was previously invisible — which is exactly
