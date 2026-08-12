@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient.js';
 import { STRINGS } from '../i18n/strings.js';
+import { enablePush, disablePush, resyncPush } from '../lib/push.js';
 
 /*
   Real backend: Supabase (Postgres + Auth + Storage), protected by Row Level
@@ -204,6 +205,22 @@ export function AppProvider({ children }) {
 
   useEffect(() => { refreshAll(); }, [refreshAll]);
 
+  /*
+    Keep the stored push subscription in step with the browser's. Browsers can
+    drop or rotate a subscription at any time, which would otherwise leave the
+    user silently unreachable with the toggle still showing "on".
+  */
+  useEffect(() => {
+    if (!userId || !data.notifPrefs.push) return;
+    resyncPush(userId);
+    if (!('serviceWorker' in navigator)) return;
+    const onMessage = (event) => {
+      if (event.data?.type === 'push-resubscribe') resyncPush(userId);
+    };
+    navigator.serviceWorker.addEventListener('message', onMessage);
+    return () => navigator.serviceWorker.removeEventListener('message', onMessage);
+  }, [userId, data.notifPrefs.push]);
+
   // ---- identity & role (real, enforced server-side by RLS — no override) ----
   const currentUser = profile ? { id: profile.id, name: profile.full_name, apartment: profile.apartment, color: profile.avatar_color } : { id: userId, name: '…', apartment: '', color: '#999' };
   const membership = data.members.find((m) => m.userId === userId);
@@ -277,14 +294,42 @@ export function AppProvider({ children }) {
 
   // ---- content actions ----
   const cid = activeCommunityId;
+  /*
+    Notification fan-out happens in Postgres (notify_members / notify_user).
+    It has to: RLS correctly forbids the client from reading anyone else's
+    notification_prefs, so only the server can tell who opted out of what.
+    The RPCs return the users they actually notified — precisely the set worth
+    sending a browser push to.
+  */
+  const idsFrom = (rows) =>
+    (rows || []).map((r) => (typeof r === 'string' ? r : r?.user_id ?? r?.notify_members ?? r?.notify_user)).filter(Boolean);
+
+  const sendPush = async (userIds, type, title, body, link) => {
+    if (!userIds.length) return;
+    try {
+      await supabase.functions.invoke('send-push', {
+        body: { communityId: cid, userIds, type, title, body, link: link || '', lang },
+      });
+    } catch (e) {
+      // The in-app notification is already saved; a push failure must never
+      // fail the action that triggered it.
+    }
+  };
+
   const notifyMembers = async (excludeUserId, type, title, body, link) => {
-    const targets = data.members.filter((m) => m.userId !== excludeUserId).map((m) => m.userId);
-    if (!targets.length) return;
-    await supabase.from('notifications').insert(targets.map((uid) => ({ community_id: cid, user_id: uid, type, title, body, link })));
+    const { data: rows, error } = await supabase.rpc('notify_members', {
+      cid, exclude_user: excludeUserId || null, ntype: type, ntitle: title, nbody: body, nlink: link || '',
+    });
+    if (error) throw error;
+    await sendPush(idsFrom(rows), type, title, body, link);
   };
   const notifyUser = async (targetUserId, type, title, body, link) => {
     if (!targetUserId || targetUserId === userId) return;
-    await supabase.from('notifications').insert({ community_id: cid, user_id: targetUserId, type, title, body, link });
+    const { data: rows, error } = await supabase.rpc('notify_user', {
+      cid, target_user: targetUserId, ntype: type, ntitle: title, nbody: body, nlink: link || '',
+    });
+    if (error) throw error;
+    await sendPush(idsFrom(rows), type, title, body, link);
   };
 
   const actions = useMemo(() => ({
@@ -402,6 +447,27 @@ export function AppProvider({ children }) {
     setNotifPref: async (key, val) => {
       await supabase.from('notification_prefs').upsert({ user_id: userId, ...data.notifPrefs, [key]: val });
       await refreshAll();
+    },
+    /*
+      Push is not just a stored flag: turning it on needs the browser permission
+      prompt and a subscription. Returns null on success, otherwise a reason key
+      ('ios-install', 'denied', 'unsupported', 'no-key', 'dismissed', 'error')
+      so the screen can explain what to do.
+    */
+    setPushEnabled: async (val) => {
+      try {
+        if (val) {
+          const reason = await enablePush(userId);
+          if (reason) return reason;
+        } else {
+          await disablePush();
+        }
+      } catch (e) {
+        return 'error';
+      }
+      await supabase.from('notification_prefs').upsert({ user_id: userId, ...data.notifPrefs, push: val });
+      await refreshAll();
+      return null;
     },
   }), [cid, userId, lang, data, refreshAll, showToast, t]);
 

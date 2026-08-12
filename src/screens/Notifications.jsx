@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { ScreenHeader, Empty } from '../components/ui.jsx';
 import { timeAgo } from '../lib/format.js';
+import { pushBlockedReason } from '../lib/push.js';
 
 const ICON = { announcement: '📢', issue: '🛠️', reply: '💬', poll: '🗳️' };
 
@@ -16,7 +17,7 @@ function Toggle({ on, onChange }) {
 
 export default function Notifications() {
   const nav = useNavigate();
-  const { data, t, lang, actions } = useApp();
+  const { data, t, lang, actions, showToast } = useApp();
   const [tab, setTab] = useState('list');
   const list = [...data.notifications].sort((a, b) => b.createdAt - a.createdAt);
   const prefs = data.notifPrefs;
@@ -26,8 +27,36 @@ export default function Notifications() {
     { key: 'replies', label: t('notif_p_replies') },
     { key: 'issues', label: t('notif_p_issues') },
     { key: 'polls', label: t('notif_p_polls') },
-    { key: 'push', label: t('notif_push') },
   ];
+
+  // Push needs a browser permission prompt, so it can fail in ways a plain
+  // preference cannot. Surface the reason instead of silently flipping back.
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushNote, setPushNote] = useState(null);
+  const REASON_STRING = {
+    'ios-install': 'push_ios_install',
+    denied: 'push_denied',
+    unsupported: 'push_unsupported',
+    'no-key': 'push_no_key',
+    error: 'push_error',
+  };
+  // Tell iPhone users what to do before they tap and get nothing.
+  const upfrontReason = prefs.push ? null : pushBlockedReason();
+  const note = pushNote || (upfrontReason && REASON_STRING[upfrontReason] ? t(REASON_STRING[upfrontReason]) : null);
+
+  const togglePush = async () => {
+    if (pushBusy) return;
+    setPushBusy(true);
+    setPushNote(null);
+    const next = !prefs.push;
+    const reason = await actions.setPushEnabled(next);
+    if (reason && reason !== 'dismissed') {
+      setPushNote(t(REASON_STRING[reason] || 'push_error'));
+    } else if (!reason) {
+      showToast(next ? t('push_enabled') : t('push_disabled'));
+    }
+    setPushBusy(false);
+  };
 
   return (
     <div className="screen">
@@ -64,6 +93,18 @@ export default function Notifications() {
               <Toggle on={prefs[r.key]} onChange={() => actions.setNotifPref(r.key, !prefs[r.key])} />
             </div>
           ))}
+
+          <div className="card" style={{ opacity: pushBusy ? 0.6 : 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 14.5, fontWeight: 600 }}>{t('notif_push')}</span>
+              <Toggle on={prefs.push} onChange={togglePush} />
+            </div>
+            {(note || (prefs.push && !pushNote)) && (
+              <div className="muted" style={{ fontSize: 12.5, marginTop: 8, lineHeight: 1.45 }}>
+                {note || t('push_hint_on')}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

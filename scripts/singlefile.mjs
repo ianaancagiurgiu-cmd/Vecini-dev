@@ -26,3 +26,8 @@ if (html.includes('/assets/')) {
 }
 writeFileSync(dist + 'vecini.html', html);
 console.log('dist/vecini.html written,', Math.round(html.length / 1024), 'KB');
+console.warn(
+  '\nNOTE: push notifications do NOT work in this single-file build.\n' +
+  'A service worker must be served as its own file from the site root, which a\n' +
+  'one-file bundle cannot do. Deploy the whole dist/ folder for push to work.',
+);
