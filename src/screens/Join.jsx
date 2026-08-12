@@ -1,16 +1,17 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, Navigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { AuthShell } from './AuthShell.jsx';
 
 export default function Join() {
   const nav = useNavigate();
-  const { t, joinByCode, authed } = useApp();
+  const { t, joinByCode, authed, authLoading } = useApp();
   const [code, setCode] = useState('');
   const [err, setErr] = useState('');
   const [joining, setJoining] = useState(false);
 
-  if (!authed) { nav('/login'); return null; }
+  if (authLoading) return null;
+  if (!authed) return <Navigate to="/login" replace />;
 
   const submit = async (e) => {
     e.preventDefault();

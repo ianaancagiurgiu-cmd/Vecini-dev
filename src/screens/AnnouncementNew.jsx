@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { ScreenHeader } from '../components/ui.jsx';
 
@@ -9,7 +9,7 @@ export default function AnnouncementNew() {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
-  if (!isStaff) { nav('/app/announcements'); return null; }
+  if (!isStaff) return <Navigate to="/app/announcements" replace />;
 
   const submit = async () => {
     if (!title.trim() || !body.trim()) return;

@@ -1,11 +1,11 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { ScreenHeader } from '../components/ui.jsx';
 
 export default function Admin() {
   const nav = useNavigate();
   const { data, t, isStaff, role } = useApp();
-  if (!isStaff) { nav('/app'); return null; }
+  if (!isStaff) return <Navigate to="/app" replace />;
 
   const pending = data.discussions.filter((d) => d.status === 'pending').length;
   const openIssues = data.issues.filter((i) => i.status !== 'resolved').length;

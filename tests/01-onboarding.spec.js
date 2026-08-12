@@ -54,4 +54,22 @@ test.describe('Epic 1 — Onboarding (offline-safe checks)', () => {
     await page.waitForTimeout(800);
     expect(page.url()).toMatch(/#\/$|\/$/);
   });
+
+  // Regression guard: guarded screens (Join, CreateCommunity, and the
+  // staff/admin-only ones) used to call the router's imperative navigate()
+  // during render instead of returning <Navigate>. That's a known React
+  // Router foot-gun — it can leave the screen blank until something forces a
+  // fresh render (e.g. a manual page refresh), instead of redirecting cleanly.
+  for (const [path, label] of [['/#/join', 'Join'], ['/#/create', 'CreateCommunity']]) {
+    test(`${label}: visiting while signed out redirects cleanly, no blank frame`, async ({ page }) => {
+      const warnings = [];
+      page.on('console', (m) => { if (/navigate\(\)/.test(m.text())) warnings.push(m.text()); });
+      await page.goto(path);
+      await page.waitForTimeout(500);
+      expect(page.url()).toContain('#/login');
+      // the login form must actually be painted, not a blank screen
+      await expect(page.getByRole('button', { name: 'Intră în cont', exact: true })).toBeVisible();
+      expect(warnings).toEqual([]);
+    });
+  }
 });

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { ScreenHeader } from '../components/ui.jsx';
 
@@ -11,7 +11,7 @@ export default function CommunitySettings() {
   const [desc, setDesc] = useState(c?.description || '');
   const [joinMode, setJoinMode] = useState(c?.joinMode || 'invite');
   const [confirmRegen, setConfirmRegen] = useState(false);
-  if (role !== 'admin') { nav('/app/admin'); return null; }
+  if (role !== 'admin') return <Navigate to="/app/admin" replace />;
   if (!c) return null;
 
   const joinModes = [

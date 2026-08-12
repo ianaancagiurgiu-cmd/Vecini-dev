@@ -1,17 +1,18 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, Navigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { AuthShell } from './AuthShell.jsx';
 
 export default function CreateCommunity() {
   const nav = useNavigate();
-  const { t, createCommunity, authed } = useApp();
+  const { t, createCommunity, authed, authLoading } = useApp();
   const [name, setName] = useState('');
   const [addr, setAddr] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
-  if (!authed) { nav('/login'); return null; }
+  if (authLoading) return null;
+  if (!authed) return <Navigate to="/login" replace />;
 
   const submit = async (e) => {
     e.preventDefault();

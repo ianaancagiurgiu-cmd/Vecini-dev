@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { ScreenHeader } from '../components/ui.jsx';
 
@@ -10,7 +10,7 @@ export default function PollNew() {
   const [opts, setOpts] = useState(['', '']);
   const [multi, setMulti] = useState(false);
   const [end, setEnd] = useState(() => new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10));
-  if (!isStaff) { nav('/app/polls'); return null; }
+  if (!isStaff) return <Navigate to="/app/polls" replace />;
 
   const setOpt = (i, v) => setOpts((cur) => cur.map((o, idx) => (idx === i ? v : o)));
   const addOpt = () => setOpts((cur) => [...cur, '']);

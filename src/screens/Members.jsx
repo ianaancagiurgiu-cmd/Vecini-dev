@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { ScreenHeader, Avatar } from '../components/ui.jsx';
 import { formatDate } from '../lib/format.js';
@@ -8,7 +8,7 @@ export default function Members() {
   const nav = useNavigate();
   const { data, t, lang, userById, role, actions } = useApp();
   const [confirm, setConfirm] = useState(null);
-  if (role !== 'admin') { nav('/app/admin'); return null; }
+  if (role !== 'admin') return <Navigate to="/app/admin" replace />;
 
   const roleColors = {
     admin: { bg: '#13211b', fg: '#7fd1a8' },

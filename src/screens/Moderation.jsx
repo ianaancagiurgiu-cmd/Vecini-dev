@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { ScreenHeader, Avatar, Empty } from '../components/ui.jsx';
 import { timeAgo, CATEGORIES, catLabel, DISC_CATS } from '../lib/format.js';
@@ -8,7 +8,7 @@ export default function Moderation() {
   const nav = useNavigate();
   const { data, t, L, lang, userById, isStaff, actions } = useApp();
   const [moving, setMoving] = useState(null);
-  if (!isStaff) { nav('/app'); return null; }
+  if (!isStaff) return <Navigate to="/app" replace />;
 
   const queue = data.discussions.filter((d) => d.status === 'pending');
 
