@@ -74,6 +74,18 @@ mismatch and re-subscribes each device automatically on next open.
 supabase functions deploy send-push --project-ref <your-project-ref>
 ```
 
+Or paste `supabase/functions/send-push/index.ts` into the dashboard editor
+("Deploy a new function" → "Via Editor").
+
+**Mind the name.** The dashboard pre-fills an auto-generated name such as
+`swift-api`, and whatever it is deployed as is what the app must call. On the
+live project the function ended up named `swift-api`, so that is the default in
+`src/state/store.jsx`. If you redeploy it under a different name, set
+`VITE_PUSH_FUNCTION` in Netlify to match — otherwise the app calls a function
+that does not exist, and because `functions.invoke` reports HTTP failures
+through its return value rather than by throwing, the only sign is a console
+error.
+
 ## How it fits together
 
 1. Someone posts an announcement.

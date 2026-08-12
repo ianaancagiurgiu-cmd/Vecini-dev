@@ -304,15 +304,29 @@ export function AppProvider({ children }) {
   const idsFrom = (rows) =>
     (rows || []).map((r) => (typeof r === 'string' ? r : r?.user_id ?? r?.notify_members ?? r?.notify_user)).filter(Boolean);
 
+  /*
+    Name of the deployed Edge Function. 'swift-api' is the auto-generated name
+    Supabase gave it when it was first deployed from the dashboard, and it is
+    what the live project actually has. Override with VITE_PUSH_FUNCTION if it
+    is ever redeployed under a clearer name.
+  */
+  const PUSH_FUNCTION = import.meta.env.VITE_PUSH_FUNCTION || 'swift-api';
+
   const sendPush = async (userIds, type, title, body, link) => {
     if (!userIds.length) return;
     try {
-      await supabase.functions.invoke('send-push', {
+      // invoke() reports HTTP failures via `error` rather than throwing, so a
+      // missing or broken function was previously invisible — which is exactly
+      // how a wrong function name went unnoticed. Always inspect the result.
+      const { data, error } = await supabase.functions.invoke(PUSH_FUNCTION, {
         body: { communityId: cid, userIds, type, title, body, link: link || '', lang },
       });
+      if (error) console.error(`push: function '${PUSH_FUNCTION}' failed`, error);
+      else console.info('push:', data);
     } catch (e) {
-      // The in-app notification is already saved; a push failure must never
-      // fail the action that triggered it.
+      // Still never fatal: the in-app notification is already saved, so a push
+      // problem must not fail the action that triggered it.
+      console.error('push: unexpected error', e);
     }
   };
 
