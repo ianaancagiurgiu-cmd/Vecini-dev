@@ -62,10 +62,20 @@ test.describe('Epic 13 — push notification plumbing', () => {
   test('service worker registers and reaches activated', async ({ page }) => {
     await page.goto('/');
     const state = await page.evaluate(async () => {
-      const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-      await navigator.serviceWorker.ready;
-      const sw = reg.active || reg.installing || reg.waiting;
-      return { scope: reg.scope, state: sw && sw.state };
+      await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      // `ready` guarantees an active worker but that worker may still be
+      // 'activating' — our activate handler awaits clients.claim(). Wait for
+      // the transition rather than sampling whatever state we happen to catch.
+      const ready = await navigator.serviceWorker.ready;
+      const sw = ready.active;
+      if (sw.state !== 'activated') {
+        await new Promise((resolve) => {
+          sw.addEventListener('statechange', () => {
+            if (sw.state === 'activated') resolve();
+          });
+        });
+      }
+      return { scope: ready.scope, state: sw.state };
     });
     expect(state.scope).toMatch(/\/$/);
     expect(state.state).toBe('activated');

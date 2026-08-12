@@ -323,13 +323,34 @@ export function AppProvider({ children }) {
     if (error) throw error;
     await sendPush(idsFrom(rows), type, title, body, link);
   };
-  const notifyUser = async (targetUserId, type, title, body, link) => {
-    if (!targetUserId || targetUserId === userId) return;
+  const insertNotifyUser = async (targetUserId, type, title, body, link) => {
+    if (!targetUserId || targetUserId === userId) return [];
     const { data: rows, error } = await supabase.rpc('notify_user', {
       cid, target_user: targetUserId, ntype: type, ntitle: title, nbody: body, nlink: link || '',
     });
     if (error) throw error;
-    await sendPush(idsFrom(rows), type, title, body, link);
+    return idsFrom(rows);
+  };
+  const notifyUser = async (targetUserId, type, title, body, link) => {
+    const ids = await insertNotifyUser(targetUserId, type, title, body, link);
+    await sendPush(ids, type, title, body, link);
+  };
+  /*
+    Staff-only fan-out (a new issue should reach whoever can act on it).
+    Done as one call per person rather than a dedicated SQL function because
+    members and their roles are already readable here, and this avoids asking
+    for another database migration. Staff lists are a handful of people.
+  */
+  const notifyStaff = async (type, title, body, link) => {
+    const staff = data.members.filter(
+      (m) => (m.role === 'admin' || m.role === 'moderator') && m.userId !== userId,
+    );
+    if (!staff.length) return;
+    const notified = [];
+    for (const m of staff) {
+      notified.push(...(await insertNotifyUser(m.userId, type, title, body, link)));
+    }
+    await sendPush(notified, type, title, body, link);
   };
 
   const actions = useMemo(() => ({
@@ -369,6 +390,8 @@ export function AppProvider({ children }) {
       const { data: row, error } = await supabase.from('issues').insert({ community_id: cid, reporter_id: userId, title, category, location, description, photo_url: photoUrl, status: 'new' }).select('*').single();
       if (error) throw error;
       await supabase.from('issue_history').insert({ issue_id: row.id, status: 'new', note: STRINGS[lang].iss_submitted, by_id: userId });
+      // Whoever can act on it needs to know, or the report just sits there.
+      await notifyStaff('issue', STRINGS[lang].notif_iss_new, title, '/app/issues/' + row.id);
       await refreshAll();
       showToast(t('iss_submitted'));
       return row.id;
@@ -382,6 +405,8 @@ export function AppProvider({ children }) {
     },
     addIssueComment: async (issueId, body) => {
       await supabase.from('issue_comments').insert({ issue_id: issueId, author_id: userId, body });
+      const is = data.issues.find((x) => x.id === issueId);
+      if (is) await notifyUser(is.reporterId, 'issue', STRINGS[lang].notif_iss_comment, is.title, '/app/issues/' + issueId);
       await refreshAll();
     },
     updateIssueStatus: async (issueId, status, note) => {
@@ -397,6 +422,7 @@ export function AppProvider({ children }) {
       const { data: poll, error } = await supabase.from('polls').insert({ community_id: cid, author_id: userId, question, multi, ends_at: new Date(endsAt).toISOString() }).select('*').single();
       if (error) throw error;
       await supabase.from('poll_options').insert(options.map((label) => ({ poll_id: poll.id, label })));
+      await notifyMembers(userId, 'poll', STRINGS[lang].poll_new, question, '/app/polls/' + poll.id);
       await refreshAll();
       showToast(t('poll_created'));
       return poll.id;
