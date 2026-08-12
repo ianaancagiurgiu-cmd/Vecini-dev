@@ -1,0 +1,119 @@
+<!--
+  Vecini — "Confirm signup" email template for Supabase.
+  Paste into: Supabase → Authentication → Emails → Confirm signup.
+
+  Email-client constraints this file deliberately respects:
+   - table-based layout (flexbox/grid are unreliable in email clients)
+   - all CSS inline (Gmail strips <style> blocks in some contexts)
+   - no external images at all, so nothing can be blocked or fail to load:
+     the "V" mark is a coloured table cell, not a picture
+   - Georgia stands in for Newsreader (web fonts don't load in most clients)
+   - explicit bgcolor + color-scheme so dark-mode clients don't invert badly
+-->
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Confirmă adresa de email — Vecini</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4efe4; -webkit-text-size-adjust:100%;">
+
+  <!-- preheader: the grey preview line in the inbox list -->
+  <div style="display:none; font-size:1px; color:#f4efe4; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden;">
+    Încă un pas și ești în comunitatea ta: confirmă adresa de email.
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4efe4;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px; width:100%;">
+
+          <!-- logo -->
+          <tr>
+            <td style="padding:0 4px 22px 4px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td width="40" height="40" align="center" valign="middle" bgcolor="#2f6b4f" style="width:40px; height:40px; background-color:#2f6b4f; border-radius:11px; color:#ffffff; font-family:Georgia,'Times New Roman',serif; font-size:22px; font-weight:700; line-height:40px; text-align:center;">V</td>
+                  <td style="padding-left:10px; font-family:Georgia,'Times New Roman',serif; font-size:22px; font-weight:600; color:#1d3b2c; letter-spacing:-0.2px;">Vecini</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- card -->
+          <tr>
+            <td bgcolor="#ffffff" style="background-color:#ffffff; border:1px solid #ece6da; border-radius:17px; padding:34px 30px;">
+
+              <h1 style="margin:0 0 12px 0; font-family:Georgia,'Times New Roman',serif; font-size:26px; line-height:1.22; font-weight:600; color:#1d3b2c;">
+                Bun venit în cartierul tău digital
+              </h1>
+
+              <p style="margin:0 0 22px 0; font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:16px; line-height:1.55; color:#74786e;">
+                Mai rămâne un pas mic: confirmă că această adresă de email îți aparține.
+                Apoi poți intra în comunitatea ta și vezi anunțurile, sesizările și voturile vecinilor.
+              </p>
+
+              <!-- button -->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px 0;">
+                <tr>
+                  <td align="center" bgcolor="#2f6b4f" style="background-color:#2f6b4f; border-radius:14px;">
+                    <a href="{{ .ConfirmationURL }}"
+                       style="display:inline-block; padding:15px 30px; font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:16px; font-weight:700; color:#ffffff; text-decoration:none; border-radius:14px;">
+                      Confirmă adresa de email
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- what happens next -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 6px 0;">
+                <tr>
+                  <td bgcolor="#f4efe4" style="background-color:#f4efe4; border-radius:13px; padding:16px 18px;">
+                    <p style="margin:0 0 8px 0; font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:11.5px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:#2f6b4f;">
+                      Ce urmează
+                    </p>
+                    <p style="margin:0; font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:14.5px; line-height:1.6; color:#232620;">
+                      Intri cu codul de invitație primit de la administratorul asociației — sau îți creezi propria comunitate, dacă tu ești cel care începe.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+
+          <!-- fallback link -->
+          <tr>
+            <td style="padding:20px 8px 0 8px;">
+              <p style="margin:0 0 6px 0; font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:13px; line-height:1.5; color:#9a9586;">
+                Dacă butonul nu funcționează, copiază linkul acesta în browser:
+              </p>
+              <p style="margin:0; font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12.5px; line-height:1.5; word-break:break-all;">
+                <a href="{{ .ConfirmationURL }}" style="color:#2f6b4f; text-decoration:underline;">{{ .ConfirmationURL }}</a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- footer -->
+          <tr>
+            <td style="padding:24px 8px 0 8px; border-top:1px solid #ece6da; margin-top:8px;">
+              <p style="margin:18px 0 0 0; font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12.5px; line-height:1.6; color:#9a9586;">
+                Ai primit acest email pentru că cineva a folosit adresa <strong style="color:#74786e;">{{ .Email }}</strong> pentru a-și crea un cont Vecini.
+                Dacă nu ai fost tu, poți ignora liniștit acest mesaj — fără confirmare, contul nu se activează.
+              </p>
+              <p style="margin:14px 0 0 0; font-family:Georgia,'Times New Roman',serif; font-size:13px; color:#9a9586;">
+                Vecini — tot ce ține de bloc, într-un singur loc liniștit.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
