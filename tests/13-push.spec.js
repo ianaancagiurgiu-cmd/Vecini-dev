@@ -123,6 +123,18 @@ function loadServiceWorker() {
   };
 }
 
+/** A fake open window that records the messages the worker posts to it. */
+function fakeWindow(url = 'https://vecini-comunitate.netlify.app/#/app') {
+  const messages = [];
+  return {
+    url,
+    messages,
+    postMessage: (m) => messages.push(m),
+    focus: () => Promise.resolve(),
+    navigate: () => Promise.resolve(),
+  };
+}
+
 test.describe('Epic 13 — service worker push handling', () => {
   test('a push payload becomes a notification with a hash-router link', async () => {
     const sw = loadServiceWorker();
@@ -136,6 +148,19 @@ test.describe('Epic 13 — service worker push handling', () => {
     // The critical bit: '/app/...' must become '/#/app/...' for HashRouter.
     expect(sw.shown[0].options.data.link).toBe('/#/app/announcements/abc');
     expect(sw.shown[0].options.icon).toBe('/icon-192.png');
+  });
+
+  test('a push tells open windows to refresh, so they do not show stale data', async () => {
+    const sw = loadServiceWorker();
+    const win = fakeWindow();
+    sw.setWindows([win]);
+
+    await sw.fire('push', {
+      data: { json: () => ({ title: 'Sesizare nouă', body: 'Teava sparta', type: 'issue' }) },
+    });
+
+    expect(sw.shown).toHaveLength(1);
+    expect(win.messages).toEqual([{ type: 'push-received' }]);
   });
 
   test('a push with no link falls back to the notifications screen', async () => {

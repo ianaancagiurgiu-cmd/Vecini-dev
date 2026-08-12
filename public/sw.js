@@ -34,7 +34,15 @@ self.addEventListener('push', (event) => {
     data: { link: toHashUrl(payload.link) },
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    (async () => {
+      await self.registration.showNotification(title, options);
+      // A push means something changed. Tell any open window so it can refresh
+      // rather than sitting on stale data behind the notification.
+      const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const client of clientList) client.postMessage({ type: 'push-received' });
+    })(),
+  );
 });
 
 self.addEventListener('notificationclick', (event) => {

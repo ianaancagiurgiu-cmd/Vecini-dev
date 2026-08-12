@@ -206,6 +206,43 @@ export function AppProvider({ children }) {
   useEffect(() => { refreshAll(); }, [refreshAll]);
 
   /*
+    Keep the data fresh without a manual reload. Fetching only on mount makes a
+    phone app look broken: you leave it open, a neighbour posts something, and
+    the list still shows what it showed an hour ago — force-quitting was the
+    only way to see anything new. Three triggers, cheapest first:
+      - coming back to the foreground, which is how phones are actually used
+      - a slow poll while genuinely visible, to bound how stale a left-open
+        screen can get
+      - a push arriving, which by definition means something changed
+  */
+  useEffect(() => {
+    if (!userId) return;
+
+    const refreshIfVisible = () => {
+      if (document.visibilityState === 'visible') refreshAll();
+    };
+
+    document.addEventListener('visibilitychange', refreshIfVisible);
+    window.addEventListener('focus', refreshIfVisible);
+    const timer = setInterval(refreshIfVisible, 60000);
+
+    let onSwMessage;
+    if ('serviceWorker' in navigator) {
+      onSwMessage = (event) => {
+        if (event.data?.type === 'push-received') refreshAll();
+      };
+      navigator.serviceWorker.addEventListener('message', onSwMessage);
+    }
+
+    return () => {
+      document.removeEventListener('visibilitychange', refreshIfVisible);
+      window.removeEventListener('focus', refreshIfVisible);
+      clearInterval(timer);
+      if (onSwMessage) navigator.serviceWorker.removeEventListener('message', onSwMessage);
+    };
+  }, [userId, refreshAll]);
+
+  /*
     Keep the stored push subscription in step with the browser's. Browsers can
     drop or rotate a subscription at any time, which would otherwise leave the
     user silently unreachable with the toggle still showing "on".
