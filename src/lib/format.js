@@ -1,18 +1,23 @@
-export function timeAgo(ts, t, lang) {
+const LOCALES = { ro: 'ro-RO', en: 'en-GB', hu: 'hu-HU' };
+
+// Relative time comes from the dictionary as a "{n}" template, so each
+// language controls its own word order rather than being hardcoded here.
+export function timeAgo(ts, t) {
   const diff = Date.now() - ts;
   const m = Math.floor(diff / 60000);
   const h = Math.floor(diff / 3600000);
   const d = Math.floor(diff / 86400000);
+  const fill = (key, n) => t(key).replace('{n}', n);
   if (m < 1) return t('time_now');
-  if (m < 60) return (lang === 'en' ? `${m} min ago` : `acum ${m} min`);
-  if (h < 24) return (lang === 'en' ? `${h}h ago` : `acum ${h}h`);
+  if (m < 60) return fill('time_ago_min', m);
+  if (h < 24) return fill('time_ago_h', h);
   if (d === 1) return t('time_yesterday');
-  return (lang === 'en' ? `${d} days ago` : `acum ${d} zile`);
+  return fill('time_ago_days', d);
 }
 
 export function formatDate(ts, lang) {
   const d = new Date(ts);
-  return d.toLocaleDateString(lang === 'en' ? 'en-GB' : 'ro-RO', { day: 'numeric', month: 'long', year: 'numeric' });
+  return d.toLocaleDateString(LOCALES[lang] || LOCALES.ro, { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 export function daysUntil(ts) {

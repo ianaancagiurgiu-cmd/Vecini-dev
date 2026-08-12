@@ -1,19 +1,30 @@
 import { useApp } from '../state/store.jsx';
 
+export const LANGS = [
+  { code: 'ro', flag: '🇷🇴', short: 'RO', name: 'Română' },
+  { code: 'en', flag: '🇬🇧', short: 'EN', name: 'English' },
+  { code: 'hu', flag: '🇭🇺', short: 'HU', name: 'Magyar' },
+];
+
 // Small, in-flow language switch — sits inline in a header row instead of
-// floating over the screen, so it never covers form fields.
+// floating over the screen, so it never covers form fields. Tapping cycles
+// through the available languages; Settings offers them as explicit choices.
 export function LangSwitch() {
   const { lang, setLang } = useApp();
+  const i = Math.max(0, LANGS.findIndex((l) => l.code === lang));
+  const current = LANGS[i];
+  const next = LANGS[(i + 1) % LANGS.length];
   return (
     <button
-      onClick={() => setLang(lang === 'ro' ? 'en' : 'ro')}
+      onClick={() => setLang(next.code)}
+      aria-label={`Language: ${current.name}. Switch to ${next.name}`}
       style={{
         border: '1px solid var(--border)', borderRadius: 999, padding: '6px 12px',
         background: 'var(--section-bg)', color: 'var(--ink-400)', fontSize: 12.5, fontWeight: 700,
         cursor: 'pointer', whiteSpace: 'nowrap',
       }}
     >
-      {lang === 'ro' ? '🇷🇴 RO' : '🇬🇧 EN'}
+      {current.flag} {current.short}
     </button>
   );
 }

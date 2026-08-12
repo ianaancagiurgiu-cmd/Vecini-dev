@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
-import { ScreenHeader, Avatar } from '../components/ui.jsx';
+import { ScreenHeader, Avatar, LANGS } from '../components/ui.jsx';
 
 export default function Settings() {
   const nav = useNavigate();
@@ -36,10 +36,10 @@ export default function Settings() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginTop: 8 }}>
           <div className="eyebrow" style={{ margin: '12px 0 2px' }}>{t('set_lang')}</div>
-          <div className="card" style={{ display: 'flex', gap: 8 }}>
-            {['ro', 'en'].map((l) => (
-              <button key={l} onClick={() => setLang(l)} style={{ flex: 1, padding: '11px', borderRadius: 11, border: 'none', fontWeight: 700, fontSize: 14, background: lang === l ? 'var(--green-600)' : 'var(--section-bg)', color: lang === l ? '#fff' : 'var(--ink-400)' }}>
-                {l === 'ro' ? '🇷🇴 Română' : '🇬🇧 English'}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {LANGS.map((l) => (
+              <button key={l.code} onClick={() => setLang(l.code)} style={{ padding: '11px 14px', borderRadius: 11, border: 'none', fontWeight: 700, fontSize: 14, textAlign: 'left', background: lang === l.code ? 'var(--green-600)' : 'var(--section-bg)', color: lang === l.code ? '#fff' : 'var(--ink-400)' }}>
+                {l.flag} {l.name}
               </button>
             ))}
           </div>
