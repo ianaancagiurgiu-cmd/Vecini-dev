@@ -85,4 +85,20 @@ test.describe('App shell layout', () => {
     expect(after.inner).toBeGreaterThan(0);
     expect(after.win).toBe(0);
   });
+
+  // Regression guard: iOS Safari force-zooms (and pans) the whole page when
+  // a focused text field's font is under 16px, ignoring our
+  // user-scalable=no meta tag. That zoom/pan is what produced the "page is
+  // scrolled down, leaving a blank gap above the keyboard" report — so every
+  // real text input must render at 16px or larger.
+  test('text inputs render at 16px+ (prevents iOS auto-zoom-on-focus)', async ({ page }) => {
+    await page.goto('/#/signup');
+    await page.waitForTimeout(400);
+    const sizes = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('input.input, textarea.input'))
+        .map((el) => parseFloat(getComputedStyle(el).fontSize))
+    );
+    expect(sizes.length).toBeGreaterThan(0);
+    for (const px of sizes) expect(px).toBeGreaterThanOrEqual(16);
+  });
 });
