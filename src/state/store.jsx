@@ -316,11 +316,19 @@ export function AppProvider({ children }) {
     }
   };
 
+  /*
+    Notifying is always secondary to the thing that triggered it. If it fails,
+    the announcement/issue/poll has already been saved, so surfacing an error
+    would tell the user their action failed when it did not. Log and carry on.
+  */
   const notifyMembers = async (excludeUserId, type, title, body, link) => {
     const { data: rows, error } = await supabase.rpc('notify_members', {
       cid, exclude_user: excludeUserId || null, ntype: type, ntitle: title, nbody: body, nlink: link || '',
     });
-    if (error) throw error;
+    if (error) {
+      console.error('notify_members failed', error);
+      return;
+    }
     await sendPush(idsFrom(rows), type, title, body, link);
   };
   const insertNotifyUser = async (targetUserId, type, title, body, link) => {
@@ -328,7 +336,10 @@ export function AppProvider({ children }) {
     const { data: rows, error } = await supabase.rpc('notify_user', {
       cid, target_user: targetUserId, ntype: type, ntitle: title, nbody: body, nlink: link || '',
     });
-    if (error) throw error;
+    if (error) {
+      console.error('notify_user failed', error);
+      return [];
+    }
     return idsFrom(rows);
   };
   const notifyUser = async (targetUserId, type, title, body, link) => {
@@ -389,7 +400,13 @@ export function AppProvider({ children }) {
       if (photo) photoUrl = await uploadIssuePhoto(photo, userId);
       const { data: row, error } = await supabase.from('issues').insert({ community_id: cid, reporter_id: userId, title, category, location, description, photo_url: photoUrl, status: 'new' }).select('*').single();
       if (error) throw error;
-      await supabase.from('issue_history').insert({ issue_id: row.id, status: 'new', note: STRINGS[lang].iss_submitted, by_id: userId });
+      // Not fatal: the issue itself is saved, and a missing history line must
+      // not present itself to the reporter as a failed report. Logged rather
+      // than swallowed — silence here hid a policy bug for a long time.
+      const { error: histError } = await supabase
+        .from('issue_history')
+        .insert({ issue_id: row.id, status: 'new', note: STRINGS[lang].iss_submitted, by_id: userId });
+      if (histError) console.error('issue_history insert failed', histError);
       // Whoever can act on it needs to know, or the report just sits there.
       await notifyStaff('issue', STRINGS[lang].notif_iss_new, title, '/app/issues/' + row.id);
       await refreshAll();
