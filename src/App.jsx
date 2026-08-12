@@ -8,6 +8,8 @@ import Landing from './screens/Landing.jsx';
 import Login from './screens/Login.jsx';
 import SignUp from './screens/SignUp.jsx';
 import Forgot from './screens/Forgot.jsx';
+import NewPassword from './screens/NewPassword.jsx';
+import ChangePassword from './screens/ChangePassword.jsx';
 import Join from './screens/Join.jsx';
 import CreateCommunity from './screens/CreateCommunity.jsx';
 
@@ -51,6 +53,20 @@ function AppLayout() {
 }
 
 export default function App() {
+  const { recoveryMode } = useApp();
+
+  // A reset-password link signs the person in, which would otherwise drop them
+  // straight into the dashboard. While the recovery session is active, the only
+  // screen we show is "choose a new password".
+  if (recoveryMode) {
+    return (
+      <PhoneChrome>
+        <Toast />
+        <NewPassword />
+      </PhoneChrome>
+    );
+  }
+
   return (
     <PhoneChrome>
       <Toast />
@@ -59,6 +75,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/forgot" element={<Forgot />} />
+        <Route path="/new-password" element={<NewPassword />} />
         <Route path="/join" element={<Join />} />
         <Route path="/create" element={<CreateCommunity />} />
 
@@ -79,6 +96,7 @@ export default function App() {
           <Route path="search" element={<Search />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="settings/password" element={<ChangePassword />} />
           <Route path="admin" element={<Admin />} />
           <Route path="admin/moderation" element={<Moderation />} />
           <Route path="admin/members" element={<Members />} />

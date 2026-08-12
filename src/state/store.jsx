@@ -45,6 +45,7 @@ export function AppProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [activeCommunityId, setActiveCommunityId] = useState(() => localStorage.getItem(ACTIVE_COMMUNITY_KEY) || null);
   const [membershipResolved, setMembershipResolved] = useState(false);
+  const [recoveryMode, setRecoveryMode] = useState(false);
   const [data, setData] = useState(emptyData);
   const [dataLoading, setDataLoading] = useState(false);
   const [toast, setToast] = useState(null);
@@ -75,7 +76,13 @@ export function AppProvider({ children }) {
   useEffect(() => {
     mounted.current = true;
     supabase.auth.getSession().then(({ data: { session } }) => { if (mounted.current) setSession(session); });
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      setSession(s);
+      // Arriving from a "reset password" email link signs the person in with a
+      // short-lived recovery session. We flag that so the app can send them
+      // straight to "choose a new password" instead of into the dashboard.
+      if (event === 'PASSWORD_RECOVERY') setRecoveryMode(true);
+    });
     return () => { mounted.current = false; sub.subscription.unsubscribe(); };
   }, []);
 
@@ -221,6 +228,26 @@ export function AppProvider({ children }) {
   };
   const sendPasswordReset = async (email) => {
     await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname });
+  };
+
+  // Used by the "choose a new password" screen after following a reset link.
+  // The recovery session itself is the proof of identity here.
+  const setNewPassword = async (password) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
+    setRecoveryMode(false);
+  };
+
+  // Used from Settings while signed in. We deliberately re-check the current
+  // password first — otherwise anyone with a borrowed unlocked phone could
+  // silently take over the account.
+  const changePassword = async (currentPassword, newPassword) => {
+    const email = session?.user?.email;
+    if (!email) throw new Error('no_email');
+    const { error: checkErr } = await supabase.auth.signInWithPassword({ email, password: currentPassword });
+    if (checkErr) throw new Error('wrong_current');
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
   };
   const signOut = async () => { await supabase.auth.signOut(); setActiveCommunityId(null); };
 
@@ -385,6 +412,9 @@ export function AppProvider({ children }) {
     authLoading: session === undefined, dataLoading, membershipResolved,
     userById, actions, toast, showToast,
     signUpEmail, signInEmail, signInGoogle, sendPasswordReset, signOut,
+    setNewPassword, changePassword, recoveryMode,
+    // Google-only accounts have no password to change; offer "set one" instead.
+    hasPasswordLogin: !!session?.user?.identities?.some((i) => i.provider === 'email'),
     joinByCode, createCommunity,
   };
 
