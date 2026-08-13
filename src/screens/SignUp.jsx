@@ -53,7 +53,7 @@ export default function SignUp() {
         <label className="field-label">{t('auth_password')}</label>
         <PasswordInput value={pw} autoComplete="new-password"
           onChange={(e) => { setPw(e.target.value); setErr(''); }} style={{ marginBottom: 14 }} />
-        <label className="field-label">{t('pw_confirm')}</label>
+        <label className="field-label">{t('auth_pw_confirm')}</label>
         <PasswordInput value={pw2} autoComplete="new-password"
           onChange={(e) => { setPw2(e.target.value); setErr(''); }} style={{ marginBottom: 16 }} />
         {err &&<div style={{ color: 'var(--terracotta)', fontSize: 13.5, fontWeight: 600, marginBottom: 12 }}>{err}</div>}

@@ -31,6 +31,26 @@ export function LangSwitch() {
 }
 
 /*
+  Line-art eye, drawn rather than an emoji: emoji render as a different picture
+  on every platform and read as decoration next to a form field, where this has
+  to read as a control.
+*/
+function EyeIcon({ off = false }) {
+  return (
+    <svg
+      width="21" height="21" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"
+      aria-hidden="true" focusable="false"
+    >
+      <path d="M2.6 12S6.3 5.8 12 5.8 21.4 12 21.4 12 17.7 18.2 12 18.2 2.6 12 2.6 12Z" />
+      <circle cx="12" cy="12" r="3.1" />
+      {/* Struck through when the password is showing: the tap hides it again. */}
+      {off && <path d="M4.4 19.6 19.6 4.4" />}
+    </svg>
+  );
+}
+
+/*
   Password field with a reveal toggle. Typing a password you cannot see is the
   easiest way to lock yourself out of your own account, and on a phone keyboard
   it is close to guaranteed.
@@ -72,10 +92,12 @@ export function PasswordInput({
           position: 'absolute', top: 0, right: 0, height: '100%', width: 46,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-          fontSize: 17, lineHeight: 1, color: 'var(--ink-400)',
+          lineHeight: 1,
+          // Green while revealed, so it is obvious the password is on screen.
+          color: visible ? 'var(--green-600)' : 'var(--ink-400)',
         }}
       >
-        {visible ? '🙈' : '👁'}
+        <EyeIcon off={visible} />
       </button>
     </div>
   );
