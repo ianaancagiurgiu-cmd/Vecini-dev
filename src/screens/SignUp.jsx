@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { AuthShell, GoogleButton, Divider } from './AuthShell.jsx';
+import { PasswordInput } from '../components/ui.jsx';
 
 export default function SignUp() {
   const nav = useNavigate();
@@ -9,6 +10,7 @@ export default function SignUp() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [pw, setPw] = useState('');
+  const [pw2, setPw2] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -18,6 +20,9 @@ export default function SignUp() {
     if (!name.trim()) return setErr(t('auth_name'));
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return setErr(t('auth_email_bad'));
     if (pw.length < 6) return setErr(t('auth_pw_weak'));
+    // Checked before signing up: a typo here locks you out of a brand new
+    // account, and with email delivery unreliable, recovery is not guaranteed.
+    if (pw !== pw2) return setErr(t('pw_mismatch'));
     setBusy(true);
     try {
       const { needsConfirmation } = await signUpEmail(name.trim(), email, pw);
@@ -46,8 +51,12 @@ export default function SignUp() {
         <label className="field-label">{t('auth_email')}</label>
         <input className="input" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErr(''); }} placeholder="ana@exemplu.ro" style={{ marginBottom: 14 }} />
         <label className="field-label">{t('auth_password')}</label>
-        <input className="input" type="password" value={pw} onChange={(e) => { setPw(e.target.value); setErr(''); }} placeholder="••••••••" style={{ marginBottom: 16 }} />
-        {err && <div style={{ color: 'var(--terracotta)', fontSize: 13.5, fontWeight: 600, marginBottom: 12 }}>{err}</div>}
+        <PasswordInput value={pw} autoComplete="new-password"
+          onChange={(e) => { setPw(e.target.value); setErr(''); }} style={{ marginBottom: 14 }} />
+        <label className="field-label">{t('pw_confirm')}</label>
+        <PasswordInput value={pw2} autoComplete="new-password"
+          onChange={(e) => { setPw2(e.target.value); setErr(''); }} style={{ marginBottom: 16 }} />
+        {err &&<div style={{ color: 'var(--terracotta)', fontSize: 13.5, fontWeight: 600, marginBottom: 12 }}>{err}</div>}
         <button className="btn btn--primary" type="submit" disabled={busy}>{t('auth_signup')}</button>
       </form>
     </AuthShell>

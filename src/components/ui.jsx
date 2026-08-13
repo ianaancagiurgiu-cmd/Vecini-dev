@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useApp } from '../state/store.jsx';
 
 export const LANGS = [
@@ -26,6 +27,57 @@ export function LangSwitch() {
     >
       {current.flag} {current.short}
     </button>
+  );
+}
+
+/*
+  Password field with a reveal toggle. Typing a password you cannot see is the
+  easiest way to lock yourself out of your own account, and on a phone keyboard
+  it is close to guaranteed.
+
+  The 16px font size is deliberate: iOS Safari zooms the whole page in when it
+  focuses an input with smaller text.
+*/
+export function PasswordInput({
+  value,
+  onChange,
+  placeholder = '••••••••',
+  autoComplete = 'current-password',
+  style,
+  ...rest
+}) {
+  const { t } = useApp();
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <div style={{ position: 'relative', ...style }}>
+      <input
+        className="input"
+        type={visible ? 'text' : 'password'}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        // Leave room for the button so long passwords do not run underneath it.
+        style={{ paddingRight: 46 }}
+        {...rest}
+      />
+      <button
+        type="button"
+        onClick={() => setVisible((v) => !v)}
+        aria-label={t(visible ? 'pw_hide' : 'pw_show')}
+        title={t(visible ? 'pw_hide' : 'pw_show')}
+        aria-pressed={visible}
+        style={{
+          position: 'absolute', top: 0, right: 0, height: '100%', width: 46,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+          fontSize: 17, lineHeight: 1, color: 'var(--ink-400)',
+        }}
+      >
+        {visible ? '🙈' : '👁'}
+      </button>
+    </div>
   );
 }
 

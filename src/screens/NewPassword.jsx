@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { AuthShell } from './AuthShell.jsx';
+import { PasswordInput } from '../components/ui.jsx';
 
 // Shown after following a "reset password" link from email. The recovery
 // session is already established at this point, so we only need the new
@@ -35,11 +36,11 @@ export default function NewPassword() {
     <AuthShell title={t('pw_new_title')} sub={t('pw_new_sub')}>
       <form onSubmit={submit}>
         <label className="field-label">{t('pw_new')}</label>
-        <input className="input" type="password" value={pw} autoComplete="new-password"
-          onChange={(e) => { setPw(e.target.value); setErr(''); }} placeholder="••••••••" style={{ marginBottom: 14 }} />
+        <PasswordInput value={pw} autoComplete="new-password"
+          onChange={(e) => { setPw(e.target.value); setErr(''); }} style={{ marginBottom: 14 }} />
         <label className="field-label">{t('pw_confirm')}</label>
-        <input className="input" type="password" value={pw2} autoComplete="new-password"
-          onChange={(e) => { setPw2(e.target.value); setErr(''); }} placeholder="••••••••" style={{ marginBottom: 16 }} />
+        <PasswordInput value={pw2} autoComplete="new-password"
+          onChange={(e) => { setPw2(e.target.value); setErr(''); }} style={{ marginBottom: 16 }} />
         {err && <div style={{ color: 'var(--terracotta)', fontSize: 13.5, fontWeight: 600, marginBottom: 12 }}>{err}</div>}
         <button className="btn btn--primary" type="submit" disabled={busy}>{t('pw_save')}</button>
       </form>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { AuthShell, GoogleButton, Divider } from './AuthShell.jsx';
+import { PasswordInput } from '../components/ui.jsx';
 
 export default function Login() {
   const nav = useNavigate();
@@ -36,7 +37,8 @@ export default function Login() {
         <label className="field-label">{t('auth_email')}</label>
         <input className="input" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErr(''); }} style={{ marginBottom: 14 }} />
         <label className="field-label">{t('auth_password')}</label>
-        <input className="input" type="password" placeholder="••••••••" value={pw} onChange={(e) => { setPw(e.target.value); setErr(''); }} style={{ marginBottom: 8 }} />
+        <PasswordInput value={pw} autoComplete="current-password"
+          onChange={(e) => { setPw(e.target.value); setErr(''); }} style={{ marginBottom: 8 }} />
         <div style={{ textAlign: 'right', marginBottom: 16 }}>
           <Link to="/forgot" style={{ fontSize: 13.5, color: 'var(--green-600)', fontWeight: 600 }}>{t('auth_forgot')}</Link>
         </div>

@@ -25,9 +25,43 @@ test.describe('Epic 1 — Onboarding (offline-safe checks)', () => {
     await page.goto('/#/signup');
     await page.getByPlaceholder('Ana Popescu').fill('Test');
     await page.locator('input[type=email]').fill('test@exemplu.ro');
-    await page.locator('input[type=password]').fill('123');
+    // Sign-up has both a password and a confirmation field.
+    await page.locator('input[type=password]').first().fill('123');
     await page.getByRole('button', { name: 'Înscrie-te', exact: true }).click();
     await expect(page.getByText(/cel puțin 6 caractere/)).toBeVisible();
+  });
+
+  test('US-02 sign up rejects mistyped password confirmation', async ({ page }) => {
+    await page.goto('/#/signup');
+    await page.getByPlaceholder('Ana Popescu').fill('Test');
+    await page.locator('input[type=email]').fill('test@exemplu.ro');
+    const pwFields = page.locator('input[type=password]');
+    await pwFields.first().fill('parola123');
+    await pwFields.nth(1).fill('parola124');
+    await page.getByRole('button', { name: 'Înscrie-te', exact: true }).click();
+    await expect(page.getByText(/nu coincid/)).toBeVisible();
+    // Must not have left the sign-up screen, i.e. no account was created.
+    expect(page.url()).toContain('#/signup');
+  });
+
+  test('US-02 the eye button reveals and re-hides the password', async ({ page }) => {
+    await page.goto('/#/signup');
+    const first = page.locator('.input').nth(2); // name, email, then password
+    await first.fill('secretul-meu');
+    await expect(first).toHaveAttribute('type', 'password');
+
+    await page.getByRole('button', { name: 'Arată parola' }).first().click();
+    await expect(first).toHaveAttribute('type', 'text');
+    // Revealed means readable — that is the whole point of the button.
+    await expect(first).toHaveValue('secretul-meu');
+
+    await page.getByRole('button', { name: 'Ascunde parola' }).first().click();
+    await expect(first).toHaveAttribute('type', 'password');
+  });
+
+  test('US-03 login also offers the reveal button', async ({ page }) => {
+    await page.goto('/#/login');
+    await expect(page.getByRole('button', { name: 'Arată parola' })).toBeVisible();
   });
 
   test('US-03 login does not proceed with a malformed email', async ({ page }) => {

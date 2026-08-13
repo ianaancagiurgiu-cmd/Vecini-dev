@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
-import { ScreenHeader } from '../components/ui.jsx';
+import { ScreenHeader, PasswordInput } from '../components/ui.jsx';
 
 export default function ChangePassword() {
   const nav = useNavigate();
@@ -47,16 +47,16 @@ export default function ChangePassword() {
           {hasPasswordLogin && (
             <>
               <label className="field-label">{t('pw_current')}</label>
-              <input className="input" type="password" value={current} autoComplete="current-password"
-                onChange={(e) => { setCurrent(e.target.value); setErr(''); }} placeholder="••••••••" style={{ marginBottom: 18 }} />
+              <PasswordInput value={current} autoComplete="current-password"
+                onChange={(e) => { setCurrent(e.target.value); setErr(''); }} style={{ marginBottom: 18 }} />
             </>
           )}
           <label className="field-label">{t('pw_new')}</label>
-          <input className="input" type="password" value={pw} autoComplete="new-password"
-            onChange={(e) => { setPw(e.target.value); setErr(''); }} placeholder="••••••••" style={{ marginBottom: 14 }} />
+          <PasswordInput value={pw} autoComplete="new-password"
+            onChange={(e) => { setPw(e.target.value); setErr(''); }} style={{ marginBottom: 14 }} />
           <label className="field-label">{t('pw_confirm')}</label>
-          <input className="input" type="password" value={pw2} autoComplete="new-password"
-            onChange={(e) => { setPw2(e.target.value); setErr(''); }} placeholder="••••••••" style={{ marginBottom: 16 }} />
+          <PasswordInput value={pw2} autoComplete="new-password"
+            onChange={(e) => { setPw2(e.target.value); setErr(''); }} style={{ marginBottom: 16 }} />
           {err && <div style={{ color: 'var(--terracotta)', fontSize: 13.5, fontWeight: 600, marginBottom: 12 }}>{err}</div>}
           <button className="btn btn--primary" type="submit" disabled={busy}>{t('pw_save')}</button>
         </form>
