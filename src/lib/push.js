@@ -42,18 +42,28 @@ async function getRegistration() {
   return navigator.serviceWorker.register('/sw.js', { scope: '/' });
 }
 
-async function storeSubscription(userId, sub) {
+/*
+  A subscription belongs to the browser, not the account, so when a second
+  person signs in on the same phone the existing row has to change hands. A
+  plain upsert cannot do it: the row is owned by the first user, and row-level
+  security refuses to let anyone else touch it — which left the second user
+  permanently unable to enable push. claim_push_subscription performs the
+  handover server-side; presenting the endpoint is what proves ownership.
+*/
+async function storeSubscription(sub) {
   const json = sub.toJSON();
-  const { error } = await supabase.from('push_subscriptions').upsert(
-    {
-      user_id: userId,
-      endpoint: json.endpoint,
-      p256dh: json.keys.p256dh,
-      auth: json.keys.auth,
-    },
-    { onConflict: 'endpoint' },
-  );
+  const { error } = await supabase.rpc('claim_push_subscription', {
+    p_endpoint: json.endpoint,
+    p_p256dh: json.keys.p256dh,
+    p_auth: json.keys.auth,
+  });
   if (error) throw error;
+}
+
+async function releaseSubscription(endpoint) {
+  // Same reason as above: the row may belong to whoever used this phone before.
+  const { error } = await supabase.rpc('release_push_subscription', { p_endpoint: endpoint });
+  if (error) console.error('push: could not release subscription', error);
 }
 
 /** Ask permission, subscribe, persist. Returns null on success or a reason string. */
@@ -74,7 +84,7 @@ export async function enablePush(userId) {
     const wanted = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
     const matches = current.length === wanted.length && current.every((b, i) => b === wanted[i]);
     if (!matches) {
-      await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
+      await releaseSubscription(sub.endpoint);
       await sub.unsubscribe();
       sub = null;
     }
@@ -86,7 +96,7 @@ export async function enablePush(userId) {
     });
   }
 
-  await storeSubscription(userId, sub);
+  await storeSubscription(sub);
   return null;
 }
 
@@ -96,7 +106,7 @@ export async function disablePush() {
   if (!reg) return;
   const sub = await reg.pushManager.getSubscription();
   if (!sub) return;
-  await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
+  await releaseSubscription(sub.endpoint);
   await sub.unsubscribe();
 }
 
@@ -111,7 +121,7 @@ export async function resyncPush(userId) {
     const reg = await getRegistration();
     await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.getSubscription();
-    if (sub) await storeSubscription(userId, sub);
+    if (sub) await storeSubscription(sub);
     else await enablePush(userId);
   } catch {
     // Never let a push hiccup break app startup.

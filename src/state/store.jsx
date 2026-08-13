@@ -303,7 +303,21 @@ export function AppProvider({ children }) {
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) throw error;
   };
-  const signOut = async () => { await supabase.auth.signOut(); setActiveCommunityId(null); };
+  const signOut = async () => {
+    /*
+      Release this device's push subscription first, while we still have a
+      session to do it with. Otherwise the person signing out keeps receiving
+      pushes on a phone that now belongs to whoever signs in next — and tapping
+      one would open the new person's account.
+    */
+    try {
+      await disablePush();
+    } catch (e) {
+      console.error('push: could not release device on sign-out', e);
+    }
+    await supabase.auth.signOut();
+    setActiveCommunityId(null);
+  };
 
   const joinByCode = async (code) => {
     const clean = code.trim();
