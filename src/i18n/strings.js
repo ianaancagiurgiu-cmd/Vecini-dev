@@ -1,7 +1,7 @@
 // Full RO/EN dictionary for Vecini. RO is the source of truth (matches prototype).
 export const STRINGS = {
   ro: {
-    appTagline: 'Tot ce ține de bloc, într-un singur loc liniștit.',
+    appTagline: 'Comunitatea ta de cartier, într-un singur loc liniștit.',
     continue: 'Continuă',
     back: 'Înapoi',
     cancel: 'Anulează',
@@ -22,7 +22,7 @@ export const STRINGS = {
     // Landing
     landing_kicker: 'COMUNITATEA TA DE CARTIER',
     landing_title: 'Comunitatea ta de cartier, fără haosul din WhatsApp',
-    landing_sub: 'Anunțuri, discuții, sesizări și voturi — organizate și calme. Tot ce ține de bloc, într-un singur loc.',
+    landing_sub: 'Anunțuri, discuții, sesizări și voturi — organizate și calme. Totul într-un singur loc liniștit.',
     landing_cta_primary: 'Începe acum',
     landing_cta_secondary: 'Am un cod de invitație',
     landing_feat1_t: 'Anunțuri oficiale, mereu la vedere',
@@ -314,7 +314,7 @@ export const STRINGS = {
   },
 
   en: {
-    appTagline: 'Everything about your building, in one calm place.',
+    appTagline: 'Your neighbourhood community, in one calm place.',
     continue: 'Continue',
     back: 'Back',
     cancel: 'Cancel',
@@ -334,7 +334,7 @@ export const STRINGS = {
 
     landing_kicker: 'YOUR NEIGHBORHOOD COMMUNITY',
     landing_title: 'Your neighborhood community, without the WhatsApp chaos',
-    landing_sub: 'Announcements, discussions, issue reports and votes — organized and calm. Everything about your building, in one place.',
+    landing_sub: 'Announcements, discussions, issue reports and votes — organized and calm. All in one calm place.',
     landing_cta_primary: 'Get started',
     landing_cta_secondary: 'I have an invite code',
     landing_feat1_t: 'Official announcements, always visible',
@@ -611,7 +611,7 @@ export const STRINGS = {
   },
 
   hu: {
-    appTagline: 'Minden, ami a házat érinti, egy nyugodt helyen.',
+    appTagline: 'A környéked közössége, egy nyugodt helyen.',
     continue: 'Tovább',
     back: 'Vissza',
     cancel: 'Mégse',
@@ -631,7 +631,7 @@ export const STRINGS = {
 
     landing_kicker: 'A TE LAKÓKÖZÖSSÉGED',
     landing_title: 'A lakóközösséged, a WhatsApp-káosz nélkül',
-    landing_sub: 'Hirdetések, beszélgetések, hibabejelentések és szavazások — rendezetten és nyugodtan. Minden, ami a házat érinti, egy helyen.',
+    landing_sub: 'Hirdetések, beszélgetések, hibabejelentések és szavazások — rendezetten és nyugodtan. Mindez egy nyugodt helyen.',
     landing_cta_primary: 'Kezdjük',
     landing_cta_secondary: 'Van meghívókódom',
     landing_feat1_t: 'Hivatalos hirdetések, mindig szem előtt',
