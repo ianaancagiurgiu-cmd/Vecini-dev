@@ -11,9 +11,21 @@ export default function CommunitySettings() {
   const [name, setName] = useState(c?.name || '');
   const [desc, setDesc] = useState(c?.description || '');
   const [joinMode, setJoinMode] = useState(c?.joinMode || 'invite');
+  const [kind, setKind] = useState(c?.kind || 'bloc');
   const [confirmRegen, setConfirmRegen] = useState(false);
   if (role !== 'admin') return <Navigate to="/app/admin" replace />;
   if (!c) return null;
+
+  /*
+    What kind of place this is. Drives the app's wording: "everything about your
+    building" is wrong for a street of houses, and "staircases" is meaningless
+    there.
+  */
+  const kinds = [
+    { k: 'bloc', label: t('admin_kind_bloc') },
+    { k: 'houses', label: t('admin_kind_houses') },
+    { k: 'mixed', label: t('admin_kind_mixed') },
+  ];
 
   const joinModes = [
     { k: 'open', label: t('admin_join_open') },
@@ -21,7 +33,7 @@ export default function CommunitySettings() {
     { k: 'approval', label: t('admin_join_approval') },
   ];
 
-  const save = async () => { await actions.saveCommunity({ name: name.trim() || c.name, description: desc.trim(), joinMode }); };
+  const save = async () => { await actions.saveCommunity({ name: name.trim() || c.name, description: desc.trim(), joinMode, kind }); };
   const copy = () => { navigator.clipboard?.writeText(c.code); showToast(t('admin_invite_copied')); };
   /*
     The link matters more than the code: sending it means the neighbour taps
@@ -68,6 +80,17 @@ export default function CommunitySettings() {
 
         <label className="field-label">{t('admin_s_desc')}</label>
         <textarea className="input" value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} style={{ marginBottom: 16 }} />
+
+        <label className="field-label">{t('admin_kind')}</label>
+        <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45, marginTop: -4, marginBottom: 9 }}>{t('admin_kind_hint')}</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 22 }}>
+          {kinds.map((kk) => (
+            <button key={kk.k} onClick={() => setKind(kk.k)} style={{ textAlign: 'left', display: 'flex', alignItems: 'center', gap: 11, border: kind === kk.k ? '2px solid var(--green-600)' : '1px solid var(--input-border)', background: kind === kk.k ? 'var(--status-done-bg)' : '#fff', borderRadius: 13, padding: '13px 15px' }}>
+              <span style={{ width: 20, height: 20, borderRadius: '50%', border: kind === kk.k ? 'none' : '2px solid var(--input-border)', background: kind === kk.k ? 'var(--green-600)' : 'transparent', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>{kind === kk.k ? '✓' : ''}</span>
+              <span style={{ fontWeight: 600, fontSize: 14.5 }}>{kk.label}</span>
+            </button>
+          ))}
+        </div>
 
         <label className="field-label">{t('admin_s_join')}</label>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 22 }}>

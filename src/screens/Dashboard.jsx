@@ -53,7 +53,14 @@ export default function Dashboard() {
       <div className="pad" style={{ paddingTop: 18 }}>
         <h1 className="display" style={{ fontSize: 28, margin: '0 0 4px' }}>{t('dash_hi')}, {currentUser.name.split(' ')[0]} 👋</h1>
         <div className="muted" style={{ fontSize: 14 }}>
-          {data.community.name} · {data.community.memberCount} {t('dash_members')} · {data.community.staircases} {t('dash_scari')}
+          {data.community.name} · {data.community.memberCount} {t('dash_members')}
+          {/* Staircases only mean something in a block of flats. */}
+          {data.community.kind === 'bloc' && ` · ${data.community.staircases} ${t('dash_scari')}`}
+        </div>
+        {/* The slogan follows the kind of place this is: an admin who says
+            "houses" should not be told this is all about their building. */}
+        <div className="serif" style={{ fontSize: 14.5, color: 'var(--green-600)', marginTop: 8, lineHeight: 1.4 }}>
+          {t(`tagline_${data.community.kind || 'bloc'}`)}
         </div>
       </div>
 

@@ -190,7 +190,7 @@ export function AppProvider({ children }) {
       setData({
         users,
         members: (members || []).map((m) => ({ userId: m.user_id, role: m.role, joinedAt: new Date(m.joined_at).getTime() })),
-        community: { id: community.id, name: community.name, address: community.address, description: community.description, code: community.code, joinMode: community.join_mode, memberCount: (members || []).length, staircases: 1 },
+        community: { id: community.id, name: community.name, address: community.address, description: community.description, code: community.code, joinMode: community.join_mode, kind: community.kind || 'bloc', memberCount: (members || []).length, staircases: 1 },
         announcements: (announcements || []).map((a) => ({ ...a, authorId: a.author_id, createdAt: new Date(a.created_at).getTime() })),
         discussions: discussionsFull.map((d) => ({ ...d, authorId: d.author_id, createdAt: new Date(d.created_at).getTime(), replies: d.replies.map((r) => ({ ...r, authorId: r.author_id, createdAt: new Date(r.created_at).getTime() })) })),
         issues: issuesFull.map((i) => ({ ...i, reporterId: i.reporter_id, photo: i.photo_url, createdAt: new Date(i.created_at).getTime(), history: i.history.map((h) => ({ ...h, byId: h.by_id, at: new Date(h.at).getTime() })), comments: i.comments.map((c) => ({ ...c, authorId: c.author_id, createdAt: new Date(c.created_at).getTime() })) })),
@@ -579,6 +579,7 @@ export function AppProvider({ children }) {
       if ('name' in patch) dbPatch.name = patch.name;
       if ('description' in patch) dbPatch.description = patch.description;
       if ('joinMode' in patch) dbPatch.join_mode = patch.joinMode;
+      if ('kind' in patch) dbPatch.kind = patch.kind;
       if ('address' in patch) dbPatch.address = patch.address;
       await supabase.from('communities').update(dbPatch).eq('id', cid);
       await refreshAll();

@@ -2,6 +2,14 @@
 export const STRINGS = {
   ro: {
     appTagline: 'Comunitatea ta de cartier, într-un singur loc liniștit.',
+    tagline_bloc: 'Tot ce ține de bloc, într-un singur loc liniștit.',
+    tagline_houses: 'Tot ce ține de cartier, într-un singur loc liniștit.',
+    tagline_mixed: 'Tot ce ține de vecinătate, într-un singur loc liniștit.',
+    admin_kind: 'Tipul comunității',
+    admin_kind_hint: 'Alege ce descrie mai bine locul. Aplicația își potrivește textele după asta.',
+    admin_kind_bloc: 'Bloc / asociație de proprietari',
+    admin_kind_houses: 'Case / zonă rezidențială',
+    admin_kind_mixed: 'Mixt — blocuri și case',
     continue: 'Continuă',
     back: 'Înapoi',
     cancel: 'Anulează',
@@ -315,6 +323,14 @@ export const STRINGS = {
 
   en: {
     appTagline: 'Your neighbourhood community, in one calm place.',
+    tagline_bloc: 'Everything about your building, in one calm place.',
+    tagline_houses: 'Everything about your neighbourhood, in one calm place.',
+    tagline_mixed: 'Everything about your area, in one calm place.',
+    admin_kind: 'Community type',
+    admin_kind_hint: 'Pick what best describes the place. The app adapts its wording to match.',
+    admin_kind_bloc: 'Apartment block / owners association',
+    admin_kind_houses: 'Houses / residential area',
+    admin_kind_mixed: 'Mixed — blocks and houses',
     continue: 'Continue',
     back: 'Back',
     cancel: 'Cancel',
@@ -612,6 +628,14 @@ export const STRINGS = {
 
   hu: {
     appTagline: 'A környéked közössége, egy nyugodt helyen.',
+    tagline_bloc: 'Minden, ami a társasházat érinti, egy nyugodt helyen.',
+    tagline_houses: 'Minden, ami a környéket érinti, egy nyugodt helyen.',
+    tagline_mixed: 'Minden, ami a lakóközösséget érinti, egy nyugodt helyen.',
+    admin_kind: 'Közösség típusa',
+    admin_kind_hint: 'Válaszd ki, mi jellemzi a helyet. Az alkalmazás ehhez igazítja a szövegeit.',
+    admin_kind_bloc: 'Társasház / lakóközösség',
+    admin_kind_houses: 'Házak / lakóövezet',
+    admin_kind_mixed: 'Vegyes — társasházak és házak',
     continue: 'Tovább',
     back: 'Vissza',
     cancel: 'Mégse',
