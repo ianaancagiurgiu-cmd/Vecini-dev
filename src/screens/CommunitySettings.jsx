@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { ScreenHeader } from '../components/ui.jsx';
+import { inviteLink } from '../lib/invite.js';
 
 export default function CommunitySettings() {
   const nav = useNavigate();
@@ -22,6 +23,12 @@ export default function CommunitySettings() {
 
   const save = async () => { await actions.saveCommunity({ name: name.trim() || c.name, description: desc.trim(), joinMode }); };
   const copy = () => { navigator.clipboard?.writeText(c.code); showToast(t('admin_invite_copied')); };
+  /*
+    The link matters more than the code: sending it means the neighbour taps
+    once and the code is already filled in, instead of retyping it from a
+    WhatsApp message and getting a character wrong.
+  */
+  const copyLink = () => { navigator.clipboard?.writeText(inviteLink(c.code)); showToast(t('admin_invite_link_copied')); };
   const regen = async () => { setConfirmRegen(false); await actions.regenCode(); showToast(t('admin_saved')); };
 
   return (
@@ -35,7 +42,14 @@ export default function CommunitySettings() {
             <div style={{ flex: 1, fontFamily: 'ui-monospace, monospace', fontSize: 24, fontWeight: 700, letterSpacing: '1px' }}>{c.code}</div>
             <button onClick={copy} style={{ border: 'none', background: 'rgba(255,255,255,.18)', color: '#fff', borderRadius: 11, padding: '10px 14px', fontSize: 13, fontWeight: 700 }}>⧉ {t('admin_invite_copy')}</button>
           </div>
-          <div style={{ fontSize: 12, color: '#bcd4c5', marginTop: 10 }}>vecini.app/join/{c.code}</div>
+          <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: '#bcd4c5', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {inviteLink(c.code).replace(/^https?:\/\//, '')}
+            </div>
+            <button onClick={copyLink} style={{ border: 'none', background: 'rgba(255,255,255,.18)', color: '#fff', borderRadius: 11, padding: '9px 13px', fontSize: 12.5, fontWeight: 700, flexShrink: 0 }}>
+              ⧉ {t('admin_invite_link')}
+            </button>
+          </div>
           {confirmRegen ? (
             <div style={{ marginTop: 14, background: 'rgba(0,0,0,.2)', borderRadius: 11, padding: 12 }}>
               <div style={{ fontSize: 12.5, marginBottom: 10 }}>{t('admin_invite_regen_confirm')}</div>

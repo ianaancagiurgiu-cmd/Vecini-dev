@@ -94,7 +94,7 @@ test.describe('Epic 1 — Onboarding (offline-safe checks)', () => {
   // during render instead of returning <Navigate>. That's a known React
   // Router foot-gun — it can leave the screen blank until something forces a
   // fresh render (e.g. a manual page refresh), instead of redirecting cleanly.
-  for (const [path, label] of [['/#/join', 'Join'], ['/#/create', 'CreateCommunity']]) {
+  for (const [path, label] of [['/#/create', 'CreateCommunity']]) {
     test(`${label}: visiting while signed out redirects cleanly, no blank frame`, async ({ page }) => {
       const warnings = [];
       page.on('console', (m) => { if (/navigate\(\)/.test(m.text())) warnings.push(m.text()); });
@@ -106,4 +106,52 @@ test.describe('Epic 1 — Onboarding (offline-safe checks)', () => {
       expect(warnings).toEqual([]);
     });
   }
+});
+
+/*
+  The invitation flow has to work for someone with no account — that is the
+  whole point of an invitation. It used to bounce them to the login screen and
+  discard the code, so these guard the order: code first, account second.
+*/
+test.describe('Epic 1 — Invitation by code', () => {
+  test('the code screen is reachable while signed out', async ({ page }) => {
+    await page.goto('/#/join');
+    await page.waitForTimeout(400);
+    // Must NOT have been redirected: an invited neighbour has no account yet.
+    expect(page.url()).toContain('#/join');
+    await expect(page.getByText('Cod comunitate')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Verifică codul' })).toBeVisible();
+  });
+
+  test('the landing page invitation button leads to the code screen, not to login', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Am un cod de invitație' }).click();
+    await page.waitForTimeout(400);
+    expect(page.url()).toContain('#/join');
+    expect(page.url()).not.toContain('#/login');
+    await expect(page.getByText('Cod comunitate')).toBeVisible();
+  });
+
+  test('the check button stays disabled until a code is typed', async ({ page }) => {
+    await page.goto('/#/join');
+    const btn = page.getByRole('button', { name: 'Verifică codul' });
+    await expect(btn).toBeDisabled();
+    await page.locator('.input').first().fill('TEILOR-15');
+    await expect(btn).toBeEnabled();
+  });
+
+  test('an invitation link carries the code into the screen', async ({ page }) => {
+    await page.goto('/#/join/TEILOR-15');
+    await expect(page.locator('.input').first()).toHaveValue('TEILOR-15');
+  });
+
+  test('a bad code is rejected without leaving the screen', async ({ page }) => {
+    await page.goto('/#/join');
+    await page.locator('.input').first().fill('NU-EXISTA-99');
+    await page.getByRole('button', { name: 'Verifică codul' }).click();
+    // Offline in the sandbox the lookup fails too — either way the person must
+    // be told, and must not be silently moved somewhere else.
+    await expect(page.getByText(/Cod invalid/)).toBeVisible();
+    expect(page.url()).toContain('#/join');
+  });
 });

@@ -319,10 +319,25 @@ export function AppProvider({ children }) {
     setActiveCommunityId(null);
   };
 
+  /*
+    Looks up a community from an invitation code, and works while signed out —
+    that is the point. Row-level security hides communities from anonymous
+    visitors, so this goes through community_by_code, which returns the name and
+    nothing else. Lets someone confirm they typed the code right before
+    committing to creating an account.
+  */
+  const findCommunityByCode = async (code) => {
+    const clean = (code || '').trim();
+    if (!clean) return null;
+    const { data: rows, error } = await supabase.rpc('community_by_code', { p_code: clean });
+    if (error) throw error;
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    return row?.id ? row : null;
+  };
+
   const joinByCode = async (code) => {
-    const clean = code.trim();
-    const { data: found, error } = await supabase.from('communities').select('id, name').ilike('code', clean).maybeSingle();
-    if (error || !found) throw new Error('bad_code');
+    const found = await findCommunityByCode(code);
+    if (!found) throw new Error('bad_code');
     const { error: joinErr } = await supabase.from('memberships').insert({ user_id: userId, community_id: found.id });
     if (joinErr && joinErr.code !== '23505') throw joinErr; // 23505 = already a member, fine
     setActiveCommunityId(found.id);
@@ -613,7 +628,7 @@ export function AppProvider({ children }) {
     setNewPassword, changePassword, recoveryMode,
     // Google-only accounts have no password to change; offer "set one" instead.
     hasPasswordLogin: !!session?.user?.identities?.some((i) => i.provider === 'email'),
-    joinByCode, createCommunity,
+    joinByCode, createCommunity, findCommunityByCode,
   };
 
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;

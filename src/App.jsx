@@ -77,6 +77,8 @@ export default function App() {
         <Route path="/forgot" element={<Forgot />} />
         <Route path="/new-password" element={<NewPassword />} />
         <Route path="/join" element={<Join />} />
+        {/* Shared invite links land here with the code already filled in. */}
+        <Route path="/join/:code" element={<Join />} />
         <Route path="/create" element={<CreateCommunity />} />
 
         <Route path="/app" element={<AppLayout />}>
