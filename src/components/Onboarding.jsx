@@ -140,10 +140,23 @@ const BellMark = () => (
   </div>
 );
 
-/* Steps carry a {icon} placeholder so each translation can place it naturally. */
-function withGlyph(text, glyph) {
-  const parts = String(text).split('{icon}');
-  return parts.flatMap((part, i) => (i === 0 ? [part] : [glyph, part]));
+/*
+  Steps carry two bits of markup, so each translation can place them naturally:
+  {icon} is where the drawn iOS button belongs, and *stars* wrap the words that
+  appear verbatim in the phone's own menu. Those words used to be in quotes, but
+  a quoted phrase inside a sentence reads as something being said; bold reads as
+  something to look for, which is what they are.
+*/
+const MARKUP = /(\{icon\}|\*[^*]+\*)/g;
+
+function richStep(text, glyph) {
+  return String(text).split(MARKUP).filter(Boolean).map((part, i) => {
+    if (part === '{icon}') return glyph; // already carries its own key
+    if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
+      return <strong key={i} style={{ fontWeight: 700 }}>{part.slice(1, -1)}</strong>;
+    }
+    return part;
+  });
 }
 
 function Step({ n, children }) {
@@ -160,8 +173,11 @@ function Step({ n, children }) {
   );
 }
 
-const Title = ({ children }) => (
-  <h2 className="serif" style={{ fontSize: 22, lineHeight: 1.25, margin: '0 0 8px', color: 'var(--green-ink)' }}>{children}</h2>
+const Title = ({ children, center }) => (
+  <h2 className="serif" style={{
+    fontSize: 22, lineHeight: 1.25, margin: '0 0 8px', color: 'var(--green-ink)',
+    textAlign: center ? 'center' : 'left',
+  }}>{children}</h2>
 );
 
 const Body = ({ children }) => (
@@ -212,15 +228,18 @@ export default function Onboarding() {
   if (stage === 'install' && kind) {
     return (
       <Sheet onClose={() => { snooze('install'); afterInstall(); }}>
-        <Title>{t('ob_install_title')}</Title>
+        {/* Centred: it is the sheet's heading, and it reads as one. The body
+            below stays ranged left, where several lines of prose are easier
+            to read than centred. */}
+        <Title center>{t('ob_install_title')}</Title>
         <Body>{t('ob_install_body')}</Body>
 
         {kind === 'ios' ? (
           <>
             <ol style={{ listStyle: 'none', margin: '0 0 18px', padding: 0 }}>
-              <Step n="1">{withGlyph(t('ob_install_s1'), <ShareGlyph key="g" label={t('ob_glyph_share')} />)}</Step>
-              <Step n="2">{withGlyph(t('ob_install_s2'), <AddGlyph key="g" label={t('ob_glyph_add')} />)}</Step>
-              <Step n="3">{t('ob_install_s3')}</Step>
+              <Step n="1">{richStep(t('ob_install_s1'), <ShareGlyph key="g" label={t('ob_glyph_share')} />)}</Step>
+              <Step n="2">{richStep(t('ob_install_s2'), <AddGlyph key="g" label={t('ob_glyph_add')} />)}</Step>
+              <Step n="3">{richStep(t('ob_install_s3'), null)}</Step>
             </ol>
             <button className="btn btn--primary" onClick={() => { silence('install'); afterInstall(); }}>
               {t('ob_understood')}
