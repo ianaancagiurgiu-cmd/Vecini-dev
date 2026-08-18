@@ -29,7 +29,10 @@ function TopBar() {
 
 function StatTile({ n, label, tint, onClick }) {
   return (
-    <button onClick={onClick} style={{ flex: 1, textAlign: 'left', background: tint.bg, border: 'none', borderRadius: 16, padding: '15px 16px' }}>
+    /* A hairline edge, like the cards further down the screen: without it these
+       read as flat coloured panels rather than as something you can tap.
+       Neutral rather than tinted, so the one rule works on every tile colour. */
+    <button onClick={onClick} style={{ flex: 1, textAlign: 'left', background: tint.bg, border: '1px solid rgba(35,38,32,.09)', borderRadius: 16, padding: '15px 16px' }}>
       <div className="display" style={{ fontSize: 30, color: tint.fg, lineHeight: 1 }}>{n}</div>
       <div style={{ fontSize: 12.5, fontWeight: 600, color: tint.fg, marginTop: 5, opacity: .9 }}>{label}</div>
     </button>

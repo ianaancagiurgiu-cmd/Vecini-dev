@@ -23,9 +23,10 @@ test.describe('Epic 1 — Onboarding (offline-safe checks)', () => {
 
   test('US-02 sign up rejects a weak password before any network call', async ({ page }) => {
     await page.goto('/#/signup');
-    await page.getByPlaceholder('Ana Popescu').fill('Test');
+    // Fields carry no example text, so they are addressed in order:
+    // name, email, password, confirmation.
+    await page.locator('.input').first().fill('Test');
     await page.locator('input[type=email]').fill('test@exemplu.ro');
-    // Sign-up has both a password and a confirmation field.
     await page.locator('input[type=password]').first().fill('123');
     await page.getByRole('button', { name: 'Înscrie-te', exact: true }).click();
     await expect(page.getByText(/cel puțin 6 caractere/)).toBeVisible();
@@ -33,7 +34,7 @@ test.describe('Epic 1 — Onboarding (offline-safe checks)', () => {
 
   test('US-02 sign up rejects mistyped password confirmation', async ({ page }) => {
     await page.goto('/#/signup');
-    await page.getByPlaceholder('Ana Popescu').fill('Test');
+    await page.locator('.input').first().fill('Test');
     await page.locator('input[type=email]').fill('test@exemplu.ro');
     const pwFields = page.locator('input[type=password]');
     await pwFields.first().fill('parola123');

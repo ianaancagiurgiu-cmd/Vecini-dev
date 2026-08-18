@@ -103,6 +103,26 @@ const AddGlyph = ({ label }) => (
   </IosGlyph>
 );
 
+/* The notification sheet's header mark, drawn in the same line-art style as the
+   iOS glyphs above rather than an emoji, which renders as a different picture
+   on every platform. */
+const BellMark = () => (
+  <div
+    aria-hidden="true"
+    style={{
+      width: 44, height: 44, borderRadius: 13, marginBottom: 14,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'var(--status-done-bg)', color: 'var(--green-600)',
+    }}
+  >
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6.2 9.6a5.8 5.8 0 0 1 11.6 0c0 4.5 1.9 5.9 1.9 5.9H4.3s1.9-1.4 1.9-5.9Z" />
+      <path d="M10.2 19.2a2 2 0 0 0 3.6 0" />
+    </svg>
+  </div>
+);
+
 /* Steps carry a {icon} placeholder so each translation can place it naturally. */
 function withGlyph(text, glyph) {
   const parts = String(text).split('{icon}');
@@ -205,7 +225,7 @@ export default function Onboarding() {
   if (stage === 'push') {
     return (
       <Sheet onClose={() => { snooze('push'); setStage(null); }}>
-        <div style={{ fontSize: 30, marginBottom: 10 }}>🔔</div>
+        <BellMark />
         <Title>{t('ob_push_title')}</Title>
         <Body>{t('ob_push_body')}</Body>
         <button className="btn btn--primary" disabled={busy}
