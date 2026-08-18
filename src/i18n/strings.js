@@ -11,7 +11,7 @@ export const STRINGS = {
     admin_kind_houses: 'Case / zonă rezidențială',
     admin_kind_mixed: 'Mixt: blocuri și case',
     ob_install_title: 'Ai aplicația Vecini la un click distanță',
-    ob_install_body: 'Adaug-o pe ecranul principal, funcționează apoi ca o aplicație. Se deschide instant și poți să primești notificări. Fără store, fără spațiu ocupat.',
+    ob_install_body: 'Adaug-o pe ecranul principal, funcționează apoi ca o aplicație. Se deschide instant și poți primi notificări. Fără store, fără spațiu ocupat.',
     ob_install_s1: 'Apasă butonul Partajare {icon} din bara de jos.',
     // *stars* mark the words that appear verbatim in the phone's own menu.
     ob_install_s2: 'Derulează și alege {icon} *Adaugă la ecranul principal*.',
