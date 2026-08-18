@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 
 /*
   Regression tests for the app shell layout. These deliberately avoid needing a
@@ -84,6 +85,50 @@ test.describe('App shell layout', () => {
     }));
     expect(after.inner).toBeGreaterThan(0);
     expect(after.win).toBe(0);
+  });
+
+  /*
+    Regression guard: the onboarding sheet used to sit below the bottom nav in
+    the stacking order, so the nav painted over its lower edge and hid the very
+    button the sheet was asking people to press. The two elements live in
+    different subtrees — the nav is `fixed`, the sheet `absolute` inside the
+    phone frame — which is exactly the arrangement where a stray stacking
+    context on some ancestor would quietly break the ordering again.
+
+    So this checks both halves: that the source still declares the sheet above
+    the nav, and that with those numbers the sheet really does win at the foot
+    of the screen.
+  */
+  test('the onboarding sheet covers the bottom nav rather than hiding under it', async ({ page }) => {
+    const navZ = Number(
+      /\.bottom-nav\s*\{[^}]*?z-index:\s*(\d+)/s.exec(readFileSync('src/styles/global.css', 'utf8'))[1]
+    );
+    const sheetZ = Number(
+      /zIndex:\s*(\d+)/.exec(readFileSync('src/components/Onboarding.jsx', 'utf8'))[1]
+    );
+    expect(sheetZ).toBeGreaterThan(navZ);
+
+    await page.goto('/');
+    await page.waitForTimeout(300);
+
+    const topAtFoot = await page.evaluate(({ shell, navZ, sheetZ }) => {
+      document.body.innerHTML = shell;
+      const phone = document.querySelector('.phone');
+      const overlay = document.createElement('div');
+      overlay.id = 'ob-overlay';
+      overlay.style.cssText =
+        `position:absolute;inset:0;z-index:${sheetZ};display:flex;align-items:flex-end`;
+      overlay.innerHTML = '<div id="ob-panel" style="width:100%;height:340px;background:#fff"></div>';
+      phone.appendChild(overlay);
+      document.querySelector('.bottom-nav').style.zIndex = String(navZ);
+
+      // A point inside the nav's band — where the sheet's button was being eaten.
+      const nav = document.querySelector('.bottom-nav').getBoundingClientRect();
+      const hit = document.elementFromPoint(nav.left + nav.width / 2, nav.top + nav.height / 2);
+      return hit ? hit.closest('#ob-overlay, .bottom-nav')?.id || 'bottom-nav' : null;
+    }, { shell: SHELL, navZ, sheetZ });
+
+    expect(topAtFoot).toBe('ob-overlay');
   });
 
   // Regression guard: iOS Safari force-zooms (and pans) the whole page when

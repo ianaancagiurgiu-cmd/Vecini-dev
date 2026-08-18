@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useApp } from '../state/store.jsx';
 import { pushBlockedReason } from '../lib/push.js';
 import { installPromptKind, runNativeInstall, snooze, silence, canAskForPush } from '../lib/install.js';
@@ -21,12 +22,23 @@ import { installPromptKind, runNativeInstall, snooze, silence, canAskForPush } f
 const FIRST_DELAY = 6000;   // let them look around first
 const BETWEEN_DELAY = 1200; // a beat between the two sheets
 
+/*
+  Rendered into the phone frame rather than into the scrolling content, for two
+  reasons: the sheet then stays put instead of sliding away when the page behind
+  it is scrolled, and it sits in the same layer as the bottom navigation bar,
+  which is pinned to the frame too. Below that bar's z-index the nav painted
+  straight over the sheet's bottom edge, hiding the very button it was asking
+  people to press. A modal covers the navigation; it does not queue behind it.
+*/
 function Sheet({ children, onClose }) {
-  return (
+  const [host, setHost] = useState(null);
+  useEffect(() => { setHost(document.querySelector('.phone')); }, []);
+
+  const sheet = (
     <div
       onClick={onClose}
       style={{
-        position: 'absolute', inset: 0, zIndex: 60,
+        position: 'absolute', inset: 0, zIndex: 150,
         background: 'rgba(20,28,23,.42)',
         display: 'flex', alignItems: 'flex-end',
         animation: 'ob-fade .22s ease-out',
@@ -39,7 +51,10 @@ function Sheet({ children, onClose }) {
         style={{
           width: '100%', background: '#fff',
           borderRadius: '22px 22px 0 0',
-          padding: '26px 22px calc(24px + env(safe-area-inset-bottom))',
+          /* Roomier at the foot than a plain sheet needs: in a browser tab the
+             toolbar sits right under the page and reports no safe-area inset,
+             so without this the last button ends up flush against it. */
+          padding: '26px 22px calc(30px + env(safe-area-inset-bottom))',
           boxShadow: '0 -8px 40px rgba(20,28,23,.18)',
           animation: 'ob-rise .28s cubic-bezier(.2,.8,.3,1)',
           maxHeight: '88%', overflowY: 'auto',
@@ -56,6 +71,8 @@ function Sheet({ children, onClose }) {
       `}</style>
     </div>
   );
+
+  return host ? createPortal(sheet, host) : null;
 }
 
 /*
