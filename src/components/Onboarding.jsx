@@ -70,7 +70,11 @@ const IosGlyph = ({ label, children }) => (
     aria-label={label}
     style={{
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-      width: 23, height: 23, borderRadius: 6, margin: '0 3px', verticalAlign: '-6px',
+      width: 21, height: 21, borderRadius: 6, margin: '0 3px',
+      /* Optical centring: aligns the box's middle with the text's middle, and
+         keeps doing so if the type size ever changes. A fixed pixel nudge only
+         looks right at one size, and looked low at this one. */
+      verticalAlign: 'middle',
       background: 'var(--status-done-bg)', color: 'var(--green-600)', flexShrink: 0,
     }}
   >
@@ -80,7 +84,7 @@ const IosGlyph = ({ label, children }) => (
 
 const ShareGlyph = ({ label }) => (
   <IosGlyph label={label}>
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M12 3.2v10.4" />
       <path d="M8.4 6.8 12 3.2l3.6 3.6" />
@@ -91,7 +95,7 @@ const ShareGlyph = ({ label }) => (
 
 const AddGlyph = ({ label }) => (
   <IosGlyph label={label}>
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <rect x="3.8" y="3.8" width="16.4" height="16.4" rx="4.4" />
       <path d="M12 8.6v6.8M8.6 12h6.8" />
