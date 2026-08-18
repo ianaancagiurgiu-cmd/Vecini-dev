@@ -3,6 +3,7 @@ import { useApp } from './state/store.jsx';
 import { PhoneChrome } from './components/Chrome.jsx';
 import BottomNav from './components/BottomNav.jsx';
 import { Toast } from './components/ui.jsx';
+import Onboarding from './components/Onboarding.jsx';
 
 import Landing from './screens/Landing.jsx';
 import Login from './screens/Login.jsx';
@@ -48,6 +49,7 @@ function AppLayout() {
         <Outlet />
       </div>
       <BottomNav />
+      <Onboarding />
     </>
   );
 }
