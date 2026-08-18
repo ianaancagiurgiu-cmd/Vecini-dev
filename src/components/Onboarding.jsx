@@ -171,7 +171,6 @@ export default function Onboarding() {
   if (stage === 'install' && kind) {
     return (
       <Sheet onClose={() => { snooze('install'); afterInstall(); }}>
-        <div style={{ fontSize: 30, marginBottom: 10 }}>🏡</div>
         <Title>{t('ob_install_title')}</Title>
         <Body>{t('ob_install_body')}</Body>
 
