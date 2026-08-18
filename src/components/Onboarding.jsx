@@ -58,6 +58,53 @@ function Sheet({ children, onClose }) {
   );
 }
 
+/*
+  The two iOS controls people have to find, drawn rather than described. Apple
+  gives no way to open either one from a web page, so recognising the shape is
+  the whole task — and "the Share button" means nothing to someone who has never
+  noticed it. Inline SVG so they stay crisp and load with the page.
+*/
+const IosGlyph = ({ label, children }) => (
+  <span
+    role="img"
+    aria-label={label}
+    style={{
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      width: 23, height: 23, borderRadius: 6, margin: '0 3px', verticalAlign: '-6px',
+      background: 'var(--status-done-bg)', color: 'var(--green-600)', flexShrink: 0,
+    }}
+  >
+    {children}
+  </span>
+);
+
+const ShareGlyph = ({ label }) => (
+  <IosGlyph label={label}>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 3.2v10.4" />
+      <path d="M8.4 6.8 12 3.2l3.6 3.6" />
+      <path d="M8.2 10.2H6.6A1.6 1.6 0 0 0 5 11.8v7.6a1.6 1.6 0 0 0 1.6 1.6h10.8a1.6 1.6 0 0 0 1.6-1.6v-7.6a1.6 1.6 0 0 0-1.6-1.6h-1.6" />
+    </svg>
+  </IosGlyph>
+);
+
+const AddGlyph = ({ label }) => (
+  <IosGlyph label={label}>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3.8" y="3.8" width="16.4" height="16.4" rx="4.4" />
+      <path d="M12 8.6v6.8M8.6 12h6.8" />
+    </svg>
+  </IosGlyph>
+);
+
+/* Steps carry a {icon} placeholder so each translation can place it naturally. */
+function withGlyph(text, glyph) {
+  const parts = String(text).split('{icon}');
+  return parts.flatMap((part, i) => (i === 0 ? [part] : [glyph, part]));
+}
+
 function Step({ n, children }) {
   return (
     <li style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '7px 0' }}>
@@ -126,8 +173,8 @@ export default function Onboarding() {
         {kind === 'ios' ? (
           <>
             <ol style={{ listStyle: 'none', margin: '0 0 18px', padding: 0 }}>
-              <Step n="1">{t('ob_install_s1')}</Step>
-              <Step n="2">{t('ob_install_s2')}</Step>
+              <Step n="1">{withGlyph(t('ob_install_s1'), <ShareGlyph key="g" label={t('ob_glyph_share')} />)}</Step>
+              <Step n="2">{withGlyph(t('ob_install_s2'), <AddGlyph key="g" label={t('ob_glyph_add')} />)}</Step>
               <Step n="3">{t('ob_install_s3')}</Step>
             </ol>
             <button className="btn btn--primary" onClick={() => { silence('install'); afterInstall(); }}>
