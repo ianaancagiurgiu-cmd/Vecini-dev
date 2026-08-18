@@ -276,7 +276,10 @@ export const STRINGS = {
     push_hint_on: 'Primești notificări pe acest dispozitiv.',
     push_enabled: 'Notificările push sunt active.',
     push_disabled: 'Notificările push au fost oprite.',
-    push_ios_install: 'Pe iPhone, apasă butonul Partajare din Safari, apoi „Adaugă la ecranul principal”. Deschide Vecini de acolo și revino aici pentru a activa notificările.',
+    // Only shown after someone taps and nothing happens, so it stays short: the
+    // onboarding sheet is where the steps live, and naming one browser was
+    // wrong for anyone using another.
+    push_ios_install: 'Adaugă mai întâi Vecini pe ecranul principal, deschide-o de acolo și revino aici.',
     push_denied: 'Notificările sunt blocate pentru acest site. Activează-le din setările browserului, apoi încearcă din nou.',
     push_unsupported: 'Acest browser nu suportă notificări push.',
     push_no_key: 'Notificările push nu sunt încă configurate pe server.',
@@ -598,7 +601,7 @@ export const STRINGS = {
     push_hint_on: 'You get notifications on this device.',
     push_enabled: 'Push notifications are on.',
     push_disabled: 'Push notifications turned off.',
-    push_ios_install: 'On iPhone, tap the Share button in Safari, then “Add to Home Screen”. Open Vecini from there and come back to turn notifications on.',
+    push_ios_install: 'Add Vecini to your home screen first, open it from there and come back here.',
     push_denied: 'Notifications are blocked for this site. Allow them in your browser settings, then try again.',
     push_unsupported: 'This browser does not support push notifications.',
     push_no_key: 'Push notifications are not configured on the server yet.',
@@ -916,7 +919,7 @@ export const STRINGS = {
     push_hint_on: 'Ezen az eszközön kapsz értesítéseket.',
     push_enabled: 'A push értesítések be vannak kapcsolva.',
     push_disabled: 'A push értesítések kikapcsolva.',
-    push_ios_install: 'iPhone-on koppints a Megosztás gombra a Safariban, majd a „Főképernyőhöz adás” lehetőségre. Onnan nyisd meg a Vecinit, és térj vissza ide az értesítések bekapcsolásához.',
+    push_ios_install: 'Előbb add hozzá a Vecinit a főképernyődhöz, onnan nyisd meg, és térj vissza ide.',
     push_denied: 'Az értesítések le vannak tiltva ehhez az oldalhoz. Engedélyezd a böngésző beállításaiban, majd próbáld újra.',
     push_unsupported: 'Ez a böngésző nem támogatja a push értesítéseket.',
     push_no_key: 'A push értesítések még nincsenek beállítva a szerveren.',

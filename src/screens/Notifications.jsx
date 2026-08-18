@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { ScreenHeader, Empty } from '../components/ui.jsx';
 import { timeAgo } from '../lib/format.js';
-import { pushBlockedReason } from '../lib/push.js';
 
 const ICON = { announcement: '📢', issue: '🛠️', reply: '💬', poll: '🗳️' };
 
@@ -40,10 +39,14 @@ export default function Notifications() {
     'no-key': 'push_no_key',
     error: 'push_error',
   };
-  // Tell iPhone users what to do before they tap and get nothing.
-  const upfrontReason = prefs.push ? null : pushBlockedReason();
-  const note = pushNote || (upfrontReason && REASON_STRING[upfrontReason] ? t(REASON_STRING[upfrontReason]) : null);
-
+  /*
+    Nothing is explained up front any more. This card used to carry the
+    home-screen instructions permanently, for every iPhone visitor, whether or
+    not they had shown any interest in notifications; the onboarding sheet now
+    walks people through installing the app, so the paragraph was both stale and
+    in the way. A reason still appears the moment someone taps and it does not
+    work, which is when it is actually worth reading.
+  */
   const togglePush = async () => {
     if (pushBusy) return;
     setPushBusy(true);
@@ -99,9 +102,9 @@ export default function Notifications() {
               <span style={{ fontSize: 14.5, fontWeight: 600 }}>{t('notif_push')}</span>
               <Toggle on={prefs.push} onChange={togglePush} />
             </div>
-            {(note || (prefs.push && !pushNote)) && (
+            {(pushNote || prefs.push) && (
               <div className="muted" style={{ fontSize: 12.5, marginTop: 8, lineHeight: 1.45 }}>
-                {note || t('push_hint_on')}
+                {pushNote || t('push_hint_on')}
               </div>
             )}
           </div>
