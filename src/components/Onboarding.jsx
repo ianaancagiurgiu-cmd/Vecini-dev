@@ -137,6 +137,12 @@ const Later = ({ onClick, label }) => (
 export default function Onboarding() {
   const { t, actions, data, showToast } = useApp();
   const [stage, setStage] = useState(null);
+  /*
+    Captured when we decide to show the sheet, not recomputed on every render.
+    Recomputing risked the two disagreeing mid-flight and drawing an install
+    button on a platform that has none to offer.
+  */
+  const [kind, setKind] = useState(null);
   const [busy, setBusy] = useState(false);
 
   const pushWorthAsking = useCallback(() => {
@@ -149,7 +155,8 @@ export default function Onboarding() {
   // Decide what to show, after letting them get their bearings.
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (installPromptKind()) setStage('install');
+      const k = installPromptKind();
+      if (k) { setKind(k); setStage('install'); }
       else if (pushWorthAsking()) setStage('push');
     }, FIRST_DELAY);
     return () => clearTimeout(timer);
@@ -161,9 +168,7 @@ export default function Onboarding() {
     setTimeout(() => { if (pushWorthAsking()) setStage('push'); }, BETWEEN_DELAY);
   };
 
-  const kind = installPromptKind();
-
-  if (stage === 'install') {
+  if (stage === 'install' && kind) {
     return (
       <Sheet onClose={() => { snooze('install'); afterInstall(); }}>
         <div style={{ fontSize: 30, marginBottom: 10 }}>🏡</div>
