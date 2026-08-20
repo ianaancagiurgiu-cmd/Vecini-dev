@@ -37,7 +37,7 @@ export default function Login() {
         <label className="field-label">{t('auth_email')}</label>
         <input className="input" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErr(''); }} style={{ marginBottom: 14 }} />
         <label className="field-label">{t('auth_password')}</label>
-        <PasswordInput value={pw} autoComplete="current-password" placeholder=""
+        <PasswordInput value={pw} autoComplete="current-password"
           onChange={(e) => { setPw(e.target.value); setErr(''); }} style={{ marginBottom: 8 }} />
         <div style={{ textAlign: 'right', marginBottom: 16 }}>
           <Link to="/forgot" style={{ fontSize: 13.5, color: 'var(--green-600)', fontWeight: 600 }}>{t('auth_forgot')}</Link>

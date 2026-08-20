@@ -92,7 +92,7 @@ export default function ChangeEmail() {
             onChange={(e) => { setEmail(e.target.value); setErr(''); }} style={{ marginBottom: 18 }} />
 
           <label className="field-label">{t('pw_current')}</label>
-          <PasswordInput value={pw} autoComplete="current-password" placeholder=""
+          <PasswordInput value={pw} autoComplete="current-password"
             onChange={(e) => { setPw(e.target.value); setErr(''); }} style={{ marginBottom: 8 }} />
           <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45, marginBottom: 16 }}>{t('email_pw_note')}</div>
 

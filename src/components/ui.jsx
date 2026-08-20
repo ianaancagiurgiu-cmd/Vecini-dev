@@ -61,7 +61,10 @@ function EyeIcon({ off = false }) {
 export function PasswordInput({
   value,
   onChange,
-  placeholder = '••••••••',
+  // Empty by default. The row of dots this used to show carried nothing: it was
+  // not the person's password, only decoration, and it made an empty field look
+  // like a filled one. The label above already says what the field is.
+  placeholder = '',
   autoComplete = 'current-password',
   style,
   ...rest
