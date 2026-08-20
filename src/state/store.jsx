@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, useCallback, u
 import { supabase } from '../lib/supabaseClient.js';
 import { STRINGS } from '../i18n/strings.js';
 import { enablePush, disablePush, resyncPush } from '../lib/push.js';
+import { callbackType, callbackError } from '../lib/authCallback.js';
 
 /*
   Real backend: Supabase (Postgres + Auth + Storage), protected by Row Level
@@ -92,11 +93,35 @@ export function AppProvider({ children }) {
   const authed = !!session;
 
   /*
-    Opening the confirmation link lands the person back in the app with a
-    refreshed session, and nothing else marks the occasion: the address in
-    Settings just quietly reads differently. Watching the address itself, rather
-    than the auth event, means this says so exactly once and works no matter
-    which of the two confirmation links completed the change.
+    What kind of link brought us here, taken from the URL rather than from the
+    PASSWORD_RECOVERY event. The client can announce that event while it starts
+    up, which is before this component has mounted and subscribed, so the event
+    alone was never something to rely on. The URL is still there either way.
+  */
+  const handledCallback = useRef(false);
+  useEffect(() => {
+    if (handledCallback.current || !session) return;
+    if (callbackType === 'recovery') { handledCallback.current = true; setRecoveryMode(true); }
+    if (callbackType === 'email_change') { handledCallback.current = true; showToast(t('email_changed')); }
+  }, [session, showToast, t]);
+
+  /*
+    A link the auth service turned away: expired, already used, or opened in a
+    browser that never asked for it. Saying nothing drops the person on the
+    landing page wondering why the button did nothing.
+  */
+  const announcedLinkError = useRef(false);
+  useEffect(() => {
+    if (announcedLinkError.current || !callbackError) return;
+    announcedLinkError.current = true;
+    showToast(t('auth_link_bad'));
+  }, [showToast, t]);
+
+  /*
+    The address can also change under a session that is already open — the other
+    confirmation link being opened elsewhere, or a token refresh catching up.
+    Nothing marks the occasion otherwise: the address in Settings just quietly
+    reads differently.
   */
   const lastEmail = useRef(null);
   useEffect(() => {
