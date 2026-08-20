@@ -35,6 +35,8 @@ const emptyData = () => ({
   notifications: [],
   notifPrefs: { announcements: true, replies: true, issues: true, polls: true, push: false },
   deletedAccounts: 0,
+  // What this person has put away, per kind. Nobody else's list is affected.
+  archived: { announcement: [], discussion: [], issue: [] },
 });
 
 const genCode = (name) => {
@@ -197,13 +199,14 @@ export function AppProvider({ children }) {
 
       const memberIds = (members || []).map((m) => m.user_id);
 
-      const [{ data: announcements }, { data: discussions }, { data: issues }, { data: polls }, { data: notifications }, { data: notifPrefsRow }] = await Promise.all([
+      const [{ data: announcements }, { data: discussions }, { data: issues }, { data: polls }, { data: notifications }, { data: notifPrefsRow }, { data: archivedRows }] = await Promise.all([
         supabase.from('announcements').select('*').eq('community_id', cid).order('created_at', { ascending: false }),
         supabase.from('discussions').select('*').eq('community_id', cid).neq('status', 'hidden').order('created_at', { ascending: false }),
         supabase.from('issues').select('*').eq('community_id', cid).order('created_at', { ascending: false }),
         supabase.from('polls').select('*').eq('community_id', cid).order('created_at', { ascending: false }),
         supabase.from('notifications').select('*').eq('community_id', cid).eq('user_id', userId).order('created_at', { ascending: false }),
         supabase.from('notification_prefs').select('*').eq('user_id', userId).maybeSingle(),
+        supabase.from('archived_items').select('kind,item_id').eq('user_id', userId),
       ]);
 
       const discIds = (discussions || []).map((d) => d.id);
@@ -280,6 +283,9 @@ export function AppProvider({ children }) {
         };
       });
 
+      const archived = { announcement: [], discussion: [], issue: [] };
+      (archivedRows || []).forEach((r) => { if (archived[r.kind]) archived[r.kind].push(r.item_id); });
+
       // How many people have given up their account here. A count and nothing
       // else: the rows behind it carry no trace of who they were.
       const { count: deletedAccounts } = await supabase
@@ -298,6 +304,7 @@ export function AppProvider({ children }) {
         polls: pollsFull.map((p) => ({ ...p, authorId: p.author_id, createdAt: new Date(p.created_at).getTime(), endsAt: new Date(p.ends_at).getTime() })),
         notifications: (notifications || []).map((n) => ({ ...n, createdAt: new Date(n.created_at).getTime() })),
         notifPrefs: notifPrefsRow || { announcements: true, replies: true, issues: true, polls: true, push: false },
+        archived,
         deletedAccounts: deletedAccounts || 0,
       });
     } finally {
@@ -664,6 +671,38 @@ export function AppProvider({ children }) {
     data.members.filter((m) => m.role === 'admin' || m.role === 'moderator').map((m) => m.userId);
 
   const actions = useMemo(() => ({
+    /*
+      Putting something away, and taking it back out. This only ever touches the
+      person doing it: an announcement one neighbour has finished with is still
+      on everyone else's list, which is the difference between tidying up and
+      moderating.
+
+      The local list is updated before the write lands, because a tap that takes
+      a round trip to show anything feels broken, and this is meant to be used
+      several times in a row.
+    */
+    setArchived: async (kind, id, archived) => {
+      setData((d) => {
+        const current = d.archived[kind] || [];
+        return {
+          ...d,
+          archived: {
+            ...d.archived,
+            [kind]: archived ? [...new Set([...current, id])] : current.filter((x) => x !== id),
+          },
+        };
+      });
+      const { error } = archived
+        ? await supabase.from('archived_items').upsert(
+            { user_id: userId, kind, item_id: id },
+            { onConflict: 'user_id,kind,item_id' },
+          )
+        : await supabase.from('archived_items').delete()
+            .eq('user_id', userId).eq('kind', kind).eq('item_id', id);
+      // Put the truth back on screen if the write did not take.
+      if (error) { await refreshAll(); throw error; }
+    },
+
     addAnnouncement: async ({ title, body }) => {
       const { data: row, error } = await supabase.from('announcements').insert({ community_id: cid, author_id: userId, title, body }).select('*').single();
       if (error) throw error;

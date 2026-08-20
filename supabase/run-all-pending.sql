@@ -1,14 +1,53 @@
--- Vecini — migrarea ramasa, intr-un singur fisier.
--- Se poate rula de mai multe ori fara probleme: daca ai rulat-o deja,
+-- Vecini — migrarile ramase, intr-un singur fisier.
+-- Se poate rula de mai multe ori fara probleme: daca ai rulat deja o parte,
 -- rularea din nou nu strica nimic si nu pierzi date.
 --
---   0007 — stergerea contului prin anonimizare, plus numarul de telefon
+--   0008 — arhivarea, fiecare pentru lista lui
+--   0007 — rulata din nou doar ca stergerea contului sa curete si arhiva
 --
 -- Unde se ruleaza: Supabase -> SQL Editor -> New query -> lipesti tot -> Run.
 
 
 -- ============================================================
--- 0007_account_deletion.sql
+-- 0008_archive.sql
+-- ============================================================
+
+-- Vecini — archiving, one person at a time.
+-- Safe to run more than once.
+--
+-- Archiving here is a private act of tidying, not moderation. A neighbour who
+-- has read an announcement and is done with it can put it away, and it leaves
+-- their list and nobody else's. Making it shared would hand every member the
+-- power to hide an official announcement from the whole community, which is a
+-- moderation decision wearing a tidying-up costume.
+--
+-- item_id deliberately carries no foreign key: it points at one of three
+-- different tables, depending on kind. If the thing it refers to is ever
+-- deleted, the row is left behind matching nothing, which costs a few bytes and
+-- shows up nowhere. A generated identifier is never reused, so it cannot come
+-- to refer to something else.
+
+create table if not exists public.archived_items (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  kind text not null check (kind in ('announcement', 'discussion', 'issue')),
+  item_id uuid not null,
+  archived_at timestamptz not null default now(),
+  primary key (user_id, kind, item_id)
+);
+
+alter table public.archived_items enable row level security;
+
+-- Yours and only yours, to read and to change. The `with check` half is what
+-- stops anyone filing something away in someone else's name.
+drop policy if exists archived_items_own on public.archived_items;
+create policy archived_items_own on public.archived_items
+  for all
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+
+-- ============================================================
+-- 0007_account_deletion.sql (din nou, cu arhiva inclusa)
 -- ============================================================
 
 -- Vecini — giving up an account, and an optional phone number.
@@ -118,6 +157,12 @@ begin
 
   if to_regclass('public.push_subscriptions') is not null then
     delete from public.push_subscriptions where user_id = uid;
+  end if;
+
+  -- What someone chose to put out of their own sight is theirs alone, and goes
+  -- with them. Guarded because this function predates that table.
+  if to_regclass('public.archived_items') is not null then
+    delete from public.archived_items where user_id = uid;
   end if;
 
   /*

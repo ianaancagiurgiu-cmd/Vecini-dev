@@ -107,6 +107,12 @@ begin
     delete from public.push_subscriptions where user_id = uid;
   end if;
 
+  -- What someone chose to put out of their own sight is theirs alone, and goes
+  -- with them. Guarded because this function predates that table.
+  if to_regclass('public.archived_items') is not null then
+    delete from public.archived_items where user_id = uid;
+  end if;
+
   /*
     The address, the phone number and whatever the sign-up form kept live in the
     auth schema, so clearing the profile alone would leave the person's real
