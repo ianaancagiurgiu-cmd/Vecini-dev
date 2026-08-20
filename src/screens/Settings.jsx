@@ -4,7 +4,7 @@ import { ScreenHeader, Avatar, LANGS } from '../components/ui.jsx';
 
 export default function Settings() {
   const nav = useNavigate();
-  const { t, lang, setLang, currentUser, role, isStaff, data, signOut, hasPasswordLogin } = useApp();
+  const { t, lang, setLang, currentUser, role, isStaff, data, signOut } = useApp();
 
   const roleLabel = role === 'admin' ? t('role_admin') : role === 'moderator' ? t('role_moderator') : t('role_member');
   const roleBg = role === 'admin' ? '#13211b' : role === 'moderator' ? 'var(--status-new-bg)' : 'var(--section-bg)';
@@ -45,8 +45,11 @@ export default function Settings() {
           </div>
 
           <div className="eyebrow" style={{ margin: '14px 0 2px' }}>{t('set_account')}</div>
+          {/* Both the account details and the two things you can change about
+              them live behind this one row now. The password used to be linked
+              straight from here, while the sign-in address appeared nowhere. */}
+          <Item icon="👤" label={t('acc_title')} onClick={() => nav('/app/settings/account')} />
           <Item icon="🔔" label={t('notif_prefs')} onClick={() => nav('/app/notifications')} />
-          <Item icon="🔑" label={hasPasswordLogin ? t('pw_change_title') : t('pw_set_title')} onClick={() => nav('/app/settings/password')} />
           {isStaff && <Item icon="🛡️" label={t('admin_title')} onClick={() => nav('/app/admin')} />}
           <Item icon="↩︎" label={t('auth_logout')} onClick={logout} danger />
         </div>

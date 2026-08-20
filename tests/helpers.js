@@ -47,3 +47,108 @@ export async function loginViaUI(page, { email = 'ana@exemplu.ro', password = 'p
 export async function tab(page, label) {
   await page.locator('.bottom-nav a', { hasText: label }).click();
 }
+
+/*
+  ---------------------------------------------------------------------------
+  Reaching a signed-in screen without a live Supabase.
+
+  Everything under /app is gated on a real session and a real community, which
+  is why the flow specs are skipped in the sandbox. These two helpers stand in
+  for the service: a session is written straight into the storage the client
+  reads on start-up, and the REST calls are answered from a table of fixtures.
+
+  It is a stub, not a substitute. It proves what the screens do with a given
+  answer, never that Supabase gives that answer.
+  ---------------------------------------------------------------------------
+*/
+
+import { readFileSync } from 'node:fs';
+
+// The client derives its storage key from the project ref, so the tests have to
+// derive it the same way. The build needs this file too, so if it is missing
+// there is no app to test either.
+export function supabaseRef() {
+  try {
+    const m = /VITE_SUPABASE_URL=\s*(\S+)/.exec(readFileSync('.env', 'utf8'));
+    return m ? new URL(m[1]).hostname.split('.')[0] : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+export const FAKE_USER_ID = '11111111-1111-1111-1111-111111111111';
+export const FAKE_COMMUNITY_ID = '22222222-2222-2222-2222-222222222222';
+
+export function fakeUser(over = {}) {
+  return {
+    id: FAKE_USER_ID,
+    aud: 'authenticated',
+    role: 'authenticated',
+    email: 'mihai@exemplu.ro',
+    email_confirmed_at: '2026-01-01T00:00:00Z',
+    app_metadata: { provider: 'email', providers: ['email'] },
+    user_metadata: { full_name: 'Mihai Georgescu' },
+    identities: [{ identity_id: 'i1', provider: 'email' }],
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+    ...over,
+  };
+}
+
+const CORS = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-headers': '*',
+  'access-control-expose-headers': '*',
+};
+
+/**
+ * Signs the browser in as `user` and answers every REST read from `tables`.
+ * Anything not listed answers with an empty list, which is what most of the
+ * app's queries expect.
+ */
+export async function signedInAs(page, { user = fakeUser(), tables = {} } = {}) {
+  const ref = supabaseRef();
+  if (!ref) throw new Error('no VITE_SUPABASE_URL in .env, cannot fake a session');
+
+  await page.addInitScript(({ ref, user }) => {
+    localStorage.setItem(`sb-${ref}-auth-token`, JSON.stringify({
+      access_token: 'stub', token_type: 'bearer', expires_in: 999999,
+      expires_at: Math.floor(Date.now() / 1000) + 999999,
+      refresh_token: 'stub', user,
+    }));
+  }, { ref, user });
+
+  const fixtures = {
+    profiles: [{ id: user.id, full_name: user.user_metadata.full_name, apartment: 'Ap. 12', avatar_color: '#8c3c52' }],
+    memberships: [{ id: 'm1', user_id: user.id, community_id: FAKE_COMMUNITY_ID, role: 'member', joined_at: '2026-01-01T00:00:00Z' }],
+    communities: [{ id: FAKE_COMMUNITY_ID, name: 'Aleea Teilor 15-20', kind: 'bloc', staircases: 1, member_count: 16, code: 'TEILOR-15' }],
+    ...tables,
+  };
+
+  await page.route(/\/rest\/v1\//, (route) => {
+    const req = route.request();
+    if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS, body: '' });
+
+    const table = new URL(req.url()).pathname.split('/rest/v1/')[1].split('?')[0];
+    const rows = fixtures[table] || [];
+    // PostgREST answers a single object, not a list, when the caller asked for
+    // one — which is how .single() / .maybeSingle() are sent over the wire.
+    const wantsOne = (req.headers()['accept'] || '').includes('pgrst.object');
+    const body = wantsOne ? (rows[0] ?? null) : rows;
+
+    return route.fulfill({
+      status: 200, contentType: 'application/json',
+      headers: CORS, body: JSON.stringify(body),
+    });
+  });
+}
+
+/** Answers one auth endpoint, e.g. auth('PUT', 'user', {...}). */
+export async function stubAuth(page, path, handler) {
+  await page.route(new RegExp(`/auth/v1/${path}`), (route) => {
+    const req = route.request();
+    if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS, body: '' });
+    const { status = 200, body = {} } = handler(req) || {};
+    return route.fulfill({ status, contentType: 'application/json', headers: CORS, body: JSON.stringify(body) });
+  });
+}

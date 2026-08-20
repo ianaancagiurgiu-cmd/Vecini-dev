@@ -90,6 +90,23 @@ export function AppProvider({ children }) {
   const userId = session?.user?.id || null;
   const authed = !!session;
 
+  /*
+    Opening the confirmation link lands the person back in the app with a
+    refreshed session, and nothing else marks the occasion: the address in
+    Settings just quietly reads differently. Watching the address itself, rather
+    than the auth event, means this says so exactly once and works no matter
+    which of the two confirmation links completed the change.
+  */
+  const lastEmail = useRef(null);
+  useEffect(() => {
+    const email = session?.user?.email || null;
+    if (email && lastEmail.current && email !== lastEmail.current) showToast(t('email_changed'));
+    lastEmail.current = email;
+  }, [session?.user?.email, showToast, t]);
+
+  // Set while a change has been asked for but not yet confirmed from the inbox.
+  const pendingEmail = session?.user?.new_email || null;
+
   // fetch / create this user's profile row
   useEffect(() => {
     if (!userId) { setProfile(null); return; }
@@ -279,18 +296,20 @@ export function AppProvider({ children }) {
     handled below, since that is what arrives if that protection is ever turned
     off in the project settings.
   */
-  const emailTakenError = () => Object.assign(new Error('email_taken'), { code: 'email_taken' });
+  // Screens branch on `err.code`, so they never have to match on an English
+  // sentence that the auth service is free to reword.
+  const taggedError = (code) => Object.assign(new Error(code), { code });
 
   const signUpEmail = async (name, email, password) => {
     const { data: res, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name } } });
     if (error) {
       if (error.code === 'user_already_exists' || /already regist|already exists/i.test(error.message || '')) {
-        throw emailTakenError();
+        throw taggedError('email_taken');
       }
       throw error;
     }
     if (res?.user && Array.isArray(res.user.identities) && res.user.identities.length === 0) {
-      throw emailTakenError();
+      throw taggedError('email_taken');
     }
     return { needsConfirmation: !res.session };
   };
@@ -325,6 +344,41 @@ export function AppProvider({ children }) {
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) throw error;
   };
+
+  /*
+    Changing the sign-in address. The password is re-checked first for the same
+    reason as above, and it matters more here: an address change is how an
+    account gets stolen outright. Whoever controls the address can reset the
+    password at will, so without this check a borrowed unlocked phone would be
+    enough to take the account away from its owner for good.
+
+    Nothing changes on the spot. Supabase emails a confirmation link, and the
+    address only moves once it is opened. With Supabase's "secure email change"
+    setting on, which is the default, it writes to the old address as well and
+    wants both confirmed.
+  */
+  const changeEmail = async (currentPassword, newEmail) => {
+    const email = session?.user?.email;
+    if (!email) throw new Error('no_email');
+    const next = newEmail.trim();
+    if (next.toLowerCase() === email.toLowerCase()) throw taggedError('email_same');
+
+    const { error: checkErr } = await supabase.auth.signInWithPassword({ email, password: currentPassword });
+    if (checkErr) throw new Error('wrong_current');
+
+    const { error } = await supabase.auth.updateUser(
+      { email: next },
+      { emailRedirectTo: window.location.origin + window.location.pathname },
+    );
+    if (error) {
+      if (error.code === 'email_exists' || /already been registered|already exists/i.test(error.message || '')) {
+        throw taggedError('email_taken');
+      }
+      throw error;
+    }
+    return next;
+  };
+
   const signOut = async () => {
     /*
       Release this device's push subscription first, while we still have a
@@ -648,7 +702,7 @@ export function AppProvider({ children }) {
     authLoading: session === undefined, dataLoading, membershipResolved,
     userById, actions, toast, showToast,
     signUpEmail, signInEmail, signInGoogle, sendPasswordReset, signOut,
-    setNewPassword, changePassword, recoveryMode,
+    setNewPassword, changePassword, changeEmail, pendingEmail, recoveryMode,
     // Google-only accounts have no password to change; offer "set one" instead.
     hasPasswordLogin: !!session?.user?.identities?.some((i) => i.provider === 'email'),
     joinByCode, createCommunity, findCommunityByCode,

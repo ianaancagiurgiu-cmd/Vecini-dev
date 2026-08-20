@@ -181,6 +181,9 @@ img { max-width: 100%; }
   outline: none; color: var(--ink-900);
 }
 .input:focus { border-color: var(--green-600); background: #fff; }
+/* A field shown for reference rather than for typing into. Without this it
+   looks exactly like the editable one below it and invites a doomed tap. */
+.input:disabled { background: var(--section-bg); color: var(--ink-400); -webkit-text-fill-color: var(--ink-400); opacity: 1; }
 textarea.input { resize: vertical; min-height: 96px; font-weight: 400; line-height: 1.5; }
 
 .card {

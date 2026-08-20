@@ -11,6 +11,7 @@ import SignUp from './screens/SignUp.jsx';
 import Forgot from './screens/Forgot.jsx';
 import NewPassword from './screens/NewPassword.jsx';
 import ChangePassword from './screens/ChangePassword.jsx';
+import ChangeEmail from './screens/ChangeEmail.jsx';
 import Join from './screens/Join.jsx';
 import CreateCommunity from './screens/CreateCommunity.jsx';
 
@@ -30,6 +31,7 @@ import PollNew from './screens/PollNew.jsx';
 import Search from './screens/Search.jsx';
 import Notifications from './screens/Notifications.jsx';
 import Settings from './screens/Settings.jsx';
+import Account from './screens/Account.jsx';
 import Admin from './screens/Admin.jsx';
 import Moderation from './screens/Moderation.jsx';
 import Members from './screens/Members.jsx';
@@ -100,7 +102,9 @@ export default function App() {
           <Route path="search" element={<Search />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="settings/account" element={<Account />} />
           <Route path="settings/password" element={<ChangePassword />} />
+          <Route path="settings/email" element={<ChangeEmail />} />
           <Route path="admin" element={<Admin />} />
           <Route path="admin/moderation" element={<Moderation />} />
           <Route path="admin/members" element={<Members />} />
