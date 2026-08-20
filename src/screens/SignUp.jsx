@@ -33,7 +33,9 @@ export default function SignUp() {
         nav('/join');
       }
     } catch (e2) {
-      setErr(e2.message?.includes('already registered') ? t('auth_email_taken') : e2.message);
+      // The store tags this one, rather than us matching on an English sentence
+      // that the auth service is free to reword.
+      setErr(e2.code === 'email_taken' ? t('auth_email_taken') : e2.message);
     } finally {
       setBusy(false);
     }

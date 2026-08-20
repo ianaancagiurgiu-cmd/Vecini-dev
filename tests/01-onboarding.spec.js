@@ -110,6 +110,84 @@ test.describe('Epic 1 — Onboarding (offline-safe checks)', () => {
 });
 
 /*
+  Signing up with an address that already has an account.
+
+  Supabase does not report this as an error. Its email enumeration protection
+  answers as though the sign-up worked: HTTP 200, no session, and a user object
+  whose `identities` array is empty. Taken at face value that reads as "account
+  created, go confirm your email" — so the app used to congratulate the person
+  and send them to the login screen to wait for a message that was never coming.
+
+  The sign-up call is intercepted here with exactly that response, which is the
+  only way to exercise the case without a live auth service.
+*/
+test.describe('Epic 1 — Sign up with an address that is already taken', () => {
+  const OBFUSCATED_USER = {
+    id: '00000000-0000-0000-0000-000000000000',
+    aud: 'authenticated',
+    role: 'authenticated',
+    email: 'existent@exemplu.ro',
+    email_confirmed_at: '2026-01-01T00:00:00Z',
+    phone: '',
+    confirmation_sent_at: '2026-01-01T00:00:00Z',
+    app_metadata: { provider: 'email', providers: ['email'] },
+    user_metadata: {},
+    identities: [], // the tell
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  };
+
+  async function attemptSignUp(page, body, status = 200) {
+    await page.route('**/auth/v1/signup*', (r) =>
+      r.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
+    );
+    await page.goto('/#/signup');
+    await page.locator('.input').first().fill('Test');
+    await page.locator('input[type=email]').fill('existent@exemplu.ro');
+    const pw = page.locator('input[type=password]');
+    await pw.first().fill('parola123');
+    await pw.nth(1).fill('parola123');
+    await page.getByRole('button', { name: 'Înscrie-te', exact: true }).click();
+  }
+
+  test('the person is told the address is taken, and stays on the form', async ({ page }) => {
+    await attemptSignUp(page, OBFUSCATED_USER);
+
+    await expect(page.getByText(/Există deja un cont cu acest email/)).toBeVisible();
+    // The message has to say what to do next, not just what went wrong.
+    await expect(page.getByText(/Intră în cont sau folosește altă adresă/)).toBeVisible();
+
+    // The registration must NOT have completed: no congratulations, and the
+    // form is still there to correct.
+    await expect(page.getByText(/email de confirmare/)).toHaveCount(0);
+    expect(page.url()).toContain('#/signup');
+    await expect(page.getByRole('button', { name: 'Înscrie-te', exact: true })).toBeVisible();
+  });
+
+  test('the plain error is handled too, for when enumeration protection is off', async ({ page }) => {
+    await attemptSignUp(page, {
+      code: 422, error_code: 'user_already_exists', msg: 'User already registered',
+    }, 422);
+
+    await expect(page.getByText(/Există deja un cont cu acest email/)).toBeVisible();
+    expect(page.url()).toContain('#/signup');
+  });
+
+  test('a genuinely new address is still allowed through', async ({ page }) => {
+    await attemptSignUp(page, {
+      ...OBFUSCATED_USER,
+      email: 'nou@exemplu.ro',
+      identities: [{ identity_id: 'i1', provider: 'email' }],
+    });
+
+    // Confirmation pending, so it hands over to the login screen. The point is
+    // that the guard above does not swallow a legitimate sign-up.
+    await expect(page.getByText(/Există deja un cont/)).toHaveCount(0);
+    await page.waitForURL(/#\/login/, { timeout: 5000 });
+  });
+});
+
+/*
   The invitation flow has to work for someone with no account — that is the
   whole point of an invitation. It used to bounce them to the login screen and
   discard the code, so these guard the order: code first, account second.

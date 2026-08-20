@@ -267,9 +267,31 @@ export function AppProvider({ children }) {
   const userById = (id) => data.users[id] || { name: '—', apartment: '', color: '#999' };
 
   // ---- auth actions ----
+  /*
+    Signing up with an address that already has an account does NOT come back as
+    an error. Supabase's email enumeration protection answers as if it worked:
+    no error, no session, and a user object whose `identities` array is empty.
+    Read literally that says "account created, go confirm your email", so we
+    were congratulating people and sending them off to wait for a message that
+    was never going to arrive.
+
+    The empty identities array is the documented tell. The plain error is still
+    handled below, since that is what arrives if that protection is ever turned
+    off in the project settings.
+  */
+  const emailTakenError = () => Object.assign(new Error('email_taken'), { code: 'email_taken' });
+
   const signUpEmail = async (name, email, password) => {
     const { data: res, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name } } });
-    if (error) throw error;
+    if (error) {
+      if (error.code === 'user_already_exists' || /already regist|already exists/i.test(error.message || '')) {
+        throw emailTakenError();
+      }
+      throw error;
+    }
+    if (res?.user && Array.isArray(res.user.identities) && res.user.identities.length === 0) {
+      throw emailTakenError();
+    }
     return { needsConfirmation: !res.session };
   };
   const signInEmail = async (email, password) => {
