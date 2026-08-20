@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { ScreenHeader, Avatar } from '../components/ui.jsx';
+import PendingEmail from '../components/PendingEmail.jsx';
 
 /*
   Everything the app knows about you as an account holder, in one place, plus
@@ -100,16 +101,7 @@ export default function Account() {
         {/* A change that has been asked for but not yet confirmed is invisible
             otherwise, which reads as "nothing happened" and invites a second
             attempt. */}
-        {pendingEmail && (
-          <div className="card" style={{ background: 'var(--status-new-bg)', border: 'none', marginBottom: 10 }}>
-            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--status-new-fg)', marginBottom: 5 }}>
-              {t('email_change_pending')}
-            </div>
-            <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, color: 'var(--status-new-fg)' }}>
-              {t('email_change_pending_body').replace('{email}', pendingEmail)}
-            </p>
-          </div>
-        )}
+        {pendingEmail && <PendingEmail email={pendingEmail} />}
 
         <div className="eyebrow" style={{ margin: '14px 0 2px' }}>{t('acc_details')}</div>
         <div className="card" style={{ paddingTop: 2, paddingBottom: 2 }}>

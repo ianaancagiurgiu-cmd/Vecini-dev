@@ -153,6 +153,55 @@ test.describe('Epic 14 — Account and email change', () => {
     await expect(page.locator('.input').first()).toHaveValue('mihai@exemplu.ro');
   });
 
+  /*
+    The confirmation link opens in the browser, which on a phone is a different
+    copy of the app with its own storage. Nothing about tapping it reaches the
+    copy on the home screen, and Apple offers no way for it to. So that copy has
+    to ask — when it comes back to the foreground, or when told to.
+  */
+  test('the pending card explains the browser detour and offers to re-check', async ({ page }) => {
+    await signedInAs(page, { user: fakeUser({ new_email: 'nou@exemplu.ro' }) });
+    await page.goto('/#/app/settings/account');
+
+    await expect(page.getByText(/Linkul se deschide în browser/)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Am confirmat, verifică acum' })).toBeVisible();
+  });
+
+  test('re-checking picks up a change confirmed in the other browser', async ({ page }) => {
+    await signedInAs(page, { user: fakeUser({ new_email: 'nou@exemplu.ro' }) });
+    // The refresh call is how this copy finds out; answer it as the service
+    // would once both confirmations are in: new address, nothing pending.
+    await stubAuth(page, 'token', () => ({
+      body: {
+        access_token: 'stub2', token_type: 'bearer', expires_in: 999999,
+        refresh_token: 'stub2', user: fakeUser({ email: 'nou@exemplu.ro' }),
+      },
+    }));
+    await page.goto('/#/app/settings/account');
+
+    await page.getByRole('button', { name: 'Am confirmat, verifică acum' }).click();
+
+    await expect(page.getByText('Adresa de email a fost schimbată.')).toBeVisible();
+    // and the card is gone, because there is nothing left to wait for
+    await expect(page.getByText('Schimbare în așteptare')).toHaveCount(0);
+  });
+
+  test('re-checking too early says so instead of pretending', async ({ page }) => {
+    await signedInAs(page, { user: fakeUser({ new_email: 'nou@exemplu.ro' }) });
+    await stubAuth(page, 'token', () => ({
+      body: {
+        access_token: 'stub2', token_type: 'bearer', expires_in: 999999,
+        refresh_token: 'stub2', user: fakeUser({ new_email: 'nou@exemplu.ro' }),
+      },
+    }));
+    await page.goto('/#/app/settings/account');
+
+    await page.getByRole('button', { name: 'Am confirmat, verifică acum' }).click();
+
+    await expect(page.getByText(/Încă nu e confirmată/)).toBeVisible();
+    await expect(page.getByText('Schimbare în așteptare')).toBeVisible();
+  });
+
   test('a Google-only account is sent to set a password instead', async ({ page }) => {
     await openForm(page, {
       user: fakeUser({

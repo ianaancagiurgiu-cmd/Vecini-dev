@@ -133,6 +133,28 @@ export function AppProvider({ children }) {
   // Set while a change has been asked for but not yet confirmed from the inbox.
   const pendingEmail = session?.user?.new_email || null;
 
+  /*
+    While a change is waiting on an inbox, look for it every time the app comes
+    back to the foreground. Coming back is exactly what someone does after
+    tapping the link: the browser opened, they confirmed there, and they
+    returned to the app expecting it to know.
+  */
+  useEffect(() => {
+    if (!pendingEmail) return;
+    const check = () => {
+      if (document.visibilityState !== 'visible') return;
+      supabase.auth.refreshSession().then(({ data: res }) => {
+        if (res?.session && mounted.current) setSession(res.session);
+      }).catch(() => { /* offline, or the session is simply not ready yet */ });
+    };
+    document.addEventListener('visibilitychange', check);
+    window.addEventListener('focus', check);
+    return () => {
+      document.removeEventListener('visibilitychange', check);
+      window.removeEventListener('focus', check);
+    };
+  }, [pendingEmail]);
+
   // fetch / create this user's profile row
   useEffect(() => {
     if (!userId) { setProfile(null); return; }
@@ -472,6 +494,26 @@ export function AppProvider({ children }) {
     setActiveCommunityId(null);
   };
 
+  /*
+    Pulls a fresh session, so a change confirmed somewhere else turns up here.
+
+    On an iPhone this is the only way it can. A link in an email opens in the
+    browser, and the app on the home screen is a separate copy with its own
+    storage — nothing about tapping that link reaches it. Apple offers no way
+    for a web page to hand off to an installed web app, so the home-screen copy
+    has to find out by asking, which it would otherwise only do when its token
+    expired, up to an hour later.
+  */
+  const recheckEmail = async () => {
+    const { data: res, error } = await supabase.auth.refreshSession();
+    if (error) throw error;
+    if (res?.session) setSession(res.session);
+    return {
+      email: res?.session?.user?.email || null,
+      pending: res?.session?.user?.new_email || null,
+    };
+  };
+
   const signOut = async () => {
     /*
       Release this device's push subscription first, while we still have a
@@ -796,7 +838,7 @@ export function AppProvider({ children }) {
     userById, actions, toast, showToast,
     signUpEmail, signInEmail, signInGoogle, sendPasswordReset, signOut,
     setNewPassword, changePassword, changeEmail, pendingEmail, recoveryMode,
-    setPhone, deleteAccount, profile,
+    setPhone, deleteAccount, profile, recheckEmail,
     // Google-only accounts have no password to change; offer "set one" instead.
     hasPasswordLogin: !!session?.user?.identities?.some((i) => i.provider === 'email'),
     joinByCode, createCommunity, findCommunityByCode,

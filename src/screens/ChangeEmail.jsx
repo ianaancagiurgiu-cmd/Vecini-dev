@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { ScreenHeader, PasswordInput } from '../components/ui.jsx';
+import PendingEmail from '../components/PendingEmail.jsx';
 
 /*
   Changing the sign-in address.
@@ -70,16 +71,7 @@ export default function ChangeEmail() {
     <div className="screen">
       <ScreenHeader title={t('email_change_title')} onBack={() => nav('/app/settings/account')} />
       <div className="pad" style={{ paddingTop: 18 }}>
-        {waitingFor && (
-          <div className="card" style={{ background: 'var(--status-new-bg)', border: 'none', marginBottom: 16 }}>
-            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--status-new-fg)', marginBottom: 5 }}>
-              {t('email_change_pending')}
-            </div>
-            <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, color: 'var(--status-new-fg)' }}>
-              {t('email_change_pending_body').replace('{email}', waitingFor)}
-            </p>
-          </div>
-        )}
+        {waitingFor && <PendingEmail email={waitingFor} />}
 
         <p className="muted" style={{ margin: '0 0 18px', fontSize: 14, lineHeight: 1.55 }}>{t('email_change_sub')}</p>
 
