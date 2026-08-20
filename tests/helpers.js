@@ -137,8 +137,12 @@ export async function signedInAs(page, { user = fakeUser(), tables = {} } = {}) 
     const body = wantsOne ? (rows[0] ?? null) : rows;
 
     return route.fulfill({
-      status: 200, contentType: 'application/json',
-      headers: CORS, body: JSON.stringify(body),
+      status: 200,
+      contentType: 'application/json',
+      // A counted query reads its total from this header, not from the body,
+      // and head:true means there is no body to read anyway.
+      headers: { ...CORS, 'content-range': `0-${Math.max(rows.length - 1, 0)}/${rows.length}` },
+      body: JSON.stringify(body),
     });
   });
 }

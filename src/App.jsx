@@ -12,6 +12,7 @@ import Forgot from './screens/Forgot.jsx';
 import NewPassword from './screens/NewPassword.jsx';
 import ChangePassword from './screens/ChangePassword.jsx';
 import ChangeEmail from './screens/ChangeEmail.jsx';
+import DeleteAccount from './screens/DeleteAccount.jsx';
 import Join from './screens/Join.jsx';
 import CreateCommunity from './screens/CreateCommunity.jsx';
 
@@ -105,6 +106,7 @@ export default function App() {
           <Route path="settings/account" element={<Account />} />
           <Route path="settings/password" element={<ChangePassword />} />
           <Route path="settings/email" element={<ChangeEmail />} />
+          <Route path="settings/delete" element={<DeleteAccount />} />
           <Route path="admin" element={<Admin />} />
           <Route path="admin/moderation" element={<Moderation />} />
           <Route path="admin/members" element={<Members />} />

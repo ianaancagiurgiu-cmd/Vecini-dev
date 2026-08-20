@@ -33,6 +33,7 @@ const emptyData = () => ({
   polls: [],
   notifications: [],
   notifPrefs: { announcements: true, replies: true, issues: true, polls: true, push: false },
+  deletedAccounts: 0,
 });
 
 const genCode = (name) => {
@@ -148,11 +149,6 @@ export function AppProvider({ children }) {
       if (!community) { setData(emptyData()); setDataLoading(false); return; }
 
       const memberIds = (members || []).map((m) => m.user_id);
-      const { data: profilesRows } = memberIds.length
-        ? await supabase.from('profiles').select('*').in('id', memberIds)
-        : { data: [] };
-      const users = {};
-      (profilesRows || []).forEach((p) => { users[p.id] = { id: p.id, name: p.full_name, apartment: p.apartment, color: p.avatar_color }; });
 
       const [{ data: announcements }, { data: discussions }, { data: issues }, { data: polls }, { data: notifications }, { data: notifPrefsRow }] = await Promise.all([
         supabase.from('announcements').select('*').eq('community_id', cid).order('created_at', { ascending: false }),
@@ -203,6 +199,47 @@ export function AppProvider({ children }) {
         return { ...p, options: opts, voters };
       });
 
+      /*
+        Profiles are fetched for everyone who shows up on a screen, not only for
+        the people who are members right now. Someone who left, or gave up their
+        account, still wrote announcements, reported issues and replied to
+        things, and all of that is part of the community's history. Looking up
+        members alone left every one of those bylines reading "—".
+      */
+      const needed = new Set(memberIds);
+      const note = (id) => { if (id) needed.add(id); };
+      (announcements || []).forEach((a) => note(a.author_id));
+      discussionsFull.forEach((d) => { note(d.author_id); d.replies.forEach((r) => note(r.author_id)); });
+      issuesFull.forEach((i) => {
+        note(i.reporter_id);
+        i.supporters.forEach(note);
+        i.history.forEach((h) => note(h.by_id));
+        i.comments.forEach((c) => note(c.author_id));
+      });
+      pollsFull.forEach((p) => { note(p.author_id); Object.keys(p.voters).forEach(note); });
+
+      const peopleIds = [...needed];
+      const { data: profilesRows } = peopleIds.length
+        ? await supabase.from('profiles').select('*').in('id', peopleIds)
+        : { data: [] };
+      const users = {};
+      (profilesRows || []).forEach((p) => {
+        users[p.id] = {
+          id: p.id, name: p.full_name, apartment: p.apartment, color: p.avatar_color,
+          phone: p.phone || '',
+          // The name on an emptied profile is a schema default, not something
+          // to show; screens read this and say so in the reader's language.
+          deleted: !!p.deleted_at,
+        };
+      });
+
+      // How many people have given up their account here. A count and nothing
+      // else: the rows behind it carry no trace of who they were.
+      const { count: deletedAccounts } = await supabase
+        .from('deleted_accounts')
+        .select('id', { count: 'exact', head: true })
+        .eq('community_id', cid);
+
       if (!mounted.current) return;
       setData({
         users,
@@ -214,6 +251,7 @@ export function AppProvider({ children }) {
         polls: pollsFull.map((p) => ({ ...p, authorId: p.author_id, createdAt: new Date(p.created_at).getTime(), endsAt: new Date(p.ends_at).getTime() })),
         notifications: (notifications || []).map((n) => ({ ...n, createdAt: new Date(n.created_at).getTime() })),
         notifPrefs: notifPrefsRow || { announcements: true, replies: true, issues: true, polls: true, push: false },
+        deletedAccounts: deletedAccounts || 0,
       });
     } finally {
       if (mounted.current) setDataLoading(false);
@@ -281,7 +319,14 @@ export function AppProvider({ children }) {
   const role = membership ? membership.role : 'member';
   const isStaff = role === 'admin' || role === 'moderator';
 
-  const userById = (id) => data.users[id] || { name: '—', apartment: '', color: '#999' };
+  const userById = (id) => {
+    const u = data.users[id];
+    if (!u) return { name: '—', apartment: '', color: '#999' };
+    // An emptied profile keeps its row so the history it wrote still hangs
+    // together, but the name on it belongs to nobody.
+    if (u.deleted) return { ...u, name: t('member_deleted'), apartment: '' };
+    return u;
+  };
 
   // ---- auth actions ----
   /*
@@ -377,6 +422,29 @@ export function AppProvider({ children }) {
       throw error;
     }
     return next;
+  };
+
+  /* Optional, and stored on the profile rather than on the auth record: it is
+     a way for neighbours to reach each other, not a way to sign in. */
+  const setPhone = async (phone) => {
+    const { error } = await supabase.from('profiles').update({ phone: phone.trim() || null }).eq('id', userId);
+    if (error) throw error;
+    setProfile((p) => (p ? { ...p, phone: phone.trim() || null } : p));
+    await refreshAll();
+  };
+
+  /*
+    Giving up the account. Everything of consequence happens inside one database
+    function, so it either all happens or none of it does: half an erasure is
+    the worst outcome available. Signing out afterwards is only tidying up — the
+    session it would have used has already been destroyed.
+  */
+  const deleteAccount = async () => {
+    const { error } = await supabase.rpc('delete_my_account');
+    if (error) throw error;
+    try { await disablePush(); } catch (e) { /* the row is gone already */ }
+    await supabase.auth.signOut();
+    setActiveCommunityId(null);
   };
 
   const signOut = async () => {
@@ -703,6 +771,7 @@ export function AppProvider({ children }) {
     userById, actions, toast, showToast,
     signUpEmail, signInEmail, signInGoogle, sendPasswordReset, signOut,
     setNewPassword, changePassword, changeEmail, pendingEmail, recoveryMode,
+    setPhone, deleteAccount, profile,
     // Google-only accounts have no password to change; offer "set one" instead.
     hasPasswordLogin: !!session?.user?.identities?.some((i) => i.provider === 'email'),
     joinByCode, createCommunity, findCommunityByCode,

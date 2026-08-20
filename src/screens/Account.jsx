@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { ScreenHeader, Avatar } from '../components/ui.jsx';
@@ -44,7 +45,30 @@ function Row({ label, value, faint, last }) {
 
 export default function Account() {
   const nav = useNavigate();
-  const { t, currentUser, role, data, session, pendingEmail, hasPasswordLogin } = useApp();
+  const { t, currentUser, role, data, session, pendingEmail, hasPasswordLogin, profile, setPhone, showToast } = useApp();
+
+  const savedPhone = profile?.phone || '';
+  const [phone, setPhoneField] = useState(savedPhone);
+  const [phoneErr, setPhoneErr] = useState('');
+  const [savingPhone, setSavingPhone] = useState(false);
+  const phoneChanged = phone.trim() !== savedPhone;
+
+  const savePhone = async () => {
+    setPhoneErr('');
+    const v = phone.trim();
+    // Deliberately loose: the field is optional and phone numbers are written
+    // in more ways than any pattern worth enforcing. This only catches a slip.
+    if (v && !/^[+()\d][\d\s()./-]{5,24}$/.test(v)) return setPhoneErr(t('acc_phone_bad'));
+    setSavingPhone(true);
+    try {
+      await setPhone(v);
+      showToast(t('acc_phone_saved'));
+    } catch (e) {
+      setPhoneErr(t('email_error'));
+    } finally {
+      setSavingPhone(false);
+    }
+  };
 
   const email = session?.user?.email || '';
   const roleLabel = role === 'admin' ? t('role_admin') : role === 'moderator' ? t('role_moderator') : t('role_member');
@@ -97,11 +121,35 @@ export default function Account() {
           <Row label={t('acc_signin')} value={signinLabel} last />
         </div>
 
+        {/* Editable in place rather than behind another screen: it is one
+            optional line, and burying it would guarantee nobody fills it in. */}
+        <div className="eyebrow" style={{ margin: '18px 0 2px' }}>{t('acc_phone')}</div>
+        <div className="card">
+          <input className="input" type="tel" autoComplete="tel" inputMode="tel"
+            value={phone} onChange={(e) => { setPhoneField(e.target.value); setPhoneErr(''); }} />
+          <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45, marginTop: 8 }}>{t('acc_phone_hint')}</div>
+          {phoneErr && <div style={{ color: 'var(--terracotta)', fontSize: 13, fontWeight: 600, marginTop: 8 }}>{phoneErr}</div>}
+          {phoneChanged && (
+            <button className="btn btn--primary" style={{ marginTop: 12 }} disabled={savingPhone} onClick={savePhone}>
+              {t('save')}
+            </button>
+          )}
+        </div>
+
         <div className="eyebrow" style={{ margin: '18px 0 2px' }}>{t('acc_manage')}</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
           <Item icon="✉︎" label={t('email_change_title')} onClick={() => nav('/app/settings/email')} />
           <Item icon="🔑" label={hasPasswordLogin ? t('pw_change_title') : t('pw_set_title')} onClick={() => nav('/app/settings/password')} />
         </div>
+
+        {/* Set apart, and last: it is the one action here that cannot be undone. */}
+        <div className="eyebrow" style={{ margin: '22px 0 2px' }}>{t('acc_danger')}</div>
+        <button onClick={() => nav('/app/settings/delete')} className="card"
+          style={{ textAlign: 'left', display: 'flex', alignItems: 'center', gap: 13, width: '100%', color: 'var(--terracotta)' }}>
+          <span style={{ fontSize: 19 }}>🗑</span>
+          <span style={{ flex: 1, fontWeight: 600, fontSize: 14.5 }}>{t('acc_delete')}</span>
+          <span className="faint" style={{ fontSize: 18 }}>›</span>
+        </button>
       </div>
     </div>
   );

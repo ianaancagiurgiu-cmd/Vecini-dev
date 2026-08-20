@@ -49,6 +49,16 @@ export default function Admin() {
           <Stat n={openIssues} label={t('dash_open_issues')} tint={{ bg: 'var(--status-prog-bg)', fg: 'var(--status-prog-fg)' }} />
           <Stat n={activePolls} label={t('dash_active_polls')} tint={{ bg: 'var(--status-new-bg)', fg: 'var(--status-new-fg)' }} />
         </div>
+        {/* How many people have given up their account here. A number and
+            nothing else: what is stored behind it is a community and a date,
+            with no trace of who they were. Only shown once it is not zero, so
+            it does not sit there as a permanent nought. */}
+        {data.deletedAccounts > 0 && (
+          <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+            <Stat n={data.deletedAccounts} label={t('admin_deleted_accounts')} tint={{ bg: 'var(--section-bg)', fg: 'var(--ink-400)' }} />
+            <div style={{ flex: 2 }} />
+          </div>
+        )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginTop: 16 }}>
           <Item icon="🛡️" label={t('admin_moderation')} sub={t('admin_mod_queue')} onClick={() => nav('/app/admin/moderation')} badge={pending} />
