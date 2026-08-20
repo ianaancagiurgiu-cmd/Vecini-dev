@@ -837,10 +837,34 @@ export function AppProvider({ children }) {
       showToast(t(action === 'approve' ? 'admin_post_approved' : action === 'hide' ? 'admin_post_hidden' : 'admin_post_moved'));
     },
 
+    /*
+      Routed through the database rather than written straight to the table, so
+      the rules sit in one place: only an admin may do it, only to somebody
+      else, and never in a way that leaves the community with nobody in charge.
+      Changing your own role is not on offer here — stepping down is
+      handOverCommunity, and that one insists on a successor.
+    */
     changeRole: async (targetUserId, newRole) => {
-      await supabase.from('memberships').update({ role: newRole }).eq('community_id', cid).eq('user_id', targetUserId);
+      const { error } = await supabase.rpc('set_member_role', {
+        p_community: cid, p_user: targetUserId, p_role: newRole,
+      });
+      if (error) { showToast(t('admin_role_error')); throw error; }
       await refreshAll();
       showToast(t('admin_role_changed'));
+    },
+
+    /*
+      Promote and step down in one call, which is one transaction: the
+      community is never for an instant without an admin, and a failure halfway
+      cannot leave it that way either.
+    */
+    handOverCommunity: async (targetUserId) => {
+      const { error } = await supabase.rpc('transfer_admin', {
+        p_community: cid, p_user: targetUserId,
+      });
+      if (error) { showToast(t('admin_role_error')); throw error; }
+      await refreshAll();
+      showToast(t('admin_handed_over'));
     },
     removeMember: async (targetUserId) => {
       await supabase.from('memberships').delete().eq('community_id', cid).eq('user_id', targetUserId);
