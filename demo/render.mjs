@@ -16,10 +16,10 @@
 */
 import { chromium } from '@playwright/test';
 import { spawn } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import ffmpeg from 'ffmpeg-static';
 import { FPS, W, H, DURATION } from './timeline.mjs';
-import { srt, voiceOver } from './subtitles.mjs';
+import { srt, voiceOver, assFile } from './subtitles.mjs';
 
 const BASE = process.env.STAGE || 'http://localhost:4173/demo-stage/stage.html';
 const OUT = 'demo/out';
@@ -28,6 +28,7 @@ const TOTAL = Math.round((DURATION / 1000) * FPS);
 const MASTER = `${OUT}/vecini-demo-fara-text.mp4`;
 const BURNED = `${OUT}/vecini-demo.mp4`;
 const SRT = `${OUT}/vecini-demo.srt`;
+const ASS = `${OUT}/.burn.ass`;   // scratch, removed once it has been burned in
 
 mkdirSync(OUT, { recursive: true });
 writeFileSync(SRT, srt());
@@ -90,22 +91,17 @@ await encoded;
 console.log(`\n  ✓ ${MASTER}`);
 
 /* ---------- pass two: the same file with the captions burned on ---------- */
-// Colours are ASS's &HBBGGRR, backwards from CSS. Cream box, near-black text,
-// matching the design the preview frames were checked against.
-const STYLE = [
-  'FontName=DejaVu Sans', 'Fontsize=15', 'Bold=1',
-  'PrimaryColour=&H00181C1A', 'BackColour=&H0FF0F7FA',
-  'BorderStyle=3', 'Outline=4', 'Shadow=0',
-  'Alignment=2', 'MarginV=58', 'MarginL=70', 'MarginR=70',
-].join(',');
-
+// From an .ass carrying the real frame size, so the sizes and margins below
+// are pixels rather than numbers scaled through a resolution nobody declared.
+writeFileSync(ASS, assFile());
 await run([
   '-y', '-i', MASTER,
-  '-vf', `subtitles=${SRT}:force_style='${STYLE}'`,
+  '-vf', `subtitles=${ASS}`,
   '-c:v', 'libx264', '-preset', 'slow', '-crf', '20', '-pix_fmt', 'yuv420p',
   '-movflags', '+faststart', '-c:a', 'copy',
   BURNED,
 ], 'burn-in');
+rmSync(ASS, { force: true });
 
 console.log(`  ✓ ${BURNED}`);
 console.log(`  ✓ ${SRT}`);
