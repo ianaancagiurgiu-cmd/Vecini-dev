@@ -15,7 +15,7 @@ import { formatDate } from '../lib/format.js';
 
 export default function Members() {
   const nav = useNavigate();
-  const { data, t, lang, userById, role, currentUser, actions } = useApp();
+  const { data, t, lang, counted, userById, role, currentUser, actions } = useApp();
   const [confirmRemove, setConfirmRemove] = useState(null);
   const [promoting, setPromoting] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -43,7 +43,7 @@ export default function Members() {
 
   return (
     <div className="screen">
-      <ScreenHeader title={t('admin_members_title')} onBack={() => nav('/app/admin')} kicker={`${data.members.length} ${t('admin_members')}`} />
+      <ScreenHeader title={t('admin_members_title')} onBack={() => nav('/app/admin')} kicker={counted('admin_members', data.members.length)} />
       <div className="pad" style={{ paddingTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
         {data.members.map((m) => {
           const u = userById(m.userId);

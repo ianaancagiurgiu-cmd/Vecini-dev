@@ -1,4 +1,46 @@
 // Full RO/EN dictionary for Vecini. RO is the source of truth (matches prototype).
+
+/*
+  Counting things, in a language that does not count like English.
+
+  Romanian has three forms, not two: "1 răspuns", "2 răspunsuri", and from
+  twenty up a "de" appears — "20 de răspunsuri". Writing `${n} ${t('replies')}`
+  gets the first and third wrong, which is how the dashboard came to say
+  "1 răspunsuri".
+
+  Which form a number takes is Intl's job, not ours. Each language then names
+  only the forms it actually has: English two, Hungarian one — it does not
+  inflect a noun after a numeral at all — Romanian three. Anything a language
+  leaves unsaid falls back within that language first, so a missing Hungarian
+  form yields Hungarian rather than quietly borrowing the Romanian word.
+*/
+/*
+  The keys that carry a number in front of them, listed rather than guessed at
+  from their spelling: `cat_other` is the "Altele" category, not the plural of
+  a `cat`, and naming alone cannot tell the two apart.
+*/
+export const COUNTED = [
+  'disc_replies', 'admin_members', 'dash_members', 'dash_scari',
+  'poll_total_voted', 'poll_days', 'admin_deleted_accounts',
+];
+
+const LOCALES = { ro: 'ro-RO', en: 'en-GB', hu: 'hu-HU' };
+const RULES = {};
+const rulesFor = (lang) => (RULES[lang] ||= new Intl.PluralRules(LOCALES[lang] || LOCALES.ro));
+
+export function pluralForm(lang, key, n) {
+  const form = rulesFor(lang).select(n);
+  for (const table of [STRINGS[lang], STRINGS.ro]) {
+    if (!table) continue;
+    const hit = table[`${key}_${form}`] ?? table[`${key}_other`] ?? table[key];
+    if (hit) return hit;
+  }
+  return key;
+}
+
+/** "3 răspunsuri" — the number and its noun, agreeing. */
+export const counted = (lang, key, n) => `${n} ${pluralForm(lang, key, n)}`;
+
 export const STRINGS = {
   ro: {
     appTagline: 'Comunitatea ta de cartier, într-un singur loc liniștit.',
@@ -135,8 +177,12 @@ export const STRINGS = {
     dash_active_polls: 'voturi deschise',
     dash_see_all: 'Vezi toate',
     dash_quick_report: 'Raportează o problemă',
-    dash_members: 'vecini',
-    dash_scari: 'scări',
+    dash_members_one: 'vecin',
+    dash_members_few: 'vecini',
+    dash_members_other: 'de vecini',
+    dash_scari_one: 'scară',
+    dash_scari_few: 'scări',
+    dash_scari_other: 'de scări',
 
     // Announcements
     ann_title: 'Anunțuri',
@@ -155,7 +201,9 @@ export const STRINGS = {
     // Discussions
     disc_title: 'Discuții',
     disc_new: 'Temă nouă',
-    disc_replies: 'răspunsuri',
+    disc_replies_one: 'răspuns',
+    disc_replies_few: 'răspunsuri',
+    disc_replies_other: 'de răspunsuri',
     disc_reply_ph: 'Scrie un răspuns…',
     disc_reply_cta: 'Trimite răspunsul',
     disc_create_title: 'Temă nouă',
@@ -209,9 +257,13 @@ export const STRINGS = {
     poll_vote_cta: 'Trimite votul',
     poll_voted: 'Ai votat',
     poll_anon: 'Votul tău e anonim',
-    poll_total_voted: 'au votat',
+    poll_total_voted_one: 'a votat',
+    poll_total_voted_other: 'au votat',
+    poll_total_voted_few: 'au votat',
     poll_ends_in: 'se închide în',
-    poll_days: 'zile',
+    poll_days_one: 'zi',
+    poll_days_few: 'zile',
+    poll_days_other: 'de zile',
     poll_ended: 'Închis',
     poll_of: 'din',
     poll_neighbors_voted: 'vecini au votat',
@@ -243,7 +295,9 @@ export const STRINGS = {
     // Admin
     admin_title: 'Panou admin',
     admin_sub: 'Gestionează comunitatea',
-    admin_members: 'membri activi',
+    admin_members_one: 'membru activ',
+    admin_members_few: 'membri activi',
+    admin_members_other: 'de membri activi',
     admin_pending: 'așteaptă aprobarea ta',
     admin_stats: 'Statistici',
     admin_moderation: 'Panou moderare',
@@ -406,7 +460,9 @@ export const STRINGS = {
     acc_danger: 'Ștergerea contului',
     acc_delete: 'Șterge contul',
     member_deleted: 'Vecin care a plecat',
-    admin_deleted_accounts: 'conturi șterse',
+    admin_deleted_accounts_one: 'cont șters',
+    admin_deleted_accounts_few: 'conturi șterse',
+    admin_deleted_accounts_other: 'de conturi șterse',
     del_title: 'Șterge contul',
     del_lead: 'Îți ștergem datele personale și nu te mai poți conecta. Nu se poate anula.',
     del_keep_title: 'Ce rămâne',
@@ -552,8 +608,10 @@ export const STRINGS = {
     dash_active_polls: 'open votes',
     dash_see_all: 'See all',
     dash_quick_report: 'Report a problem',
-    dash_members: 'neighbors',
-    dash_scari: 'staircases',
+    dash_members_one: 'neighbor',
+    dash_members_other: 'neighbors',
+    dash_scari_one: 'staircase',
+    dash_scari_other: 'staircases',
 
     ann_title: 'Announcements',
     ann_official: 'OFFICIAL',
@@ -570,7 +628,8 @@ export const STRINGS = {
 
     disc_title: 'Discussions',
     disc_new: 'New topic',
-    disc_replies: 'replies',
+    disc_replies_one: 'reply',
+    disc_replies_other: 'replies',
     disc_reply_ph: 'Write a reply…',
     disc_reply_cta: 'Send reply',
     disc_create_title: 'New topic',
@@ -621,9 +680,11 @@ export const STRINGS = {
     poll_vote_cta: 'Submit vote',
     poll_voted: 'Voted',
     poll_anon: 'Your vote is anonymous',
-    poll_total_voted: 'voted',
+    poll_total_voted_other: 'voted',
+    poll_total_voted_one: 'voted',
     poll_ends_in: 'closes in',
-    poll_days: 'days',
+    poll_days_one: 'day',
+    poll_days_other: 'days',
     poll_ended: 'Closed',
     poll_of: 'of',
     poll_neighbors_voted: 'neighbors voted',
@@ -653,7 +714,8 @@ export const STRINGS = {
 
     admin_title: 'Admin panel',
     admin_sub: 'Manage your community',
-    admin_members: 'active members',
+    admin_members_one: 'active member',
+    admin_members_other: 'active members',
     admin_pending: 'awaiting your approval',
     admin_stats: 'Statistics',
     admin_moderation: 'Moderation',
@@ -808,7 +870,8 @@ export const STRINGS = {
     acc_danger: 'Deleting your account',
     acc_delete: 'Delete account',
     member_deleted: 'A neighbour who left',
-    admin_deleted_accounts: 'deleted accounts',
+    admin_deleted_accounts_one: 'deleted account',
+    admin_deleted_accounts_other: 'deleted accounts',
     del_title: 'Delete account',
     del_lead: 'We erase your personal details and you can no longer sign in. This cannot be undone.',
     del_keep_title: 'What stays',
@@ -954,8 +1017,10 @@ export const STRINGS = {
     dash_active_polls: 'nyitott szavazás',
     dash_see_all: 'Összes megtekintése',
     dash_quick_report: 'Probléma bejelentése',
-    dash_members: 'szomszéd',
-    dash_scari: 'lépcsőház',
+    dash_members_other: 'szomszéd',
+    dash_members_one: 'szomszéd',
+    dash_scari_other: 'lépcsőház',
+    dash_scari_one: 'lépcsőház',
 
     ann_title: 'Hirdetések',
     ann_official: 'HIVATALOS',
@@ -972,7 +1037,8 @@ export const STRINGS = {
 
     disc_title: 'Beszélgetések',
     disc_new: 'Új téma',
-    disc_replies: 'válasz',
+    disc_replies_other: 'válasz',
+    disc_replies_one: 'válasz',
     disc_reply_ph: 'Írj egy választ…',
     disc_reply_cta: 'Válasz küldése',
     disc_create_title: 'Új téma',
@@ -1023,9 +1089,11 @@ export const STRINGS = {
     poll_vote_cta: 'Szavazat elküldése',
     poll_voted: 'Szavaztál',
     poll_anon: 'A szavazatod névtelen',
-    poll_total_voted: 'szavazott',
+    poll_total_voted_other: 'szavazott',
+    poll_total_voted_one: 'szavazott',
     poll_ends_in: 'lezárul',
-    poll_days: 'nap',
+    poll_days_other: 'nap',
+    poll_days_one: 'nap',
     poll_ended: 'Lezárva',
     poll_of: '/',
     poll_neighbors_voted: 'szomszéd szavazott',
@@ -1055,7 +1123,8 @@ export const STRINGS = {
 
     admin_title: 'Admin panel',
     admin_sub: 'A közösség kezelése',
-    admin_members: 'aktív tag',
+    admin_members_other: 'aktív tag',
+    admin_members_one: 'aktív tag',
     admin_pending: 'jóváhagyásra vár',
     admin_stats: 'Statisztika',
     admin_moderation: 'Moderálás',
@@ -1210,7 +1279,8 @@ export const STRINGS = {
     acc_danger: 'Fiók törlése',
     acc_delete: 'Fiók törlése',
     member_deleted: 'Egy szomszéd, aki elment',
-    admin_deleted_accounts: 'törölt fiók',
+    admin_deleted_accounts_other: 'törölt fiók',
+    admin_deleted_accounts_one: 'törölt fiók',
     del_title: 'Fiók törlése',
     del_lead: 'Töröljük a személyes adataidat, és többé nem tudsz belépni. Ezt nem lehet visszavonni.',
     del_keep_title: 'Ami megmarad',

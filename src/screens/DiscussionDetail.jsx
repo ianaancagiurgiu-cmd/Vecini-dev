@@ -7,7 +7,7 @@ import { timeAgo, CATEGORIES, catLabel } from '../lib/format.js';
 export default function DiscussionDetail() {
   const nav = useNavigate();
   const { id } = useParams();
-  const { data, t, L, lang, userById, actions } = useApp();
+  const { data, t, L, lang, counted, userById, actions } = useApp();
   const [reply, setReply] = useState('');
   const d = data.discussions.find((x) => x.id === id);
   if (!d) return <div className="screen"><ScreenHeader title={t('disc_title')} onBack={() => nav('/app/discussions')} /></div>;
@@ -34,7 +34,7 @@ export default function DiscussionDetail() {
       <div style={{ height: 8, background: 'var(--section-bg)', margin: '22px 0 0' }} />
 
       <div className="pad" style={{ paddingTop: 18 }}>
-        <div style={{ fontSize: 13.5, fontWeight: 700, color: '#5a5e54', marginBottom: 14 }}>💬 {d.replies.length} {t('disc_replies')}</div>
+        <div style={{ fontSize: 13.5, fontWeight: 700, color: '#5a5e54', marginBottom: 14 }}>💬 {counted('disc_replies', d.replies.length)}</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {d.replies.map((r) => (
             <div key={r.id} style={{ display: 'flex', gap: 11 }}>

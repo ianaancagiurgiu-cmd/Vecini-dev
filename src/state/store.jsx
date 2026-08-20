@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient.js';
-import { STRINGS } from '../i18n/strings.js';
+import { STRINGS, pluralForm, counted as countedIn } from '../i18n/strings.js';
 import { enablePush, disablePush, resyncPush } from '../lib/push.js';
 import { callbackType, callbackError } from '../lib/authCallback.js';
 
@@ -73,6 +73,14 @@ export function AppProvider({ children }) {
   const lang = prefs.lang;
   const t = useCallback((key) => (STRINGS[lang] && STRINGS[lang][key]) || STRINGS.ro[key] || key, [lang]);
   const setLang = (l) => setPrefs((p) => ({ ...p, lang: l }));
+  /*
+    Anything with a number in front of it goes through these rather than
+    `${n} ${t(key)}`, which cannot get Romanian right: one form for 1, another
+    for 2 to 19, and a third from 20 up. `plural` gives the word alone, for the
+    places that lay the number out themselves.
+  */
+  const counted = useCallback((key, n) => countedIn(lang, key, n), [lang]);
+  const plural = useCallback((key, n) => pluralForm(lang, key, n), [lang]);
   const L = useCallback((obj, field) => {
     if (!obj) return '';
     if (lang === 'en' && obj[field + 'En']) return obj[field + 'En'];
@@ -918,7 +926,7 @@ export function AppProvider({ children }) {
   }), [cid, userId, lang, data, refreshAll, showToast, t]);
 
   const value = {
-    data, lang, t, L, setLang,
+    data, lang, t, L, setLang, counted, plural,
     currentUser, role, isStaff,
     authed, session, hasCommunity: !!activeCommunityId,
     authLoading: session === undefined, dataLoading, membershipResolved,

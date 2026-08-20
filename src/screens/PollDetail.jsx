@@ -7,7 +7,7 @@ import { daysUntil } from '../lib/format.js';
 export default function PollDetail() {
   const nav = useNavigate();
   const { id } = useParams();
-  const { data, t, L, currentUser, isStaff, actions } = useApp();
+  const { data, t, L, counted, currentUser, isStaff, actions } = useApp();
   const p = data.polls.find((x) => x.id === id);
   const [picked, setPicked] = useState([]);
   if (!p) return <div className="screen"><ScreenHeader title={t('poll_title')} onBack={() => nav('/app/polls')} /></div>;
@@ -32,7 +32,7 @@ export default function PollDetail() {
         {closed && <span className="badge" style={{ background: 'var(--section-bg)', color: 'var(--ink-400)', marginBottom: 12 }}>{t('poll_ended')}</span>}
         <h1 className="serif" style={{ fontSize: 23, fontWeight: 600, lineHeight: 1.25, margin: '8px 0 6px' }}>{L(p, 'question')}</h1>
         <div className="muted" style={{ fontSize: 13, marginBottom: 20 }}>
-          {total} {t('poll_total_voted')}{!closed && ` · ${t('poll_ends_in')} ${daysUntil(p.endsAt)} ${t('poll_days')}`}{p.multi && ' · ' + t('poll_f_multi').toLowerCase()}
+          {counted('poll_total_voted', total)}{!closed && ` · ${t('poll_ends_in')} ${counted('poll_days', daysUntil(p.endsAt))}`}{p.multi && ' · ' + t('poll_f_multi').toLowerCase()}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>

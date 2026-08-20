@@ -4,7 +4,7 @@ import { ScreenHeader } from '../components/ui.jsx';
 
 export default function Admin() {
   const nav = useNavigate();
-  const { data, t, isStaff, role } = useApp();
+  const { data, t, counted, plural, isStaff, role } = useApp();
   if (!isStaff) return <Navigate to="/app" replace />;
 
   const pending = data.discussions.filter((d) => d.status === 'pending').length;
@@ -45,7 +45,7 @@ export default function Admin() {
 
         <div className="eyebrow" style={{ marginBottom: 10 }}>{t('admin_stats')}</div>
         <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
-          <Stat n={data.community.memberCount} label={t('admin_members')} tint={{ bg: 'var(--status-done-bg)', fg: 'var(--green-500)' }} />
+          <Stat n={data.community.memberCount} label={plural('admin_members', data.community.memberCount)} tint={{ bg: 'var(--status-done-bg)', fg: 'var(--green-500)' }} />
           <Stat n={openIssues} label={t('dash_open_issues')} tint={{ bg: 'var(--status-prog-bg)', fg: 'var(--status-prog-fg)' }} />
           <Stat n={activePolls} label={t('dash_active_polls')} tint={{ bg: 'var(--status-new-bg)', fg: 'var(--status-new-fg)' }} />
         </div>
@@ -55,14 +55,14 @@ export default function Admin() {
             it does not sit there as a permanent nought. */}
         {data.deletedAccounts > 0 && (
           <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
-            <Stat n={data.deletedAccounts} label={t('admin_deleted_accounts')} tint={{ bg: 'var(--section-bg)', fg: 'var(--ink-400)' }} />
+            <Stat n={data.deletedAccounts} label={plural('admin_deleted_accounts', data.deletedAccounts)} tint={{ bg: 'var(--section-bg)', fg: 'var(--ink-400)' }} />
             <div style={{ flex: 2 }} />
           </div>
         )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginTop: 16 }}>
           <Item icon="🛡️" label={t('admin_moderation')} sub={t('admin_mod_queue')} onClick={() => nav('/app/admin/moderation')} badge={pending} />
-          <Item icon="👥" label={t('admin_members_title')} sub={`${data.members.length} ${t('admin_members')}`} onClick={() => nav('/app/admin/members')} adminOnly />
+          <Item icon="👥" label={t('admin_members_title')} sub={counted('admin_members', data.members.length)} onClick={() => nav('/app/admin/members')} adminOnly />
           <Item icon="⚙︎" label={t('admin_settings')} sub={data.community.code} onClick={() => nav('/app/admin/settings')} adminOnly />
         </div>
       </div>

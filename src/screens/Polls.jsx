@@ -4,7 +4,7 @@ import { ScreenHeader, AddButton, Empty } from '../components/ui.jsx';
 import { daysUntil } from '../lib/format.js';
 
 function PollCard({ p, onClick }) {
-  const { t, L, currentUser } = useApp();
+  const { t, L, counted, currentUser } = useApp();
   const total = p.options.reduce((s, o) => s + o.votes, 0);
   const voted = !!p.voters[currentUser.id];
   const closed = p.closed || p.endsAt < Date.now();
@@ -18,8 +18,8 @@ function PollCard({ p, onClick }) {
       </div>
       <div className="serif" style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.3, marginBottom: 12 }}>{L(p, 'question')}</div>
       <div className="faint" style={{ fontSize: 12.5, display: 'flex', justifyContent: 'space-between' }}>
-        <span>{total} {t('poll_total_voted')}</span>
-        {!closed && <span>{t('poll_ends_in')} {days} {t('poll_days')}</span>}
+        <span>{counted('poll_total_voted', total)}</span>
+        {!closed && <span>{t('poll_ends_in')} {counted('poll_days', days)}</span>}
       </div>
     </button>
   );

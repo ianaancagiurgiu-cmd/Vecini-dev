@@ -41,7 +41,7 @@ function StatTile({ n, label, tint, onClick }) {
 
 export default function Dashboard() {
   const nav = useNavigate();
-  const { data, t, L, lang, currentUser, userById } = useApp();
+  const { data, t, L, lang, counted, currentUser, userById } = useApp();
 
   const anns = [...data.announcements].sort((a, b) => (b.pinned - a.pinned) || (b.createdAt - a.createdAt)).slice(0, 3);
   const openIssues = data.issues.filter((i) => i.status !== 'resolved').length;
@@ -59,10 +59,10 @@ export default function Dashboard() {
           {data.community.name} ·{' '}
           {/* The neighbour count is the natural way in to the list of them. */}
           <button onClick={() => nav('/app/neighbours')} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--green-600)', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 3 }}>
-            {data.community.memberCount} {t('dash_members')}
+            {counted('dash_members', data.community.memberCount)}
           </button>
           {/* Staircases only mean something in a block of flats. */}
-          {data.community.kind === 'bloc' && ` · ${data.community.staircases} ${t('dash_scari')}`}
+          {data.community.kind === 'bloc' && ` · ${counted('dash_scari', data.community.staircases)}`}
         </div>
         {/* The slogan follows the kind of place this is: an admin who says
             "houses" should not be told this is all about their building. */}
@@ -112,7 +112,7 @@ export default function Dashboard() {
               <Avatar user={userById(d.authorId)} size={38} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: 14.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{L(d, 'title')}</div>
-                <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>💬 {d.replies.length} {t('disc_replies')} · {timeAgo(d.createdAt, t, lang)}</div>
+                <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>💬 {counted('disc_replies', d.replies.length)} · {timeAgo(d.createdAt, t, lang)}</div>
               </div>
             </button>
           ))}

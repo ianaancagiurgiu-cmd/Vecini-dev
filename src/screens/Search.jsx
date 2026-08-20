@@ -13,7 +13,7 @@ function highlight(text, q) {
 
 export default function Search() {
   const nav = useNavigate();
-  const { data, t, L, lang } = useApp();
+  const { data, t, L, lang, counted } = useApp();
   const [tab, setTab] = useState('search'); // search | archive
   const [q, setQ] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -73,7 +73,7 @@ export default function Search() {
             <Row key={a.id} icon="📢" title={highlight(L(a, 'title'), q)} sub={timeAgo(a.createdAt, t, lang)} onClick={() => nav('/app/announcements/' + a.id)} />
           ))} />
           <Group label={t('disc_title')} items={discHits.map((d) => (
-            <Row key={d.id} icon="💬" title={highlight(L(d, 'title'), q)} sub={`${d.replies.length} ${t('disc_replies')}`} onClick={() => nav('/app/discussions/' + d.id)} />
+            <Row key={d.id} icon="💬" title={highlight(L(d, 'title'), q)} sub={counted('disc_replies', d.replies.length)} onClick={() => nav('/app/discussions/' + d.id)} />
           ))} />
           <Group label={t('iss_title')} items={issueHits.map((i) => (
             <Row key={i.id} icon={(CATEGORIES[i.category] || CATEGORIES.other).icon} title={highlight(L(i, 'title'), q)} sub={i.location}
@@ -88,7 +88,7 @@ export default function Search() {
             <Row key={i.id} icon="✅" title={L(i, 'title')} sub={formatDate(i.createdAt, lang)} onClick={() => nav('/app/issues/' + i.id)} />
           ))} />
           <Group label={t('poll_closed')} items={archPolls.map((p) => (
-            <Row key={p.id} icon="🗳️" title={L(p, 'question')} sub={`${p.options.reduce((s, o) => s + o.votes, 0)} ${t('poll_total_voted')}`} onClick={() => nav('/app/polls/' + p.id)} />
+            <Row key={p.id} icon="🗳️" title={L(p, 'question')} sub={counted('poll_total_voted', p.options.reduce((s, o) => s + o.votes, 0))} onClick={() => nav('/app/polls/' + p.id)} />
           ))} />
         </div>
       )}

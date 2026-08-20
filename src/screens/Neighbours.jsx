@@ -23,7 +23,7 @@ const PhoneIcon = () => (
 
 export default function Neighbours() {
   const nav = useNavigate();
-  const { data, t, userById, currentUser } = useApp();
+  const { data, t, counted, userById, currentUser } = useApp();
   const [q, setQ] = useState('');
 
   const rows = data.members
@@ -44,7 +44,7 @@ export default function Neighbours() {
   return (
     <div className="screen">
       <ScreenHeader title={t('nb_title')} onBack={() => nav('/app')}
-        kicker={`${data.members.length} ${t('dash_members')}`} />
+        kicker={counted('dash_members', data.members.length)} />
 
       <div className="pad" style={{ paddingTop: 14 }}>
         {data.members.length > 6 && (
