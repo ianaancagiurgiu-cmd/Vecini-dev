@@ -38,7 +38,7 @@ export default function CommunitySettings() {
   /*
     The link matters more than the code: sending it means the neighbour taps
     once and the code is already filled in, instead of retyping it from a
-    WhatsApp message and getting a character wrong.
+    group chat message and getting a character wrong.
   */
   const copyLink = () => { navigator.clipboard?.writeText(inviteLink(c.code)); showToast(t('admin_invite_link_copied')); };
   const regen = async () => { setConfirmRegen(false); await actions.regenCode(); showToast(t('admin_saved')); };

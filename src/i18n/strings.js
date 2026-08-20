@@ -51,7 +51,7 @@ export const STRINGS = {
 
     // Landing
     landing_kicker: 'COMUNITATEA TA DE CARTIER',
-    landing_title: 'Comunitatea ta de cartier, fără haosul din WhatsApp',
+    landing_title: 'Comunitatea ta de cartier, fără haosul din grupurile dezorganizate',
     landing_sub: 'Anunțuri, discuții, sesizări și voturi. Organizate și calme, într-un singur loc liniștit.',
     landing_cta_primary: 'Începe acum',
     landing_cta_secondary: 'Am un cod de invitație',
@@ -472,7 +472,7 @@ export const STRINGS = {
     required: 'required',
 
     landing_kicker: 'YOUR NEIGHBORHOOD COMMUNITY',
-    landing_title: 'Your neighborhood community, without the WhatsApp chaos',
+    landing_title: 'Your neighborhood community, without the chaos of scattered group chats',
     landing_sub: 'Announcements, discussions, issue reports and votes. Organized and calm, all in one place.',
     landing_cta_primary: 'Get started',
     landing_cta_secondary: 'I have an invite code',
@@ -874,7 +874,7 @@ export const STRINGS = {
     required: 'kötelező',
 
     landing_kicker: 'A TE LAKÓKÖZÖSSÉGED',
-    landing_title: 'A lakóközösséged, a WhatsApp-káosz nélkül',
+    landing_title: 'A lakóközösséged, a szétszórt csoportok káosza nélkül',
     landing_sub: 'Hirdetések, beszélgetések, hibabejelentések és szavazások. Rendezetten és nyugodtan, egy helyen.',
     landing_cta_primary: 'Kezdjük',
     landing_cta_secondary: 'Van meghívókódom',

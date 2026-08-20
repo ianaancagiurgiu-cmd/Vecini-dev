@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<title>Vecini — stage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /*
+    One frame of the video. Everything is a pure function of ?t=<ms>: no CSS
+    animations, no timers, no randomness. The renderer sets the time, waits for
+    the paint, and screenshots. The same t always gives the same picture, which
+    is what makes 2460 separate screenshots add up to a smooth film.
+  */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; }
+  body {
+    background:
+      radial-gradient(circle at 78% 6%, rgba(47,107,79,.16) 0, transparent 46%),
+      radial-gradient(circle at 12% 94%, rgba(180,83,42,.11) 0, transparent 42%),
+      #e9e3d6;
+    font-family: 'Hanken Grotesk', -apple-system, sans-serif;
+    color: #232620;
+  }
+
+  #caption {
+    position: absolute; left: 90px; right: 90px; top: 118px;
+    text-align: center; font-family: 'Newsreader', Georgia, serif;
+    font-size: 54px; line-height: 1.16; font-weight: 500; color: #1d3b2c;
+    letter-spacing: -.5px;
+  }
+
+  #phone {
+    position: absolute; left: 222px; top: 282px; width: 636px; height: 1335px;
+    background: #1c2019; border-radius: 62px; padding: 18px;
+    box-shadow: 0 40px 90px -20px rgba(29,59,44,.5), 0 0 0 3px #333a30;
+  }
+  #viewport {
+    position: relative; width: 600px; height: 1299px;
+    border-radius: 46px; overflow: hidden; background: #faf7f0;
+  }
+  .layer { position: absolute; inset: 0; }
+  .layer img { position: absolute; left: 0; top: 0; width: 600px; display: block; }
+
+  /* Browser chrome, for the scene where it is still a web page. */
+  #chrome-top, #chrome-bottom {
+    position: absolute; left: 0; right: 0; background: #f2f1ee; z-index: 5;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #chrome-top { top: 0; height: 96px; padding-top: 22px; }
+  #chrome-top .url {
+    background: #fff; border-radius: 999px; padding: 11px 26px;
+    font-size: 21px; color: #3d3f3a; box-shadow: 0 1px 3px rgba(0,0,0,.12);
+    max-width: 470px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  }
+  #chrome-bottom { bottom: 0; height: 84px; gap: 52px; color: #6d7069; font-size: 30px; }
+
+  /* The tap. */
+  #tap {
+    position: absolute; width: 108px; height: 108px; margin: -54px 0 0 -54px;
+    border-radius: 50%; background: rgba(47,107,79,.28);
+    border: 4px solid rgba(47,107,79,.75); z-index: 40; pointer-events: none;
+  }
+
+  #subtitle {
+    position: absolute; left: 70px; right: 70px; bottom: 96px; z-index: 80;
+    text-align: center; font-size: 40px; line-height: 1.32; font-weight: 600;
+    color: #1a1c18;
+  }
+  #subtitle span {
+    background: rgba(250,247,240,.94); box-shadow: 0 0 0 14px rgba(250,247,240,.94);
+    border-radius: 4px; box-decoration-break: clone; -webkit-box-decoration-break: clone;
+  }
+
+  #progress { position: absolute; left: 0; bottom: 0; height: 7px; background: #2f6b4f; z-index: 80; }
+
+  /* ---- mock: the iOS share sheet ---- */
+  .sheet {
+    position: absolute; left: 0; right: 0; bottom: 0; background: #f3f2f0;
+    border-radius: 34px 34px 0 0; padding: 26px 0 40px; z-index: 20;
+  }
+  .sheet .grabber { width: 74px; height: 7px; border-radius: 4px; background: #c9c8c5; margin: 0 auto 26px; }
+  .sheet .row {
+    display: flex; align-items: center; gap: 22px; padding: 25px 34px;
+    font-size: 30px; color: #171717; border-top: 1px solid #e2e1de;
+  }
+  .sheet .row .ico {
+    width: 46px; height: 46px; border-radius: 10px; background: #dedddb;
+    display: flex; align-items: center; justify-content: center; color: #4a4a48;
+  }
+  .sheet .row.hit { background: #e4ece7; }
+
+  /* ---- mock: the phone's home screen ---- */
+  #home {
+    position: absolute; inset: 0; z-index: 20;
+    background: linear-gradient(165deg, #2b4a3a 0%, #16241d 55%, #101a15 100%);
+    padding: 96px 46px 0;
+  }
+  #home .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 40px 34px; }
+  #home .app { text-align: center; }
+  #home .tile {
+    width: 106px; height: 106px; border-radius: 26px; margin: 0 auto 12px;
+    background: rgba(255,255,255,.14);
+  }
+  #home .app span { font-size: 20px; color: rgba(255,255,255,.86); }
+  #home .tile.vecini {
+    background: linear-gradient(150deg,#3d8a66,#25573f);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Newsreader', Georgia, serif; font-size: 62px; color: #fff; font-weight: 600;
+    box-shadow: 0 10px 26px rgba(0,0,0,.4);
+  }
+  #home .dock {
+    position: absolute; left: 34px; right: 34px; bottom: 40px; height: 148px;
+    border-radius: 40px; background: rgba(255,255,255,.14);
+  }
+  #home .clock {
+    text-align: center; color: #fff; font-weight: 300; letter-spacing: -2px;
+    font-size: 92px; margin-bottom: 44px; opacity: .95;
+  }
+
+  /* ---- outro ---- */
+  #outro {
+    position: absolute; inset: 0; z-index: 60;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background:
+      radial-gradient(circle at 70% 18%, rgba(47,107,79,.22) 0, transparent 52%),
+      #e9e3d6;
+    text-align: center; padding: 0 110px;
+  }
+  #outro .mark {
+    width: 148px; height: 148px; border-radius: 42px; background: #2f6b4f;
+    display: flex; align-items: center; justify-content: center; color: #fff;
+    font-family: 'Newsreader', Georgia, serif; font-size: 92px; font-weight: 600;
+    margin-bottom: 40px; box-shadow: 0 22px 50px -12px rgba(29,59,44,.5);
+  }
+  #outro .name { font-family: 'Newsreader', Georgia, serif; font-size: 92px; color: #1d3b2c; letter-spacing: -1px; }
+  #outro .line { font-family: 'Newsreader', Georgia, serif; font-size: 46px; color: #2f6b4f; margin-top: 26px; line-height: 1.3; }
+  #outro .cta {
+    margin-top: 62px; background: #2f6b4f; color: #fff; font-size: 44px; font-weight: 700;
+    padding: 26px 58px; border-radius: 999px; letter-spacing: .3px;
+  }
+</style>
+</head>
+<body>
+  <div id="caption"></div>
+
+  <div id="phone">
+    <div id="viewport">
+      <div class="layer" id="lyrA"><img id="imgA"></div>
+      <div class="layer" id="lyrB"><img id="imgB"></div>
+
+      <div id="chrome-top"><div class="url" id="url">vecini-comunitate.netlify.app</div></div>
+      <div id="chrome-bottom"><span>‹</span><span>›</span><span>⬆</span><span>▤</span><span>⧉</span></div>
+
+      <div class="sheet" id="share">
+        <div class="grabber"></div>
+        <div class="row"><span class="ico">⧉</span>Copiază</div>
+        <div class="row"><span class="ico">☆</span>Adaugă la favorite</div>
+        <div class="row hit"><span class="ico">⊞</span>Adaugă la ecranul principal</div>
+        <div class="row"><span class="ico">⌕</span>Caută în pagină</div>
+      </div>
+
+      <div id="home">
+        <div class="clock">9:41</div>
+        <div class="grid">
+          <div class="app"><div class="tile"></div><span></span></div>
+          <div class="app"><div class="tile"></div><span></span></div>
+          <div class="app"><div class="tile"></div><span></span></div>
+          <div class="app"><div class="tile"></div><span></span></div>
+          <div class="app"><div class="tile vecini">V</div><span>Vecini</span></div>
+          <div class="app"><div class="tile"></div><span></span></div>
+          <div class="app"><div class="tile"></div><span></span></div>
+          <div class="app"><div class="tile"></div><span></span></div>
+        </div>
+        <div class="dock"></div>
+      </div>
+
+      <div id="tap"></div>
+    </div>
+  </div>
+
+  <div id="outro">
+    <div class="mark">V</div>
+    <div class="name">Vecini</div>
+    <div class="line">Tot ce ține de bloc,<br>într-un singur loc liniștit.</div>
+    <div class="cta">vecini.app</div>
+  </div>
+
+  <div id="subtitle"></div>
+  <div id="progress"></div>
+
+<script type="module">
+import { BEATS, SUBS, DURATION, beatAt, subAt } from './timeline.mjs';
+
+const $ = (id) => document.getElementById(id);
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const ease = (x) => { const t = clamp(x); return t * t * (3 - 2 * t); };
+/** 0 → 1 → 0 across a window, for things that appear and leave. */
+const pulse = (t, start, dur, rise = 260) =>
+  ease((t - start) / rise) * (1 - ease((t - start - dur + rise) / rise));
+
+const SCREEN = { w: 600, h: 1299 };
+
+function draw(t) {
+  const b = beatAt(t);
+  const local = t - b.t0;
+  const span = b.t1 - b.t0;
+
+  /* ---------- which picture, and the crossfade between two ---------- */
+  const showing = b.screen || null;
+  const swapping = b.swap && t >= b.swap.at - 400 ? b.swap.screen : null;
+  const mix = b.swap ? ease((t - b.swap.at + 400) / 800) : 0;
+
+  const setImg = (img, name) => {
+    const want = name ? `screens/${name}.png` : '';
+    if (img.dataset.name !== want) { img.dataset.name = want; img.src = want; }
+  };
+  setImg($('imgA'), showing);
+  setImg($('imgB'), swapping);
+  $('lyrA').style.opacity = showing ? String(1 - mix) : '0';
+  $('lyrB').style.opacity = swapping ? String(mix) : '0';
+
+  /* ---------- panning down a full-page capture ---------- */
+  let offset = 0;
+  if (b.pan) {
+    const [from, to] = b.pan;
+    offset = -(from + (to - from) * ease(local / span));
+  }
+  $('imgA').style.transform = `translateY(${offset}px)`;
+  $('imgB').style.transform = `translateY(${offset}px)`;
+
+  /* ---------- browser chrome ---------- */
+  const chrome = !!b.chrome;
+  $('chrome-top').style.display = chrome ? 'flex' : 'none';
+  $('chrome-bottom').style.display = chrome ? 'flex' : 'none';
+  $('url').textContent = b.link || 'vecini-comunitate.netlify.app';
+  const inset = chrome ? 96 : 0;
+  for (const l of [$('lyrA'), $('lyrB')]) {
+    l.style.top = inset + 'px';
+    l.style.bottom = (chrome ? 84 : 0) + 'px';
+    l.style.overflow = 'hidden';
+  }
+
+  /* ---------- mocks ---------- */
+  $('share').style.display = b.mock === 'share-sheet' ? 'block' : 'none';
+  $('home').style.display = b.mock === 'home-screen' ? 'block' : 'none';
+  if (b.mock === 'share-sheet') {
+    // The page behind the sheet stays visible and dimmed, as it really is.
+    setImg($('imgA'), '02-landing-features');
+    $('lyrA').style.opacity = '1';
+    $('lyrA').style.filter = 'brightness(.55)';
+    $('share').style.transform = `translateY(${(1 - ease(local / 700)) * 420}px)`;
+  } else {
+    $('lyrA').style.filter = 'none';
+  }
+  if (b.mock === 'home-screen') {
+    // The app opening out of its icon at the end of the beat.
+    const opening = ease((local - 3900) / 900);
+    $('home').style.transform = `scale(${1 + opening * 0.06})`;
+    $('home').style.opacity = String(1 - opening);
+    setImg($('imgA'), '05-dashboard');
+    $('lyrA').style.opacity = String(opening);
+  } else {
+    $('home').style.transform = 'none';
+    $('home').style.opacity = '1';
+  }
+
+  /* ---------- zoom on a detail ---------- */
+  const vp = $('viewport');
+  if (b.zoom && t >= b.zoom.at - 500) {
+    const z = b.zoom;
+    const on = ease((t - z.at + 500) / 900) * (1 - ease((t - z.until) / 700));
+    const s = 1 + (z.scale - 1) * on;
+    vp.style.transformOrigin = `${z.x}px ${z.y}px`;
+    vp.style.transform = `scale(${s})`;
+  } else {
+    vp.style.transform = 'none';
+  }
+
+  /* ---------- the tap ---------- */
+  const tap = $('tap');
+  if (b.tap) {
+    const on = pulse(t, b.tap.at - 300, 1100, 220);
+    tap.style.display = on > 0.01 ? 'block' : 'none';
+    // Aimed at the thing itself rather than at coordinates copied by hand,
+    // which drift the moment the mock's layout is touched.
+    let { x, y } = b.tap;
+    if (b.tap.sel) {
+      const el = document.querySelector(b.tap.sel);
+      if (el) {
+        const r = el.getBoundingClientRect();
+        const v = document.getElementById('viewport').getBoundingClientRect();
+        x = r.left - v.left + r.width / 2;
+        y = r.top - v.top + r.height / 2;
+      }
+    }
+    tap.style.left = x + 'px';
+    tap.style.top = y + 'px';
+    tap.style.opacity = String(on);
+    tap.style.transform = `scale(${0.55 + 0.65 * ease((t - b.tap.at + 300) / 700)})`;
+  } else {
+    tap.style.display = 'none';
+  }
+
+  /* ---------- the phone itself: rises in, bows out ---------- */
+  const phone = $('phone');
+  const inAnim = ease(t / 900);
+  phone.style.opacity = String(b.outro ? 0 : inAnim);
+  phone.style.transform = `translateY(${(1 - inAnim) * 46}px)`;
+
+  /* ---------- outro ---------- */
+  const outro = $('outro');
+  if (b.outro) {
+    const on = ease(local / 800);
+    outro.style.display = 'flex';
+    outro.style.opacity = String(on);
+    outro.querySelector('.cta').style.opacity = String(ease((local - 2600) / 900));
+    outro.querySelector('.line').style.opacity = String(ease((local - 1100) / 900));
+  } else {
+    outro.style.display = 'none';
+  }
+
+  /* ---------- caption above the phone ---------- */
+  const cap = $('caption');
+  cap.textContent = b.outro ? '' : (b.caption || '');
+  const capOn = ease(local / 500) * (1 - ease((t - b.t1 + 450) / 450));
+  cap.style.opacity = String(b.outro ? 0 : capOn);
+  cap.style.transform = `translateY(${(1 - capOn) * 14}px)`;
+
+  /* ---------- subtitle ---------- */
+  const s = subAt(t);
+  $('subtitle').innerHTML = s ? `<span>${s[2]}</span>` : '';
+
+  $('progress').style.width = (t / DURATION) * 1080 + 'px';
+}
+
+/*
+  Two ways in. `?t=` renders a single frame, which is what the contact sheet
+  uses. The renderer instead loads the page once and seeks, because reloading
+  2460 times would spend its whole afternoon decoding the same PNGs.
+*/
+window.__draw = draw;
+window.__settled = () => [$('imgA'), $('imgB')]
+  .every((i) => !i.getAttribute('src') || (i.complete && i.naturalWidth > 0));
+
+const t = Number(new URLSearchParams(location.search).get('t') || 0);
+draw(t);
+
+// Every screen the timeline names, decoded up front, so no frame is caught
+// mid-load and rendered blank.
+const preload = [...new Set(BEATS.flatMap((b) => [b.screen, b.swap?.screen, '02-landing-features', '05-dashboard']).filter(Boolean))];
+Promise.all(preload.map((n) => new Promise((res) => {
+  const i = new Image();
+  i.onload = i.onerror = res;
+  i.src = `screens/${n}.png`;
+}))).then(() => document.fonts.ready).then(() => { document.body.dataset.ready = '1'; });
+</script>
+</body>
+</html>
