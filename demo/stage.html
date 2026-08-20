@@ -328,8 +328,14 @@ function draw(t) {
   cap.style.opacity = String(b.outro ? 0 : capOn);
   cap.style.transform = `translateY(${(1 - capOn) * 14}px)`;
 
-  /* ---------- subtitle ---------- */
-  const s = subAt(t);
+  /*
+    Subtitle.
+
+    Left out with ?subs=0, which is how the master is rendered: an editor like
+    Descript builds its own captions from the .srt and cannot remove text that
+    has already been baked into the pixels.
+  */
+  const s = SHOW_SUBS ? subAt(t) : null;
   $('subtitle').innerHTML = s ? `<span>${s[2]}</span>` : '';
 
   $('progress').style.width = (t / DURATION) * 1080 + 'px';
@@ -344,7 +350,9 @@ window.__draw = draw;
 window.__settled = () => [$('imgA'), $('imgB')]
   .every((i) => !i.getAttribute('src') || (i.complete && i.naturalWidth > 0));
 
-const t = Number(new URLSearchParams(location.search).get('t') || 0);
+const PARAMS = new URLSearchParams(location.search);
+const SHOW_SUBS = PARAMS.get('subs') !== '0';
+const t = Number(PARAMS.get('t') || 0);
 draw(t);
 
 // Every screen the timeline names, decoded up front, so no frame is caught

@@ -88,7 +88,13 @@ const phone = { ...devices['iPhone 13'], deviceScaleFactor: 3, isMobile: true, h
   const push = await page.locator('[role=dialog]').count();
   if (push) { await shot(page, '07-push-sheet', { settle: 400 }); await page.keyboard.press('Escape').catch(() => {}); }
 
+  /*
+    The list opens on "noi", which is right for somebody arriving at it and
+    wrong for the video: the point being made is that every report carries its
+    own status, and that only shows on "toate".
+  */
   await page.goto(`${BASE}/#/app/issues`, { waitUntil: 'networkidle' });
+  await page.getByRole('button', { name: 'Toate', exact: true }).click();
   await shot(page, '08-issues-list', { settle: 1400, full: true });
 
   await page.goto(`${BASE}/#/app/issues/i4`, { waitUntil: 'networkidle' });
@@ -111,10 +117,22 @@ const phone = { ...devices['iPhone 13'], deviceScaleFactor: 3, isMobile: true, h
   await shot(page, '13-neighbours', { settle: 1400, full: true });
 
   await page.goto(`${BASE}/#/app/announcements`, { waitUntil: 'networkidle' });
-  await shot(page, '14-announcements', { settle: 1400 });
+  await shot(page, '14-announcements', { settle: 1400, full: true });
+
+  await page.goto(`${BASE}/#/app/announcements/a1`, { waitUntil: 'networkidle' });
+  await shot(page, '16-announcement-detail', { settle: 1400 });
 
   await page.goto(`${BASE}/#/app/polls`, { waitUntil: 'networkidle' });
-  await shot(page, '15-polls', { settle: 1400 });
+  await shot(page, '15-polls', { settle: 1400, full: true });
+
+  // The vote itself, with the count already behind it — the point being that
+  // the community decides in the open rather than in an argument.
+  await page.goto(`${BASE}/#/app/polls/p1`, { waitUntil: 'networkidle' });
+  await shot(page, '17-poll-detail', { settle: 1400 });
+
+  // And the same screen once the vote is in, which is where the counts appear.
+  await page.goto(`${BASE}/#/app/polls/p2`, { waitUntil: 'networkidle' });
+  await shot(page, '18-poll-voted', { settle: 1400 });
   await ctx.close();
 }
 

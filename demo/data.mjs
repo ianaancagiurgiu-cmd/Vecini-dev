@@ -74,7 +74,7 @@ export const announcements = [
 ];
 
 export const issues = [
-  { id: 'i1', community_id: CID, reporter_id: P.Ion, status: 'new', category: 'lighting',
+  { id: 'i1', community_id: CID, reporter_id: P.Ion, status: 'new', category: 'electric',
     title: 'Becul de pe scara B nu mai merge', location: 'Scara B, etaj 3',
     description: 'De două seri e beznă între etajul 2 și 3. Seara nu se vede treapta de sus.',
     photo_url: PHOTOS.bulb, created_at: hoursAgo(3) },
@@ -90,7 +90,7 @@ export const issues = [
     title: 'Liftul se oprește între etaje', location: 'Scara B',
     description: 'S-a oprit de trei ori săptămâna asta, între 3 și 4. Ușa nu se deschide singură.',
     photo_url: PHOTOS.lift, created_at: daysAgo(2) },
-  { id: 'i5', community_id: CID, reporter_id: P.Elena, status: 'progress', category: 'water',
+  { id: 'i5', community_id: CID, reporter_id: P.Elena, status: 'progress', category: 'plumbing',
     title: 'Infiltrații în tavan la ultimul etaj', location: 'Ap. 21, scara C',
     description: 'Pata s-a mărit după ploaia de weekend. Am pus găleată sub ea.',
     photo_url: PHOTOS.damp, created_at: daysAgo(4) },
@@ -172,7 +172,9 @@ const voters2 = ['Dan','Roxana','Florin'];
 export const poll_votes = [
   ...voters1.map((n) => ({ poll_id: 'p1', option_id: 'o1', user_id: P[n] })),
   ...voters2.map((n) => ({ poll_id: 'p1', option_id: 'o2', user_id: P[n] })),
-  ...['Ana','Elena','Ion','Alina','Sorin'].map((n) => ({ poll_id: 'p2', option_id: 'o3', user_id: P[n] })),
+  // Mihai has voted on the second poll and not on the first, so the video can
+  // show both halves: the ballot still open, and the result once it is cast.
+  ...['Ana','Elena','Ion','Alina','Sorin','Mihai'].map((n) => ({ poll_id: 'p2', option_id: 'o3', user_id: P[n] })),
   ...['Diana','Paul','Monica'].map((n) => ({ poll_id: 'p2', option_id: 'o4', user_id: P[n] })),
 ];
 

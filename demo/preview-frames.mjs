@@ -1,9 +1,14 @@
 /* A contact sheet of key moments, to look at before rendering 2460 frames. */
 import { chromium } from '@playwright/test';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, rmSync } from 'node:fs';
+import { BEATS } from './timeline.mjs';
+rmSync('demo/preview', { recursive: true, force: true });
 mkdirSync('demo/preview', { recursive: true });
 
-const MOMENTS = [3000, 13000, 21000, 28500, 34800, 41000, 46000, 52000, 59500, 65000, 70000, 78000];
+// One frame per scene, taken two thirds of the way through it — late enough
+// that anything that fades or pans has arrived. Derived from the beats rather
+// than typed out, so retiming the video cannot leave this looking at the gaps.
+const MOMENTS = BEATS.map((b) => Math.round(b.t0 + (b.t1 - b.t0) * 0.66));
 const b = await chromium.launch();
 const p = await b.newPage({ viewport: { width: 1080, height: 1920 } });
 for (const t of MOMENTS) {

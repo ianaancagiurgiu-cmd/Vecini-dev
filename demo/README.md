@@ -39,13 +39,26 @@ Rezultatele apar în `demo/out/`:
 
 | Fișier | Ce e |
 |---|---|
-| `vecini-demo.mp4` | filmul, 1080×1920, 30 de cadre pe secundă, H.264 |
+| `vecini-demo-fara-text.mp4` | filmul curat, fără subtitrări scrise pe imagine |
+| `vecini-demo.mp4` | același film, cu subtitrările scrise pe imagine |
 | `vecini-demo.srt` | subtitrările, ca fișier separat |
 | `voice-over.txt` | textul de citit, cu minutul fiecărei replici |
 
-Subtitrările sunt deja scrise peste imagine în MP4. Fișierul `.srt` e acolo
-pentru platformele care preferă subtitrare separată, și pentru că YouTube o
-indexează.
+Amândouă sunt 1080×1920, 30 de cadre pe secundă, H.264 cu o pistă audio mută.
+
+**Pentru Descript** (sau orice alt editor) ia `vecini-demo-fara-text.mp4` și
+`vecini-demo.srt`. Textul scris peste imagine nu se mai poate scoate din
+pixeli, așa că filmul de editat e cel curat — editorul își pune propriile
+subtitrări din `.srt`, sau le scrie singur din vocea pe care o adaugi. Pista
+audio mută e acolo tocmai ca vocea să aibă unde să stea și ca editorul să
+așeze corect timeline-ul.
+
+**Pentru publicat direct** ia `vecini-demo.mp4`. Subtitrările sunt deja pe
+imagine, ceea ce contează pentru că majoritatea oamenilor se uită fără sonor.
+`.srt`-ul rămâne util oricum: YouTube îl indexează.
+
+Ambele ies din aceeași randare, iar subtitrările scrise pe imagine sunt arse
+din exact același `.srt`, deci nu au cum să ajungă să se contrazică.
 
 ## Înainte de randarea lungă
 
@@ -55,14 +68,18 @@ strâmb, în loc să aștepte un sfert de oră ca să afle.
 
 ## Vocea
 
-Filmul iese fără sunet, cu subtitrări scrise pe el — se poate publica așa, și
-majoritatea oamenilor oricum se uită fără sonor. Dacă vrei și voce, textul e în
-`demo/out/voice-over.txt`, cu momentul fiecărei replici, iar peste film se pune
-așa:
+Filmul iese cu o pistă audio mută. Textul de citit e în
+`demo/out/voice-over.txt`, cu momentul fiecărei replici.
+
+În Descript: pui `vecini-demo-fara-text.mp4` pe timeline, înregistrezi sau
+generezi vocea peste el, și lași editorul să facă subtitrările din vocea aceea.
+
+Din linia de comandă, dacă ai deja un fișier de voce:
 
 ```bash
 ffmpeg -i demo/out/vecini-demo.mp4 -i voce.mp3 \
-       -c:v copy -c:a aac -shortest demo/out/vecini-demo-cu-voce.mp4
+       -map 0:v -map 1:a -c:v copy -c:a aac -shortest \
+       demo/out/vecini-demo-cu-voce.mp4
 ```
 
 ## Cum e făcut, pe scurt
