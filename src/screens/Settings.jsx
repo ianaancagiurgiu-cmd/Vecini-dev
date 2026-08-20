@@ -49,6 +49,7 @@ export default function Settings() {
               them live behind this one row now. The password used to be linked
               straight from here, while the sign-in address appeared nowhere. */}
           <Item icon="👤" label={t('acc_title')} onClick={() => nav('/app/settings/account')} />
+          <Item icon="🏠" label={t('nb_title')} onClick={() => nav('/app/neighbours')} />
           <Item icon="🔔" label={t('notif_prefs')} onClick={() => nav('/app/notifications')} />
           {isStaff && <Item icon="🛡️" label={t('admin_title')} onClick={() => nav('/app/admin')} />}
           <Item icon="↩︎" label={t('auth_logout')} onClick={logout} danger />

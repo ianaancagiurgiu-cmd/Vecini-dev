@@ -2,55 +2,107 @@
 -- Se poate rula de mai multe ori fara probleme: daca ai rulat deja o parte,
 -- rularea din nou nu strica nimic si nu pierzi date.
 --
---   0008 — arhivarea, fiecare pentru lista lui
---   0007 — rulata din nou doar ca stergerea contului sa curete si arhiva
+--   0009 — numarul de telefon se muta intr-un tabel propriu, cu comutator
+--          de vizibilitate, ca sa nu mai fie citibil de oricine e logat
+--   0007 — rulata din nou doar ca stergerea contului sa curete si numarul
 --
 -- Unde se ruleaza: Supabase -> SQL Editor -> New query -> lipesti tot -> Run.
+--
+-- Avertismentul Supabase despre "destructive operations" apare din cauza
+-- cuvintelor drop/delete/alter din text. Singurul lucru care sterge date
+-- este `alter table public.profiles drop column if exists phone`, iar
+-- numerele sunt copiate in tabelul nou inainte, la cateva linii mai sus.
 
 
 -- ============================================================
--- 0008_archive.sql
+-- 0009_neighbour_phones.sql
 -- ============================================================
 
--- Vecini — archiving, one person at a time.
+-- Vecini — phone numbers, kept apart from the rest of the profile.
 -- Safe to run more than once.
 --
--- Archiving here is a private act of tidying, not moderation. A neighbour who
--- has read an announcement and is done with it can put it away, and it leaves
--- their list and nobody else's. Making it shared would hand every member the
--- power to hide an official announcement from the whole community, which is a
--- moderation decision wearing a tidying-up costume.
+-- The number was added to public.profiles, whose select policy is `using
+-- (true)`: readable by anyone signed in, anywhere, in any community. That is
+-- fine for a name and a flat number, which is what the policy was written for,
+-- and wrong for a phone number. Loosening what a profile means was the mistake;
+-- the fix is to stop keeping the number there.
 --
--- item_id deliberately carries no foreign key: it points at one of three
--- different tables, depending on kind. If the thing it refers to is ever
--- deleted, the row is left behind matching nothing, which costs a few bytes and
--- shows up nowhere. A generated identifier is never reused, so it cannot come
--- to refer to something else.
+-- It lives in its own table because it answers to a different question. A name
+-- is readable because it appears under everything that person wrote. A phone
+-- number is readable only if they chose to be reachable, and only by the people
+-- they actually live near.
 
-create table if not exists public.archived_items (
-  user_id uuid not null references auth.users(id) on delete cascade,
-  kind text not null check (kind in ('announcement', 'discussion', 'issue')),
-  item_id uuid not null,
-  archived_at timestamptz not null default now(),
-  primary key (user_id, kind, item_id)
+create table if not exists public.member_phones (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  phone text,
+  -- Off unless someone says otherwise. Anyone who typed a number before this
+  -- existed never agreed to hand it round, so they are carried over hidden.
+  visible boolean not null default false,
+  updated_at timestamptz not null default now()
 );
 
-alter table public.archived_items enable row level security;
+-- Carry over anything already saved, without publishing it. Wrapped in dynamic
+-- SQL because a plain statement naming profiles.phone would fail to parse on a
+-- database that never had that column — a fresh install, or this file run twice.
+do $carry$
+begin
+  if exists (
+    select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'profiles' and column_name = 'phone'
+  ) then
+    execute $q$
+      insert into public.member_phones (user_id, phone, visible)
+      select id, phone, false
+        from public.profiles
+       where phone is not null and btrim(phone) <> ''
+      on conflict (user_id) do nothing
+    $q$;
+  end if;
+end
+$carry$;
 
--- Yours and only yours, to read and to change. The `with check` half is what
--- stops anyone filing something away in someone else's name.
-drop policy if exists archived_items_own on public.archived_items;
-create policy archived_items_own on public.archived_items
+alter table public.profiles drop column if exists phone;
+
+-- ---------- do these two people live in the same place? ----------
+create or replace function public.shares_community(other uuid)
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select exists (
+    select 1
+      from public.memberships mine
+      join public.memberships theirs on theirs.community_id = mine.community_id
+     where mine.user_id = auth.uid()
+       and theirs.user_id = other
+  );
+$$;
+
+alter table public.member_phones enable row level security;
+
+-- Your own row, always, to read and to change.
+drop policy if exists member_phones_self on public.member_phones;
+create policy member_phones_self on public.member_phones
   for all
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
 
+-- Someone else's, only if they asked to be reachable and you are a neighbour.
+-- Both halves matter: without the first this publishes numbers nobody offered,
+-- without the second it publishes them to the whole service.
+drop policy if exists member_phones_neighbours on public.member_phones;
+create policy member_phones_neighbours on public.member_phones
+  for select
+  using (visible and public.shares_community(user_id));
+
 
 -- ============================================================
--- 0007_account_deletion.sql (din nou, cu arhiva inclusa)
+-- 0007_account_deletion.sql (din nou, ca sa curete si numarul)
 -- ============================================================
 
--- Vecini — giving up an account, and an optional phone number.
+-- Vecini — giving up an account, by emptying it rather than removing it.
 -- Safe to run more than once.
 --
 -- Why the account is emptied rather than removed:
@@ -61,9 +113,6 @@ create policy archived_items_own on public.archived_items
 -- anything, and rightly so: the alternative is a community history full of holes
 -- because one person left. So the row survives and the person is taken out of
 -- it. What was written stays, attributed to nobody in particular.
-
--- ---------- optional phone number ----------
-alter table public.profiles add column if not exists phone text;
 
 -- ---------- marks a profile nobody is behind any more ----------
 alter table public.profiles add column if not exists deleted_at timestamptz;
@@ -144,7 +193,6 @@ begin
   update public.profiles
      set full_name = 'Vecin',
          apartment = null,
-         phone = null,
          avatar_color = '#9a9586',
          deleted_at = now()
    where id = uid;
@@ -163,6 +211,10 @@ begin
   -- with them. Guarded because this function predates that table.
   if to_regclass('public.archived_items') is not null then
     delete from public.archived_items where user_id = uid;
+  end if;
+
+  if to_regclass('public.member_phones') is not null then
+    delete from public.member_phones where user_id = uid;
   end if;
 
   /*

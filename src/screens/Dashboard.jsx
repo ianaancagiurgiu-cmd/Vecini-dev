@@ -56,7 +56,11 @@ export default function Dashboard() {
       <div className="pad" style={{ paddingTop: 18 }}>
         <h1 className="display" style={{ fontSize: 28, margin: '0 0 4px' }}>{t('dash_hi')}, {currentUser.name.split(' ')[0]} 👋</h1>
         <div className="muted" style={{ fontSize: 14 }}>
-          {data.community.name} · {data.community.memberCount} {t('dash_members')}
+          {data.community.name} ·{' '}
+          {/* The neighbour count is the natural way in to the list of them. */}
+          <button onClick={() => nav('/app/neighbours')} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--green-600)', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 3 }}>
+            {data.community.memberCount} {t('dash_members')}
+          </button>
           {/* Staircases only mean something in a block of flats. */}
           {data.community.kind === 'bloc' && ` · ${data.community.staircases} ${t('dash_scari')}`}
         </div>

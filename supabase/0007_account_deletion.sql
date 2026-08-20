@@ -1,4 +1,4 @@
--- Vecini — giving up an account, and an optional phone number.
+-- Vecini — giving up an account, by emptying it rather than removing it.
 -- Safe to run more than once.
 --
 -- Why the account is emptied rather than removed:
@@ -9,9 +9,6 @@
 -- anything, and rightly so: the alternative is a community history full of holes
 -- because one person left. So the row survives and the person is taken out of
 -- it. What was written stays, attributed to nobody in particular.
-
--- ---------- optional phone number ----------
-alter table public.profiles add column if not exists phone text;
 
 -- ---------- marks a profile nobody is behind any more ----------
 alter table public.profiles add column if not exists deleted_at timestamptz;
@@ -92,7 +89,6 @@ begin
   update public.profiles
      set full_name = 'Vecin',
          apartment = null,
-         phone = null,
          avatar_color = '#9a9586',
          deleted_at = now()
    where id = uid;
@@ -111,6 +107,10 @@ begin
   -- with them. Guarded because this function predates that table.
   if to_regclass('public.archived_items') is not null then
     delete from public.archived_items where user_id = uid;
+  end if;
+
+  if to_regclass('public.member_phones') is not null then
+    delete from public.member_phones where user_id = uid;
   end if;
 
   /*

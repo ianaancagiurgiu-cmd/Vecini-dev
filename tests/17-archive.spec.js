@@ -34,16 +34,42 @@ const discussion = (id, title) => ({
   title, body: 'Text.', category: 'general', status: 'approved', created_at: iso(1),
 });
 
-/** Records what the app writes to, and answers as the service would. */
-async function trackArchiveWrites(page) {
+/*
+  Takes over the archive table entirely: records the writes, and then answers
+  reads with what those writes did.
+
+  Accepting a write and then serving a read that denies it happened is not a
+  simplification, it is a lie the app can catch. The list updates optimistically
+  and any background refresh would put the item straight back, which is a race
+  the test would lose sometimes and win others.
+*/
+async function trackArchiveWrites(page, initial = []) {
   const writes = [];
+  const rows = [...initial];
+
   await page.route(/\/rest\/v1\/archived_items/, (route) => {
     const req = route.request();
     if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS, body: '' });
-    if (req.method() === 'GET' || req.method() === 'HEAD') return route.fallback();
+
+    if (req.method() === 'GET' || req.method() === 'HEAD') {
+      return route.fulfill({
+        status: 200, contentType: 'application/json',
+        headers: { ...CORS, 'content-range': `0-${Math.max(rows.length - 1, 0)}/${rows.length}` },
+        body: JSON.stringify(rows),
+      });
+    }
+
     writes.push({ method: req.method(), url: req.url(), body: req.postData() });
+    if (req.method() === 'POST') {
+      rows.push(JSON.parse(req.postData() || '{}'));
+    } else if (req.method() === 'DELETE') {
+      const id = new URL(req.url()).searchParams.get('item_id')?.replace(/^eq\./, '');
+      const at = rows.findIndex((r) => r.item_id === id);
+      if (at >= 0) rows.splice(at, 1);
+    }
     return route.fulfill({ status: 201, contentType: 'application/json', headers: CORS, body: '[]' });
   });
+
   return writes;
 }
 
@@ -109,7 +135,7 @@ test.describe('Epic 17 — Archiving', () => {
         archived_items: [{ user_id: FAKE_USER_ID, kind: 'announcement', item_id: A1 }],
       },
     });
-    const writes = await trackArchiveWrites(page);
+    const writes = await trackArchiveWrites(page, [{ user_id: FAKE_USER_ID, kind: 'announcement', item_id: A1 }]);
     await page.goto('/#/app/announcements');
     await page.getByRole('button', { name: 'Arhivate' }).click();
 

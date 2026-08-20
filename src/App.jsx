@@ -36,6 +36,7 @@ import Account from './screens/Account.jsx';
 import Admin from './screens/Admin.jsx';
 import Moderation from './screens/Moderation.jsx';
 import Members from './screens/Members.jsx';
+import Neighbours from './screens/Neighbours.jsx';
 import CommunitySettings from './screens/CommunitySettings.jsx';
 
 function AppLayout() {
@@ -100,6 +101,7 @@ export default function App() {
           <Route path="polls" element={<Polls />} />
           <Route path="polls/new" element={<PollNew />} />
           <Route path="polls/:id" element={<PollDetail />} />
+          <Route path="neighbours" element={<Neighbours />} />
           <Route path="search" element={<Search />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="settings" element={<Settings />} />

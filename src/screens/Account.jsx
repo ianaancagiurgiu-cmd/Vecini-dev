@@ -19,6 +19,27 @@ import PendingEmail from '../components/PendingEmail.jsx';
 */
 const STACK_ABOVE = 22;
 
+function Toggle({ on, onChange, disabled }) {
+  return (
+    <button
+      onClick={disabled ? undefined : onChange}
+      role="switch"
+      aria-checked={on}
+      disabled={disabled}
+      style={{
+        width: 46, height: 27, borderRadius: 999, border: 'none', padding: 0,
+        background: on ? 'var(--green-600)' : 'var(--input-border)',
+        position: 'relative', transition: '.2s', flexShrink: 0, opacity: disabled ? .5 : 1,
+      }}
+    >
+      <span style={{
+        position: 'absolute', top: 3, left: on ? 22 : 3, width: 21, height: 21,
+        borderRadius: '50%', background: '#fff', transition: '.2s',
+      }} />
+    </button>
+  );
+}
+
 function Row({ label, value, faint, last }) {
   const stacked = String(value).length > STACK_ABOVE;
   const border = last ? {} : { borderBottom: '1px solid var(--border)' };
@@ -46,29 +67,44 @@ function Row({ label, value, faint, last }) {
 
 export default function Account() {
   const nav = useNavigate();
-  const { t, currentUser, role, data, session, pendingEmail, hasPasswordLogin, profile, setPhone, showToast } = useApp();
+  const { t, currentUser, role, data, session, pendingEmail, hasPasswordLogin, setContact, showToast } = useApp();
 
-  const savedPhone = profile?.phone || '';
-  const [phone, setPhoneField] = useState(savedPhone);
+  const saved = data.myContact;
+  const [phone, setPhoneField] = useState(saved.phone);
   const [phoneErr, setPhoneErr] = useState('');
   const [savingPhone, setSavingPhone] = useState(false);
-  const phoneChanged = phone.trim() !== savedPhone;
+  const phoneChanged = phone.trim() !== saved.phone;
 
-  const savePhone = async () => {
+  const save = async ({ phone: nextPhone, visible }) => {
     setPhoneErr('');
-    const v = phone.trim();
+    const v = nextPhone.trim();
     // Deliberately loose: the field is optional and phone numbers are written
     // in more ways than any pattern worth enforcing. This only catches a slip.
-    if (v && !/^[+()\d][\d\s()./-]{5,24}$/.test(v)) return setPhoneErr(t('acc_phone_bad'));
+    if (v && !/^[+()\d][\d\s()./-]{5,24}$/.test(v)) { setPhoneErr(t('acc_phone_bad')); return false; }
     setSavingPhone(true);
     try {
-      await setPhone(v);
-      showToast(t('acc_phone_saved'));
+      await setContact({ phone: v, visible: v ? visible : false });
+      return true;
     } catch (e) {
       setPhoneErr(t('email_error'));
+      return false;
     } finally {
       setSavingPhone(false);
     }
+  };
+
+  const savePhone = async () => {
+    if (await save({ phone, visible: saved.visible })) showToast(t('acc_phone_saved'));
+  };
+
+  /*
+    Flipping the switch saves straight away, rather than arming a second button.
+    It is a one-word decision about who may ring you, and leaving it looking
+    flipped but unsaved is how people end up reachable when they meant not to be.
+  */
+  const toggleVisible = async () => {
+    const next = !saved.visible;
+    if (await save({ phone, visible: next })) showToast(t(next ? 'acc_phone_shown' : 'acc_phone_hidden'));
   };
 
   const email = session?.user?.email || '';
@@ -125,6 +161,20 @@ export default function Account() {
             <button className="btn btn--primary" style={{ marginTop: 12 }} disabled={savingPhone} onClick={savePhone}>
               {t('save')}
             </button>
+          )}
+
+          {/* Offered only once there is a number, since there is nothing to
+              share otherwise. */}
+          {saved.phone && (
+            <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ flex: 1, fontSize: 14.5, fontWeight: 600 }}>{t('acc_phone_share')}</span>
+                <Toggle on={saved.visible} onChange={toggleVisible} disabled={savingPhone} />
+              </div>
+              <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45, marginTop: 8 }}>
+                {t(saved.visible ? 'acc_phone_share_on' : 'acc_phone_share_off')}
+              </div>
+            </div>
           )}
         </div>
 

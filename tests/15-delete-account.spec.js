@@ -91,7 +91,8 @@ test.describe('Epic 15 — Deleting an account', () => {
     await typeWord(page).fill('STERGE');
     await deleteBtn(page).click();
 
-    expect(calls.count).toBe(1);
+    // Polled, not read once: the click starts the call, it does not finish it.
+    await expect.poll(() => calls.count).toBe(1);
     // Back out to the public landing page, not left inside an account that is
     // no longer there.
     await page.waitForURL(/#\/$|\/$/, { timeout: 5000 });
@@ -127,73 +128,12 @@ test.describe('Epic 15 — Deleting an account', () => {
   });
 });
 
-test.describe('Epic 15 — The optional phone number', () => {
-  test.skip(!supabaseRef(), 'needs .env to derive the auth storage key');
-
-  test.beforeEach(async ({ page }) => {
-    await page.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
-  });
-
-  const phoneField = (page) => page.locator('input[type=tel]');
-
-  test('the field is there, empty and unmarked, because it is optional', async ({ page }) => {
-    await signedInAs(page);
-    await page.goto('/#/app/settings/account');
-    await expect(phoneField(page)).toHaveValue('');
-    await expect(page.getByText(/Opțional/)).toBeVisible();
-    // No save button until there is something to save.
-    await expect(page.getByRole('button', { name: 'Salvează' })).toHaveCount(0);
-  });
-
-  test('a saved number is shown on return', async ({ page }) => {
-    await signedInAs(page, {
-      tables: {
-        profiles: [{ id: FAKE_USER_ID, full_name: 'Mihai Georgescu', apartment: 'Ap. 12', phone: '+40722222222', avatar_color: '#8c3c52' }],
-      },
-    });
-    await page.goto('/#/app/settings/account');
-    await expect(phoneField(page)).toHaveValue('+40722222222');
-  });
-
-  test('typing a number offers to save it, and saving it does', async ({ page }) => {
-    await signedInAs(page);
-    let written = null;
-    await page.route(/\/rest\/v1\/profiles/, async (route) => {
-      const req = route.request();
-      if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS, body: '' });
-      if (req.method() === 'PATCH') {
-        written = JSON.parse(req.postData() || '{}');
-        return route.fulfill({ status: 204, headers: CORS, body: '' });
-      }
-      return route.fallback();
-    });
-
-    await page.goto('/#/app/settings/account');
-    await phoneField(page).fill('0722 222 222');
-    const save = page.getByRole('button', { name: 'Salvează' });
-    await expect(save).toBeVisible();
-    await save.click();
-
-    await expect.poll(() => written).not.toBeNull();
-    expect(written.phone).toBe('0722 222 222');
-  });
-
-  test('an obviously wrong number is caught before it is stored', async ({ page }) => {
-    await signedInAs(page);
-    let written = false;
-    await page.route(/\/rest\/v1\/profiles/, async (route) => {
-      if (route.request().method() === 'PATCH') { written = true; return route.fulfill({ status: 204, headers: CORS, body: '' }); }
-      return route.fallback();
-    });
-
-    await page.goto('/#/app/settings/account');
-    await phoneField(page).fill('abc');
-    await page.getByRole('button', { name: 'Salvează' }).click();
-
-    await expect(page.getByText('Numărul nu pare valid.')).toBeVisible();
-    expect(written).toBe(false);
-  });
-});
+/*
+  The phone number moved out of the profile and into its own table, with its own
+  visibility rule, when it turned out that a profile is readable by anyone
+  signed in anywhere. It is covered with the neighbour list it feeds, in
+  18-neighbours.spec.js, rather than here.
+*/
 
 test.describe('Epic 15 — The tally an admin can see', () => {
   test.skip(!supabaseRef(), 'needs .env to derive the auth storage key');

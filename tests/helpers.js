@@ -101,6 +101,43 @@ const CORS = {
   'access-control-expose-headers': '*',
 };
 
+/*
+  Enough of PostgREST's filtering to be honest about what a query would return.
+
+  Returning every fixture row regardless of the filters is not a shortcut, it is
+  a different answer: .maybeSingle() fails outright when handed several rows, so
+  a stub that ignores `?user_id=eq...` turns a perfectly good membership check
+  into "you belong to nothing" and bounces the test out of the app entirely.
+*/
+const RESERVED = new Set(['select', 'order', 'limit', 'offset', 'on_conflict', 'columns']);
+
+function matches(row, op, arg) {
+  const value = row === undefined ? undefined : row;
+  switch (op) {
+    case 'eq': return String(value) === arg;
+    case 'neq': return String(value) !== arg;
+    case 'is': return arg === 'null' ? value === null || value === undefined : String(value) === arg;
+    case 'in': {
+      const list = arg.replace(/^\(|\)$/g, '').split(',').map((v) => v.replace(/^"|"$/g, ''));
+      return list.includes(String(value));
+    }
+    default: return true; // anything we do not model does not narrow the result
+  }
+}
+
+function applyQuery(rows, params) {
+  let out = rows;
+  for (const [key, raw] of params) {
+    if (RESERVED.has(key)) continue;
+    const [op, ...rest] = raw.split('.');
+    const arg = rest.join('.');
+    out = out.filter((row) => matches(row[key], op, arg));
+  }
+  const limit = Number(params.get('limit'));
+  if (Number.isFinite(limit) && limit > 0) out = out.slice(0, limit);
+  return out;
+}
+
 /**
  * Signs the browser in as `user` and answers every REST read from `tables`.
  * Anything not listed answers with an empty list, which is what most of the
@@ -129,8 +166,9 @@ export async function signedInAs(page, { user = fakeUser(), tables = {} } = {}) 
     const req = route.request();
     if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS, body: '' });
 
-    const table = new URL(req.url()).pathname.split('/rest/v1/')[1].split('?')[0];
-    const rows = fixtures[table] || [];
+    const url = new URL(req.url());
+    const table = url.pathname.split('/rest/v1/')[1].split('?')[0];
+    const rows = applyQuery(fixtures[table] || [], url.searchParams);
     // PostgREST answers a single object, not a list, when the caller asked for
     // one — which is how .single() / .maybeSingle() are sent over the wire.
     const wantsOne = (req.headers()['accept'] || '').includes('pgrst.object');

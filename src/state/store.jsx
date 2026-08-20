@@ -37,6 +37,8 @@ const emptyData = () => ({
   deletedAccounts: 0,
   // What this person has put away, per kind. Nobody else's list is affected.
   archived: { announcement: [], discussion: [], issue: [] },
+  // Your own number and whether you let neighbours see it.
+  myContact: { phone: '', visible: false },
 });
 
 const genCode = (name) => {
@@ -199,7 +201,7 @@ export function AppProvider({ children }) {
 
       const memberIds = (members || []).map((m) => m.user_id);
 
-      const [{ data: announcements }, { data: discussions }, { data: issues }, { data: polls }, { data: notifications }, { data: notifPrefsRow }, { data: archivedRows }] = await Promise.all([
+      const [{ data: announcements }, { data: discussions }, { data: issues }, { data: polls }, { data: notifications }, { data: notifPrefsRow }, { data: archivedRows }, { data: phoneRows }] = await Promise.all([
         supabase.from('announcements').select('*').eq('community_id', cid).order('created_at', { ascending: false }),
         supabase.from('discussions').select('*').eq('community_id', cid).neq('status', 'hidden').order('created_at', { ascending: false }),
         supabase.from('issues').select('*').eq('community_id', cid).order('created_at', { ascending: false }),
@@ -207,6 +209,9 @@ export function AppProvider({ children }) {
         supabase.from('notifications').select('*').eq('community_id', cid).eq('user_id', userId).order('created_at', { ascending: false }),
         supabase.from('notification_prefs').select('*').eq('user_id', userId).maybeSingle(),
         supabase.from('archived_items').select('kind,item_id').eq('user_id', userId),
+        // Row-level security does the filtering: this comes back with your own
+        // row, plus the neighbours who chose to be reachable. Nothing else.
+        supabase.from('member_phones').select('user_id,phone,visible'),
       ]);
 
       const discIds = (discussions || []).map((d) => d.id);
@@ -272,11 +277,20 @@ export function AppProvider({ children }) {
       const { data: profilesRows } = peopleIds.length
         ? await supabase.from('profiles').select('*').in('id', peopleIds)
         : { data: [] };
+      const phones = {};
+      (phoneRows || []).forEach((r) => { phones[r.user_id] = { phone: r.phone || '', visible: !!r.visible }; });
+
       const users = {};
       (profilesRows || []).forEach((p) => {
         users[p.id] = {
           id: p.id, name: p.full_name, apartment: p.apartment, color: p.avatar_color,
-          phone: p.phone || '',
+          /*
+            Present only when its owner turned it on. Your own row comes back
+            either way, because you may always read your own — so filtering on
+            `visible` here is what keeps a number you have saved but not shared
+            from appearing on the list under your own name.
+          */
+          phone: phones[p.id]?.visible ? (phones[p.id].phone || '') : '',
           // The name on an emptied profile is a schema default, not something
           // to show; screens read this and say so in the reader's language.
           deleted: !!p.deleted_at,
@@ -305,6 +319,7 @@ export function AppProvider({ children }) {
         notifications: (notifications || []).map((n) => ({ ...n, createdAt: new Date(n.created_at).getTime() })),
         notifPrefs: notifPrefsRow || { announcements: true, replies: true, issues: true, polls: true, push: false },
         archived,
+        myContact: phones[userId] || { phone: '', visible: false },
         deletedAccounts: deletedAccounts || 0,
       });
     } finally {
@@ -478,12 +493,21 @@ export function AppProvider({ children }) {
     return next;
   };
 
-  /* Optional, and stored on the profile rather than on the auth record: it is
-     a way for neighbours to reach each other, not a way to sign in. */
-  const setPhone = async (phone) => {
-    const { error } = await supabase.from('profiles').update({ phone: phone.trim() || null }).eq('id', userId);
+  /*
+    The number, and whether neighbours may see it, saved together.
+
+    It lives apart from the profile because it answers a different question. A
+    name is readable because it appears under everything that person wrote; a
+    number is readable only if they chose to be reachable, and only by people
+    who actually live near them. Keeping it on the profile meant it inherited
+    the profile's rule, which is "anyone signed in, anywhere".
+  */
+  const setContact = async ({ phone, visible }) => {
+    const { error } = await supabase.from('member_phones').upsert(
+      { user_id: userId, phone: phone.trim() || null, visible, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id' },
+    );
     if (error) throw error;
-    setProfile((p) => (p ? { ...p, phone: phone.trim() || null } : p));
     await refreshAll();
   };
 
@@ -877,7 +901,7 @@ export function AppProvider({ children }) {
     userById, actions, toast, showToast,
     signUpEmail, signInEmail, signInGoogle, sendPasswordReset, signOut,
     setNewPassword, changePassword, changeEmail, pendingEmail, recoveryMode,
-    setPhone, deleteAccount, profile, recheckEmail,
+    setContact, deleteAccount, profile, recheckEmail,
     // Google-only accounts have no password to change; offer "set one" instead.
     hasPasswordLogin: !!session?.user?.identities?.some((i) => i.provider === 'email'),
     joinByCode, createCommunity, findCommunityByCode,
