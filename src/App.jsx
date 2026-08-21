@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useApp } from './state/store.jsx';
+import { hideSplash } from './lib/splash.js';
 import { PhoneChrome } from './components/Chrome.jsx';
 import BottomNav from './components/BottomNav.jsx';
 import { Toast } from './components/ui.jsx';
@@ -59,7 +61,20 @@ function AppLayout() {
 }
 
 export default function App() {
-  const { recoveryMode } = useApp();
+  const { recoveryMode, authLoading, authed, membershipResolved, hasCommunity, data } = useApp();
+  const loc = useLocation();
+
+  /*
+    The waiting screen goes away when a real screen is ready to replace it,
+    which is not the same as React having mounted. Outside /app that is as soon
+    as the session is known; inside it, AppLayout keeps returning null until the
+    membership and the community have arrived too, so we wait for those as well
+    rather than uncovering a blank page.
+  */
+  const inApp = loc.pathname.startsWith('/app');
+  const ready = !authLoading
+    && (!inApp || !authed || (membershipResolved && (!hasCommunity || !!data.community)));
+  useEffect(() => { if (ready) hideSplash(); }, [ready]);
 
   // A reset-password link signs the person in, which would otherwise drop them
   // straight into the dashboard. While the recovery session is active, the only

@@ -20,8 +20,97 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!--
+    The waiting screen lives here, in the document itself, rather than in a
+    component. Everything React draws arrives after a 566 KB bundle has been
+    fetched and parsed, which is exactly the wait this is meant to cover — a
+    splash that loads with the app would appear at the end of the pause instead
+    of during it. Inline styles, no image files, no requests: it paints on the
+    first frame and costs nothing.
+
+    It sits outside #root so React never clears it. App.jsx takes it away once
+    there is a real screen behind it, which is later than you would think —
+    signing in, resolving membership and loading the community are three more
+    blank moments after the bundle arrives.
+  -->
+  <style>
+    #splash {
+      position: fixed; inset: 0; z-index: 9999;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 26px; background: #faf7f0;
+      transition: opacity .45s ease;
+    }
+    #splash.is-done { opacity: 0; pointer-events: none; }
+    #splash .snail { width: 190px; height: auto; overflow: visible; }
+    #splash .word {
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 19px; color: #545b4f; letter-spacing: .02em;
+    }
+    #splash .word i { font-style: normal; opacity: .25; animation: sp-dot 1.5s infinite; }
+    #splash .word i:nth-child(2) { animation-delay: .25s; }
+    #splash .word i:nth-child(3) { animation-delay: .5s; }
+    @keyframes sp-dot { 0%, 65%, 100% { opacity: .25; } 30% { opacity: 1; } }
+
+    /* Slow, because that is the joke. */
+    #splash .crawl { animation: sp-crawl 6s ease-in-out infinite; }
+    #splash .bob   { animation: sp-bob 2.4s ease-in-out infinite; transform-origin: 96px 108px; }
+    #splash .horn  { animation: sp-horn 2.4s ease-in-out infinite; transform-origin: 150px 74px; }
+    @keyframes sp-crawl { 0%, 100% { transform: translateX(-16px); } 50% { transform: translateX(16px); } }
+    @keyframes sp-bob   { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.03, .97); } }
+    @keyframes sp-horn  { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(4deg); } }
+
+    @media (prefers-reduced-motion: reduce) {
+      #splash .crawl, #splash .bob, #splash .horn, #splash .word i { animation: none; }
+      #splash .word i { opacity: 1; }
+    }
+  </style>
 </head>
 <body>
+  <div id="splash" role="status" aria-label="Se încarcă">
+    <svg class="snail" viewBox="0 0 200 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g class="crawl">
+        <g class="bob">
+          <!-- the foot, one continuous shape from tail to head -->
+          <path d="M14 108 C14 92 28 86 46 86 L118 86 C136 86 142 76 143 62 C144 52 152 47 160 50
+                   C169 53 171 63 166 71 C158 86 146 100 124 106 Z"
+                fill="#efe8d6" stroke="#1a1c18" stroke-width="4.5" stroke-linejoin="round"/>
+
+          <!-- eyestalks -->
+          <g class="horn">
+            <path d="M150 60 C147 44 143 34 138 27" stroke="#1a1c18" stroke-width="4.5" stroke-linecap="round"/>
+            <path d="M161 60 C164 46 170 38 176 33" stroke="#1a1c18" stroke-width="4.5" stroke-linecap="round"/>
+            <circle cx="136" cy="23" r="6.5" fill="#faf7f0" stroke="#1a1c18" stroke-width="4"/>
+            <circle cx="178" cy="29" r="6.5" fill="#faf7f0" stroke="#1a1c18" stroke-width="4"/>
+            <circle cx="136.5" cy="23.5" r="2.4" fill="#1a1c18"/>
+            <circle cx="178.5" cy="29.5" r="2.4" fill="#1a1c18"/>
+          </g>
+
+          <!-- a small, unbothered smile -->
+          <path d="M152 76 C156 80 161 80 165 76" stroke="#1a1c18" stroke-width="3.6" stroke-linecap="round"/>
+
+          <!-- the shell -->
+          <g transform="translate(74 56)">
+            <circle r="38" fill="#2f6b4f" stroke="#1a1c18" stroke-width="4.5"/>
+            <path d="M0.0 -30.0 L5.7 -29.1 L11.0 -27.2 L15.8 -24.4 L20.0 -20.7 L23.3 -16.3 L25.7 -11.4
+                     L27.1 -6.2 L27.5 -0.9 L26.9 4.3 L25.3 9.3 L22.8 13.7 L19.5 17.6 L15.6 20.8
+                     L11.2 23.1 L6.5 24.5 L1.7 25.0 L-3.1 24.5 L-7.6 23.2 L-11.8 21.0 L-15.4 18.2
+                     L-18.3 14.7 L-20.5 10.8 L-21.9 6.6 L-22.4 2.2 L-22.1 -2.1 L-21.0 -6.2
+                     L-19.2 -9.9 L-16.7 -13.2 L-13.7 -15.9 L-10.2 -18.0 L-6.5 -19.3 L-2.7 -19.9
+                     L1.2 -19.7 L4.8 -18.8 L8.2 -17.3 L11.2 -15.1 L13.6 -12.5 L15.5 -9.5
+                     L16.7 -6.3 L17.3 -2.9 L17.3 0.4 L16.6 3.7 L15.3 6.6 L13.5 9.3 L11.2 11.4
+                     L8.7 13.1 L5.9 14.2 L3.0 14.8 L0.1 14.8 L-2.7 14.2 L-5.2 13.2 L-7.5 11.7
+                     L-9.3 9.8 L-10.8 7.7 L-11.8 5.3 L-12.3 2.9 L-12.3 0.5 L-11.8 -1.8
+                     L-11.0 -3.9 L-9.8 -5.8 L-8.3 -7.4 L-6.5 -8.5 L-4.6 -9.4 L-2.7 -9.8
+                     L-0.7 -9.8 L1.1 -9.4 L2.8 -8.8 L4.3 -7.8 L5.5 -6.6 L6.4 -5.2 L7.0 -3.8
+                     L7.3 -2.3 L7.3 -0.8 L7.0 0.6 L6.4 1.8 L5.7 2.9 L4.8 3.7 L3.8 4.4 L2.7 4.7"
+                  stroke="#faf7f0" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+          </g>
+        </g>
+      </g>
+    </svg>
+    <div class="word">Se încarcă<i>.</i><i>.</i><i>.</i></div>
+  </div>
+
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
 </body>
