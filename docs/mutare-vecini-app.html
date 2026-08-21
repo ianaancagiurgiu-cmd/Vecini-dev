@@ -1,0 +1,390 @@
+<title>Mutarea pe vecini.app</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --ground:        #f2efe6;
+    --surface:       #fbf9f4;
+    --surface-sunk:  #eae6d9;
+    --ink:           #1a1c18;
+    --ink-soft:      #545b4f;
+    --ink-faint:     #838a7c;
+    --rule:          #ddd8c8;
+    --green:         #2f6b4f;
+    --green-bright:  #3d8a66;
+    --green-wash:    #e4eee7;
+    --clay:          #a84a24;
+    --clay-wash:     #f6e7de;
+    --code-bg:       #ffffff;
+    --code-rule:     #d8d2c0;
+    --shadow:        0 1px 2px rgba(26,28,24,.05), 0 8px 24px -14px rgba(26,28,24,.28);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:       #14170f;
+      --surface:      #1c2017;
+      --surface-sunk: #232719;
+      --ink:          #eceadf;
+      --ink-soft:     #a8ae9e;
+      --ink-faint:    #7d8474;
+      --rule:         #333827;
+      --green:        #7fd1a8;
+      --green-bright: #9adfbc;
+      --green-wash:   #1b2a21;
+      --clay:         #e0916a;
+      --clay-wash:    #2e1f16;
+      --code-bg:      #10130c;
+      --code-rule:    #383d2b;
+      --shadow:       0 1px 2px rgba(0,0,0,.4), 0 8px 24px -14px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:       #14170f;
+    --surface:      #1c2017;
+    --surface-sunk: #232719;
+    --ink:          #eceadf;
+    --ink-soft:     #a8ae9e;
+    --ink-faint:    #7d8474;
+    --rule:         #333827;
+    --green:        #7fd1a8;
+    --green-bright: #9adfbc;
+    --green-wash:   #1b2a21;
+    --clay:         #e0916a;
+    --clay-wash:    #2e1f16;
+    --code-bg:      #10130c;
+    --code-rule:    #383d2b;
+    --shadow:       0 1px 2px rgba(0,0,0,.4), 0 8px 24px -14px rgba(0,0,0,.7);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+    font-size: 16.5px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 760px; margin: 0 auto; padding: 56px 26px 96px; }
+
+  /* ---------- masthead ---------- */
+  .eyebrow {
+    font-size: 12px; font-weight: 600; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--green); margin-bottom: 14px;
+  }
+  h1 {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: clamp(38px, 7vw, 56px); font-weight: 600; line-height: 1.05;
+    letter-spacing: -.02em; margin: 0 0 20px; text-wrap: balance;
+  }
+  .standfirst {
+    font-size: 18px; color: var(--ink-soft); max-width: 60ch; margin: 0 0 34px;
+  }
+
+  .route {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 12px;
+    padding: 18px 20px; margin-bottom: 44px;
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 12px;
+  }
+  .route .from, .route .to {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 14px;
+  }
+  .route .from { color: var(--ink-faint); text-decoration: line-through; text-decoration-thickness: 1px; }
+  .route .to { color: var(--green); font-weight: 600; }
+  .route .arrow { color: var(--ink-faint); }
+
+  /* ---------- the good-news panel ---------- */
+  .note {
+    border-left: 3px solid var(--green); background: var(--green-wash);
+    padding: 16px 20px; border-radius: 0 10px 10px 0; margin: 0 0 48px;
+  }
+  .note p { margin: 0; font-size: 15.5px; }
+  .note strong { font-weight: 600; }
+
+  /* ---------- steps ---------- */
+  .venue { margin-bottom: 46px; }
+  .venue-head {
+    display: flex; align-items: baseline; gap: 14px;
+    padding-bottom: 12px; margin-bottom: 22px; border-bottom: 1px solid var(--rule);
+  }
+  .num {
+    font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600;
+    color: var(--ground); background: var(--green);
+    width: 26px; height: 26px; flex: none; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative; top: 2px;
+  }
+  .venue-head h2 {
+    font-family: 'Newsreader', Georgia, serif; font-size: 27px; font-weight: 600;
+    margin: 0; letter-spacing: -.01em; flex: 1;
+  }
+  .venue-head .where {
+    font-size: 12.5px; color: var(--ink-faint);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .venue > p { margin: 0 0 16px; max-width: 62ch; }
+  .venue > p:last-child { margin-bottom: 0; }
+
+  ol.acts { margin: 0; padding: 0 0 0 22px; }
+  ol.acts > li { margin-bottom: 18px; padding-left: 4px; }
+  ol.acts > li::marker { color: var(--ink-faint); font-size: 14px; }
+
+  /* ---------- the values she copies ---------- */
+  code {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: .88em; background: var(--surface-sunk);
+    padding: 2px 6px; border-radius: 5px; word-break: break-word;
+  }
+
+  .records { margin: 18px 0 22px; display: flex; flex-direction: column; gap: 12px; }
+  .rec {
+    background: var(--code-bg); border: 1px solid var(--code-rule);
+    border-radius: 10px; padding: 14px 16px; box-shadow: var(--shadow);
+  }
+  .rec-label {
+    font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); margin-bottom: 10px;
+  }
+  .fields { display: grid; grid-template-columns: auto 1fr; gap: 7px 16px; align-items: baseline; }
+  .fields dt {
+    font-size: 12.5px; color: var(--ink-soft); font-weight: 500;
+  }
+  .fields dd {
+    margin: 0; font-family: 'IBM Plex Mono', monospace; font-size: 14px;
+    color: var(--ink); font-weight: 600; word-break: break-all;
+  }
+
+  /* ---------- waiting / warning ---------- */
+  .wait {
+    display: flex; gap: 14px; align-items: flex-start;
+    background: var(--clay-wash); border-radius: 10px;
+    padding: 16px 18px; margin: 0 0 46px;
+  }
+  .wait-mark {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--clay);
+    flex: none; padding-top: 2px;
+  }
+  .wait p { margin: 0 0 8px; font-size: 15px; }
+  .wait p:last-child { margin-bottom: 0; }
+
+  .critical {
+    border-left: 3px solid var(--clay); background: var(--clay-wash);
+    padding: 14px 18px; border-radius: 0 10px 10px 0; margin: 18px 0 0;
+    font-size: 15px;
+  }
+  .critical strong { color: var(--clay); font-weight: 600; }
+
+  /* ---------- closing checks ---------- */
+  .checks { margin-top: 8px; padding: 0; list-style: none; }
+  .checks li {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 12px 0; border-bottom: 1px solid var(--rule); font-size: 15.5px;
+  }
+  .checks li:last-child { border-bottom: none; }
+  .checks .box {
+    flex: none; width: 15px; height: 15px; margin-top: 4px;
+    border: 1.5px solid var(--ink-faint); border-radius: 4px;
+  }
+
+  footer {
+    margin-top: 56px; padding-top: 22px; border-top: 1px solid var(--rule);
+    font-size: 14px; color: var(--ink-faint);
+  }
+  footer p { margin: 0 0 8px; }
+  footer p:last-child { margin-bottom: 0; }
+
+  @media (max-width: 560px) {
+    .venue-head { flex-wrap: wrap; gap: 8px 12px; }
+    .venue-head .where { width: 100%; }
+    .fields { grid-template-columns: 1fr; gap: 3px; }
+    .fields dt { margin-top: 8px; }
+  }
+</style>
+
+<div class="wrap">
+
+  <div class="eyebrow">Vecini · punere în funcțiune</div>
+  <h1>Mutarea pe vecini.app</h1>
+  <p class="standfirst">
+    Trei site-uri de atins, în ordinea asta. Ordinea contează: certificatul de securitate
+    nu poate fi emis înainte ca domeniul să arate spre Netlify.
+  </p>
+
+  <div class="route">
+    <span class="from">vecini-comunitate.netlify.app</span>
+    <span class="arrow">→</span>
+    <span class="to">vecini.app</span>
+  </div>
+
+  <div class="note">
+    <p>
+      <strong>În cod nu e nimic de schimbat.</strong> Aplicația își construiește singură
+      toate linkurile din adresa la care rulează — invitațiile, resetarea parolei,
+      schimbarea emailului. În momentul în care se deschide de la vecini.app,
+      linkurile pe care le trimite pornesc de acolo.
+    </p>
+  </div>
+
+  <!-- 1 -->
+  <section class="venue">
+    <div class="venue-head">
+      <span class="num">1</span>
+      <h2>Namecheap</h2>
+      <span class="where">Domain List → Manage → Advanced DNS</span>
+    </div>
+
+    <p>
+      Domeniul e cumpărat și stă acum pe pagina de parcare Namecheap. Întâi <em>ștergi</em>
+      cele două înregistrări puse automat acolo — una de tip <code>A</code> pe
+      <code>@</code> și una <code>CNAME</code> pe <code>www</code> care duce la
+      <code>parkingpage.namecheap.com</code>. Dacă rămân, se bat cap în cap cu cele noi.
+    </p>
+    <p>Apoi adaugi exact astea două:</p>
+
+    <div class="records">
+      <div class="rec">
+        <div class="rec-label">Înregistrarea 1</div>
+        <dl class="fields">
+          <dt>Type</dt>   <dd>A Record</dd>
+          <dt>Host</dt>   <dd>@</dd>
+          <dt>Value</dt>  <dd>75.2.60.5</dd>
+          <dt>TTL</dt>    <dd>Automatic</dd>
+        </dl>
+      </div>
+      <div class="rec">
+        <div class="rec-label">Înregistrarea 2</div>
+        <dl class="fields">
+          <dt>Type</dt>   <dd>CNAME Record</dd>
+          <dt>Host</dt>   <dd>www</dd>
+          <dt>Value</dt>  <dd>vecini-comunitate.netlify.app</dd>
+          <dt>TTL</dt>    <dd>Automatic</dd>
+        </dl>
+      </div>
+    </div>
+
+    <p>
+      Nameserverele rămân unde sunt. Netlify o să-ți propună să le muți la el —
+      nu e nevoie, merge și așa, și e mai ușor de dat înapoi dacă vrei.
+    </p>
+  </section>
+
+  <!-- 2 -->
+  <section class="venue">
+    <div class="venue-head">
+      <span class="num">2</span>
+      <h2>Netlify</h2>
+      <span class="where">vecini-comunitate → Domain management</span>
+    </div>
+
+    <ol class="acts">
+      <li><strong>Add a domain</strong> → scrii <code>vecini.app</code> → Verify.</li>
+      <li>
+        Îl marchezi ca <strong>primary domain</strong>. De aici încolo, vechea adresă
+        <code>vecini-comunitate.netlify.app</code> redirecționează singură spre vecini.app —
+        nu se pierde nimeni pe drum.
+      </li>
+      <li>
+        Certificatul HTTPS se emite automat, la <strong>Domain management → HTTPS</strong>.
+        Nu trebuie să faci nimic acolo, doar să aștepți să apară.
+      </li>
+    </ol>
+  </section>
+
+  <div class="wait">
+    <span class="wait-mark">Aici<br>aștepți</span>
+    <div>
+      <p>
+        Între momentul în care DNS-ul pornește spre Netlify și cel în care certificatul e gata,
+        <strong>vecini.app o să arate o eroare de securitate în browser</strong>. E normal și
+        trece singur — de obicei în câteva minute, rareori mai mult de o oră.
+      </p>
+      <p>
+        <code>.app</code> e un domeniu unde Google impune HTTPS obligatoriu, fără excepție.
+        De asta vezi eroare, și nu o pagină nesecurizată. Nu ai stricat nimic.
+      </p>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <section class="venue">
+    <div class="venue-head">
+      <span class="num">3</span>
+      <h2>Supabase</h2>
+      <span class="where">Authentication → URL Configuration</span>
+    </div>
+
+    <p>
+      Pasul ăsta nu se vede, dar e cel care rupe lucrurile dacă e sărit.
+      Supabase construiește butoanele din emailuri pornind de la <em>Site URL</em>,
+      și refuză orice redirect care nu e pe listă.
+    </p>
+
+    <div class="records">
+      <div class="rec">
+        <div class="rec-label">Site URL</div>
+        <dl class="fields">
+          <dt>Valoare</dt> <dd>https://vecini.app</dd>
+        </dl>
+      </div>
+      <div class="rec">
+        <div class="rec-label">Redirect URLs — adaugi, nu înlocuiești</div>
+        <dl class="fields">
+          <dt>Adaugi</dt> <dd>https://vecini.app/**</dd>
+          <dt>Lași</dt>   <dd>https://vecini-comunitate.netlify.app/**</dd>
+        </dl>
+      </div>
+    </div>
+
+    <p>
+      Pe cea veche o lași câteva zile, cât timp mai pot circula emailuri trimise
+      înainte de mutare. După aceea o poți scoate.
+    </p>
+
+    <div class="critical">
+      <strong>În Google Cloud Console nu intri.</strong> Autentificarea cu Google trece prin
+      adresa Supabase, nu prin a aplicației, deci nu se schimbă nimic acolo.
+      Singurul loc care contează pentru Google e lista Redirect URLs de mai sus.
+    </div>
+  </section>
+
+  <!-- verification -->
+  <section class="venue">
+    <div class="venue-head">
+      <span class="num">4</span>
+      <h2>Ce verifici la final</h2>
+      <span class="where">din telefon, nu din calculator</span>
+    </div>
+
+    <ul class="checks">
+      <li><span class="box"></span> <span><code>https://vecini.app</code> se deschide, cu lacăt, fără avertisment.</span></li>
+      <li><span class="box"></span> <span>Vechea adresă te duce automat la cea nouă.</span></li>
+      <li><span class="box"></span> <span>Intri în cont cu email și parolă.</span></li>
+      <li><span class="box"></span> <span>Intri în cont cu Google.</span></li>
+      <li><span class="box"></span> <span>Ceri resetarea parolei și butonul din email duce la vecini.app.</span></li>
+      <li><span class="box"></span> <span>Un link de invitație generat acum începe cu vecini.app.</span></li>
+    </ul>
+  </section>
+
+  <footer>
+    <p>
+      <strong>Un lucru de știut:</strong> aplicația pe care o ai deja pe ecranul principal
+      rămâne legată de adresa veche. Redirecționează corect, dar browserul o tratează ca pe
+      un alt site — cu alte date salvate. Merită ștearsă și pusă din nou de la vecini.app.
+      Deocamdată te privește doar pe tine.
+    </p>
+    <p>
+      Valorile de mai sus le-am verificat direct: <code>75.2.60.5</code> e adresa curentă
+      a serverelor Netlify pentru domenii de bază, iar <code>vecini.app</code> e într-adevăr
+      înregistrat la Namecheap și încă neconfigurat.
+    </p>
+  </footer>
+
+</div>
