@@ -54,7 +54,7 @@ export default function Dashboard() {
 
       {/* greeting */}
       <div className="pad" style={{ paddingTop: 18 }}>
-        <h1 className="display" style={{ fontSize: 28, margin: '0 0 4px' }}>{t('dash_hi')}, {currentUser.name.split(' ')[0]} 👋</h1>
+        <h1 className="display" style={{ fontSize: 28, margin: '0 0 4px' }}>{t('dash_hi')}, {currentUser.name.split(' ')[0]}</h1>
         <div className="muted" style={{ fontSize: 14 }}>
           {data.community.name} ·{' '}
           {/* The neighbour count is the natural way in to the list of them. */}
