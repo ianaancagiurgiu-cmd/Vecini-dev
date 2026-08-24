@@ -21,7 +21,7 @@ test.describe('Waiting screen', () => {
     const splash = page.locator('#splash');
     await expect(splash).toBeVisible();
     await expect(splash.locator('svg.snail')).toBeVisible();
-    await expect(splash).toContainText('Se încarcă');
+    await expect(splash).toContainText('Loading');
 
     // It has to cover the page, not sit above it in the document flow.
     const box = await splash.boundingBox();
@@ -30,33 +30,27 @@ test.describe('Waiting screen', () => {
     expect(box.height).toBeGreaterThanOrEqual(view.height - 1);
   });
 
-  test('shows a bar that fills as the snail travels', async ({ page }) => {
+  test('shows a bar with a segment sweeping along it', async ({ page }) => {
     await page.route('**/assets/*.js', (r) => r.abort());
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
     await expect(page.locator('#splash .track')).toBeVisible();
-    await expect(page.locator('#splash .trail')).toBeVisible();
+    const bar = page.locator('#splash .bar');
+    await expect(bar).toBeVisible();
 
     /*
-      Position, not class names. Asserting that an element carries an animation
-      would pass on a keyframe that moves nothing, which is the whole thing
-      being checked here.
+      Sampled position, not a class name. Asserting that the element carries an
+      animation would pass on keyframes that move nothing, which is the whole
+      property being checked. Several samples because the sweep loops: any two
+      chosen badly can land on the same point.
     */
-    const where = async (sel) => {
-      const b = await page.locator(sel).boundingBox();
-      return { x: b.x, w: b.width };
-    };
-    const snailAt = () => where('#splash .mover');
-    const trailAt = () => where('#splash .trail');
-
-    const s0 = await snailAt();
-    const t0 = await trailAt();
-    await page.waitForTimeout(2200);
-    const s1 = await snailAt();
-    const t1 = await trailAt();
-
-    expect(s1.x, 'the snail should have moved along').toBeGreaterThan(s0.x + 5);
-    expect(t1.w, 'the trail should have grown behind him').toBeGreaterThan(t0.w + 5);
+    const seen = [];
+    for (let i = 0; i < 8; i++) {
+      seen.push((await bar.boundingBox()).x);
+      await page.waitForTimeout(140);
+    }
+    const spread = Math.max(...seen) - Math.min(...seen);
+    expect(spread, `the bar should travel; saw x = ${seen.map(Math.round).join(', ')}`).toBeGreaterThan(40);
   });
 
   test('is gone once a real screen is behind it', async ({ page }) => {
