@@ -88,13 +88,15 @@ export default function AnnouncementDetail() {
         {isStaff && (
           <div style={{ marginTop: 26, paddingTop: 18, borderTop: '1px solid var(--border)' }}>
             {!editing ? (
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={open} className="btn btn--ghost" style={{ flex: 1, padding: '11px', fontSize: 13.5 }}>
+              // Stacked rather than side by side: at half a phone's width these
+              // labels wrap to three cramped lines each.
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <button onClick={open} className="btn btn--ghost" style={{ padding: '12px', fontSize: 13.5 }}>
                   {priority ? t('ann_priority_edit') : t('ann_priority_set')}
                 </button>
                 {priority && (
                   <button onClick={release} disabled={busy} className="btn btn--ghost"
-                    style={{ flex: 1, padding: '11px', fontSize: 13.5, color: 'var(--terracotta)', opacity: busy ? .5 : 1 }}>
+                    style={{ padding: '12px', fontSize: 13.5, color: 'var(--terracotta)', opacity: busy ? .5 : 1 }}>
                     {t('ann_priority_clear')}
                   </button>
                 )}

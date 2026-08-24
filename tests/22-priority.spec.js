@@ -121,7 +121,7 @@ test.describe('Priority announcements', () => {
     await asStaff(page);
     await page.goto('/#/app/announcements/a1');
 
-    await expect(page.getByRole('button', { name: 'Coboară acum' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Schimbă data' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Deprioritizează anunț' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Schimbă data prioritate anunț' })).toBeVisible();
   });
 });
