@@ -52,20 +52,34 @@
     #splash .word i:nth-child(3) { animation-delay: .5s; }
     @keyframes sp-dot { 0%, 65%, 100% { opacity: .25; } 30% { opacity: 1; } }
 
-    /* Indeterminate on purpose: nothing here knows how far along the loading
-       is, so a segment that sweeps says "working" without claiming a figure. */
+    /*
+      Fills once, and only forwards.
+
+      The previous version swept a segment across on a loop, and the jump back
+      to the start read as a flicker. Nothing here knows how far along the
+      loading actually is, so this fills fast at first and then keeps slowing,
+      never quite arriving — the shape of not knowing, rather than a figure
+      invented to look precise. It reaches the end only when the app really is
+      ready, which is the one moment the number is true.
+    */
     #splash .track {
       position: relative; width: 208px; height: 7px;
       border-radius: 99px; background: #e6e0cf; overflow: hidden;
     }
     #splash .bar {
-      position: absolute; top: 0; bottom: 0; left: 0; width: 42%;
+      position: absolute; top: 0; bottom: 0; left: 0; width: 100%;
       border-radius: 99px; background: #2f6b4f;
-      animation: sp-sweep 1.5s cubic-bezier(.55, .1, .4, .9) infinite;
+      transform-origin: left center; transform: scaleX(0);
+      animation: sp-fill 14s cubic-bezier(.08, .82, .24, 1) forwards;
     }
-    @keyframes sp-sweep {
-      0%   { transform: translateX(-100%); }
-      100% { transform: translateX(238%); }
+    @keyframes sp-fill {
+      0%   { transform: scaleX(0); }
+      100% { transform: scaleX(.93); }
+    }
+    /* The last stretch, once there is something behind it to show. */
+    #splash.is-done .bar {
+      animation: none; transform: scaleX(1);
+      transition: transform .22s ease-out;
     }
 
     /* He stays put and keeps breathing: gathers at the back, pushes forward,
@@ -89,9 +103,8 @@
     @media (prefers-reduced-motion: reduce) {
       #splash .bob, #splash .shell, #splash .horn, #splash .horn2, #splash .word i { animation: none; }
       #splash .word i { opacity: 1; }
-      /* Still says "working", with nothing sliding about. */
-      #splash .bar { animation: sp-pulse 2s ease-in-out infinite; width: 100%; }
-      @keyframes sp-pulse { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
+      /* Still fills, just without the easing drama. */
+      #splash .bar { animation: sp-fill 14s linear forwards; }
     }
   </style>
 </head>

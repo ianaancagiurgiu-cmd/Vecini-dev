@@ -30,27 +30,34 @@ test.describe('Waiting screen', () => {
     expect(box.height).toBeGreaterThanOrEqual(view.height - 1);
   });
 
-  test('shows a bar with a segment sweeping along it', async ({ page }) => {
+  test('fills the bar progressively, and never backwards', async ({ page }) => {
     await page.route('**/assets/*.js', (r) => r.abort());
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
     await expect(page.locator('#splash .track')).toBeVisible();
     const bar = page.locator('#splash .bar');
-    await expect(bar).toBeVisible();
 
     /*
-      Sampled position, not a class name. Asserting that the element carries an
-      animation would pass on keyframes that move nothing, which is the whole
-      property being checked. Several samples because the sweep loops: any two
-      chosen badly can land on the same point.
+      Both halves matter, and the second is the one that was actually wrong
+      before: a segment that swept across on a loop grew and then snapped back
+      to nothing every second and a half, which reads as a flicker rather than
+      as progress. Sampling only the start and end would not have caught it.
     */
     const seen = [];
-    for (let i = 0; i < 8; i++) {
-      seen.push((await bar.boundingBox()).x);
-      await page.waitForTimeout(140);
+    for (let i = 0; i < 10; i++) {
+      seen.push((await bar.boundingBox()).width);
+      await page.waitForTimeout(160);
     }
-    const spread = Math.max(...seen) - Math.min(...seen);
-    expect(spread, `the bar should travel; saw x = ${seen.map(Math.round).join(', ')}`).toBeGreaterThan(40);
+
+    const shown = seen.map((w) => Math.round(w));
+    expect(seen.at(-1), `the bar should have grown; saw ${shown.join(', ')}`)
+      .toBeGreaterThan(seen[0] + 20);
+
+    for (let i = 1; i < seen.length; i++) {
+      // A pixel of slack for rounding, but nothing that reads as a jump back.
+      expect(seen[i], `the bar went backwards at sample ${i}: ${shown.join(', ')}`)
+        .toBeGreaterThanOrEqual(seen[i - 1] - 1);
+    }
   });
 
   test('is gone once a real screen is behind it', async ({ page }) => {
