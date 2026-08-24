@@ -5,10 +5,11 @@ import { timeAgo } from '../lib/format.js';
 
 function TopBar() {
   const nav = useNavigate();
-  const { data, currentUser } = useApp();
+  const { data, t, currentUser } = useApp();
   const unread = data.notifications.filter((n) => !n.read).length;
-  const IconBtn = ({ onClick, children, badge }) => (
-    <button onClick={onClick} style={{ position: 'relative', width: 40, height: 40, borderRadius: 12, border: '1px solid var(--border)', background: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+  // Icon-only, so it needs a name of its own — there is no text to read out.
+  const IconBtn = ({ onClick, children, badge, label }) => (
+    <button onClick={onClick} aria-label={label} style={{ position: 'relative', width: 40, height: 40, borderRadius: 12, border: '1px solid var(--border)', background: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
       {children}
       {badge > 0 && <span style={{ position: 'absolute', top: -5, right: -5, minWidth: 18, height: 18, padding: '0 4px', borderRadius: 999, background: 'var(--terracotta)', color: '#fff', fontSize: 10.5, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{badge}</span>}
     </button>
@@ -17,10 +18,10 @@ function TopBar() {
     <div className="pad" style={{ display: 'flex', alignItems: 'center', gap: 9, paddingTop: 10 }}>
       <button onClick={() => nav('/app/settings')}><Avatar user={currentUser} size={40} /></button>
       <div style={{ flex: 1 }} />
-      <IconBtn onClick={() => nav('/app/search')}>
+      <IconBtn onClick={() => nav('/app/search')} label={t('search_title')}>
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#5a5e54" strokeWidth="2"/><path d="M16.5 16.5L21 21" stroke="#5a5e54" strokeWidth="2" strokeLinecap="round"/></svg>
       </IconBtn>
-      <IconBtn onClick={() => nav('/app/notifications')} badge={unread}>
+      <IconBtn onClick={() => nav('/app/notifications')} badge={unread} label={t('notif_title')}>
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M6 9a6 6 0 1112 0c0 5 2 6 2 6H4s2-1 2-6z" stroke="#5a5e54" strokeWidth="2" strokeLinejoin="round"/><path d="M10 20a2 2 0 004 0" stroke="#5a5e54" strokeWidth="2"/></svg>
       </IconBtn>
     </div>

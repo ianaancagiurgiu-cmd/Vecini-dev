@@ -1,9 +1,11 @@
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
+import { useBack } from '../lib/useBack.js';
 import { ScreenHeader } from '../components/ui.jsx';
 
 export default function Admin() {
   const nav = useNavigate();
+  const back = useBack('/app/settings');
   const { data, t, counted, plural, isStaff, role } = useApp();
   if (!isStaff) return <Navigate to="/app" replace />;
 
@@ -34,7 +36,7 @@ export default function Admin() {
 
   return (
     <div className="screen">
-      <ScreenHeader title={t('admin_title')} onBack={() => nav('/app')} kicker={role === 'admin' ? t('role_admin') : t('role_moderator')} />
+      <ScreenHeader title={t('admin_title')} onBack={back} kicker={role === 'admin' ? t('role_admin') : t('role_moderator')} />
       <div className="pad" style={{ paddingTop: 18 }}>
         {pending > 0 && (
           <div style={{ background: 'var(--status-prog-bg)', borderRadius: 14, padding: '13px 15px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>

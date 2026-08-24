@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
+import { useBack } from '../lib/useBack.js';
 import { ScreenHeader, PasswordInput } from '../components/ui.jsx';
 
 export default function ChangePassword() {
   const nav = useNavigate();
+  const back = useBack('/app/settings/account');
   const { t, changePassword, setNewPassword, hasPasswordLogin, showToast } = useApp();
   const [current, setCurrent] = useState('');
   const [pw, setPw] = useState('');
@@ -34,7 +36,7 @@ export default function ChangePassword() {
 
   return (
     <div className="screen">
-      <ScreenHeader title={hasPasswordLogin ? t('pw_change_title') : t('pw_set_title')} onBack={() => nav('/app/settings')} />
+      <ScreenHeader title={hasPasswordLogin ? t('pw_change_title') : t('pw_set_title')} onBack={back} />
       <div className="pad" style={{ paddingTop: 18 }}>
         {!hasPasswordLogin && (
           <div className="card" style={{ background: 'var(--status-new-bg)', border: 'none', marginBottom: 16 }}>

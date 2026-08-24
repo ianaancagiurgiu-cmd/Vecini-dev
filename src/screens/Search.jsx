@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
+import { useBack } from '../lib/useBack.js';
 import { ScreenHeader, Badge } from '../components/ui.jsx';
 import { timeAgo, formatDate, STATUS, CATEGORIES, catLabel } from '../lib/format.js';
 
@@ -13,6 +14,7 @@ function highlight(text, q) {
 
 export default function Search() {
   const nav = useNavigate();
+  const back = useBack('/app');
   const { data, t, L, lang, counted } = useApp();
   const [tab, setTab] = useState('search'); // search | archive
   const [q, setQ] = useState('');
@@ -50,7 +52,7 @@ export default function Search() {
 
   return (
     <div className="screen">
-      <ScreenHeader title={t('search_title')} />
+      <ScreenHeader title={t('search_title')} onBack={back} />
       {/* tabs */}
       <div className="pad" style={{ paddingTop: 14, display: 'flex', gap: 8 }}>
         <button onClick={() => setTab('search')} className={'pill' + (tab === 'search' ? ' pill--active' : '')}>🔎 {t('search')}</button>

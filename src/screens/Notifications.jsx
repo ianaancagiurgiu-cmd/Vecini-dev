@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
+import { useBack } from '../lib/useBack.js';
 import { ScreenHeader, Empty } from '../components/ui.jsx';
 import { timeAgo } from '../lib/format.js';
 
@@ -16,6 +17,7 @@ function Toggle({ on, onChange }) {
 
 export default function Notifications() {
   const nav = useNavigate();
+  const back = useBack('/app');
   const { data, t, lang, actions, showToast } = useApp();
   const [tab, setTab] = useState('list');
   const list = [...data.notifications].sort((a, b) => b.createdAt - a.createdAt);
@@ -63,7 +65,7 @@ export default function Notifications() {
 
   return (
     <div className="screen">
-      <ScreenHeader title={t('notif_title')} onBack={() => nav('/app')}
+      <ScreenHeader title={t('notif_title')} onBack={back}
         right={tab === 'list' && list.some((n) => !n.read) ? <button onClick={actions.markAllRead} style={{ background: 'none', border: 'none', color: 'var(--green-600)', fontSize: 12.5, fontWeight: 700 }}>{t('notif_mark_all')}</button> : null} />
       <div className="pad" style={{ paddingTop: 14, display: 'flex', gap: 8 }}>
         <button onClick={() => setTab('list')} className={'pill' + (tab === 'list' ? ' pill--active' : '')}>{t('notif_title')}</button>

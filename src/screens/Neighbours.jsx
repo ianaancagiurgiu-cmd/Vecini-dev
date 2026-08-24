@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
+import { useBack } from '../lib/useBack.js';
 import { ScreenHeader, Avatar, Empty } from '../components/ui.jsx';
 
 /*
@@ -22,7 +22,7 @@ const PhoneIcon = () => (
 );
 
 export default function Neighbours() {
-  const nav = useNavigate();
+  const back = useBack('/app');
   const { data, t, counted, userById, currentUser } = useApp();
   const [q, setQ] = useState('');
 
@@ -43,7 +43,7 @@ export default function Neighbours() {
 
   return (
     <div className="screen">
-      <ScreenHeader title={t('nb_title')} onBack={() => nav('/app')}
+      <ScreenHeader title={t('nb_title')} onBack={back}
         kicker={counted('dash_members', data.members.length)} />
 
       <div className="pad" style={{ paddingTop: 14 }}>
