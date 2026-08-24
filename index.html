@@ -37,11 +37,57 @@
     #splash {
       position: fixed; inset: 0; z-index: 9999;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      gap: 26px; background: #faf7f0;
+      gap: 30px; background: #faf7f0;
       transition: opacity .45s ease;
     }
     #splash.is-done { opacity: 0; pointer-events: none; }
-    #splash .snail { width: 190px; height: auto; overflow: visible; }
+
+    /* The bar is the trail he leaves, not a separate gauge. It loops, so it
+       never pretends to be a percentage of anything. */
+    #splash .stage { position: relative; width: 244px; }
+    #splash .mover { width: 92px; animation: sp-travel 7s linear infinite; }
+    #splash .snail { width: 100%; height: auto; display: block; overflow: visible; }
+    #splash .track {
+      height: 7px; margin-top: 10px; border-radius: 99px;
+      background: #e6e0cf; overflow: hidden;
+    }
+    #splash .trail {
+      height: 100%; border-radius: 99px; background: #2f6b4f;
+      transform-origin: left center; animation: sp-trail 7s linear infinite;
+    }
+
+    /* Across, then both fade at the seam so the restart is not a jump. */
+    @keyframes sp-travel {
+      0%   { transform: translateX(0);     opacity: 0; }
+      6%   { opacity: 1; }
+      88%  { opacity: 1; }
+      100% { transform: translateX(152px); opacity: 0; }
+    }
+    @keyframes sp-trail {
+      0%   { transform: scaleX(0);    opacity: 0; }
+      6%   { opacity: 1; }
+      88%  { opacity: 1; }
+      100% { transform: scaleX(1);    opacity: 0; }
+    }
+
+    /* He inches: gathers at the back, then pushes forward. The shell rocks a
+       beat behind the body, the way a weight carried on your back does. */
+    #splash .bob   { animation: sp-bob 1.25s ease-in-out infinite; transform-origin: 30px 108px; }
+    #splash .shell { animation: sp-shell 1.25s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+    #splash .horn  { animation: sp-horn 2.6s ease-in-out infinite; transform-origin: 150px 74px; }
+    #splash .horn2 { animation: sp-horn 2.6s ease-in-out infinite .4s; transform-origin: 161px 60px; }
+    @keyframes sp-bob {
+      0%, 100% { transform: scale(1, 1); }
+      35%      { transform: scale(.93, 1.08); }
+      70%      { transform: scale(1.05, .95); }
+    }
+    @keyframes sp-shell {
+      0%, 100% { transform: rotate(0deg)  translateY(0); }
+      35%      { transform: rotate(-4deg) translateY(1px); }
+      70%      { transform: rotate(3deg)  translateY(-1px); }
+    }
+    @keyframes sp-horn { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(6deg); } }
+
     #splash .word {
       font-family: Georgia, 'Times New Roman', serif;
       font-size: 19px; color: #545b4f; letter-spacing: .02em;
@@ -51,24 +97,22 @@
     #splash .word i:nth-child(3) { animation-delay: .5s; }
     @keyframes sp-dot { 0%, 65%, 100% { opacity: .25; } 30% { opacity: 1; } }
 
-    /* Slow, because that is the joke. */
-    #splash .crawl { animation: sp-crawl 6s ease-in-out infinite; }
-    #splash .bob   { animation: sp-bob 2.4s ease-in-out infinite; transform-origin: 96px 108px; }
-    #splash .horn  { animation: sp-horn 2.4s ease-in-out infinite; transform-origin: 150px 74px; }
-    @keyframes sp-crawl { 0%, 100% { transform: translateX(-16px); } 50% { transform: translateX(16px); } }
-    @keyframes sp-bob   { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.03, .97); } }
-    @keyframes sp-horn  { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(4deg); } }
-
     @media (prefers-reduced-motion: reduce) {
-      #splash .crawl, #splash .bob, #splash .horn, #splash .word i { animation: none; }
+      #splash .mover, #splash .bob, #splash .shell, #splash .horn,
+      #splash .horn2, #splash .word i { animation: none; }
       #splash .word i { opacity: 1; }
+      #splash .mover { transform: translateX(76px); }
+      /* Still says "working", without anything sliding about. */
+      #splash .trail { animation: sp-pulse 2s ease-in-out infinite; transform: scaleX(.55); }
+      @keyframes sp-pulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
     }
   </style>
 </head>
 <body>
   <div id="splash" role="status" aria-label="Se încarcă">
-    <svg class="snail" viewBox="0 0 200 130" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <g class="crawl">
+    <div class="stage">
+      <div class="mover">
+      <svg class="snail" viewBox="0 0 200 130" fill="none" xmlns="http://www.w3.org/2000/svg">
         <g class="bob">
           <!-- the foot, one continuous shape from tail to head -->
           <path d="M14 108 C14 92 28 86 46 86 L118 86 C136 86 142 76 143 62 C144 52 152 47 160 50
@@ -78,10 +122,12 @@
           <!-- eyestalks -->
           <g class="horn">
             <path d="M150 60 C147 44 143 34 138 27" stroke="#1a1c18" stroke-width="4.5" stroke-linecap="round"/>
-            <path d="M161 60 C164 46 170 38 176 33" stroke="#1a1c18" stroke-width="4.5" stroke-linecap="round"/>
             <circle cx="136" cy="23" r="6.5" fill="#faf7f0" stroke="#1a1c18" stroke-width="4"/>
-            <circle cx="178" cy="29" r="6.5" fill="#faf7f0" stroke="#1a1c18" stroke-width="4"/>
             <circle cx="136.5" cy="23.5" r="2.4" fill="#1a1c18"/>
+          </g>
+          <g class="horn2">
+            <path d="M161 60 C164 46 170 38 176 33" stroke="#1a1c18" stroke-width="4.5" stroke-linecap="round"/>
+            <circle cx="178" cy="29" r="6.5" fill="#faf7f0" stroke="#1a1c18" stroke-width="4"/>
             <circle cx="178.5" cy="29.5" r="2.4" fill="#1a1c18"/>
           </g>
 
@@ -89,7 +135,7 @@
           <path d="M152 76 C156 80 161 80 165 76" stroke="#1a1c18" stroke-width="3.6" stroke-linecap="round"/>
 
           <!-- the shell -->
-          <g transform="translate(74 56)">
+          <g transform="translate(74 56)"><g class="shell">
             <circle r="38" fill="#2f6b4f" stroke="#1a1c18" stroke-width="4.5"/>
             <path d="M0.0 -30.0 L5.7 -29.1 L11.0 -27.2 L15.8 -24.4 L20.0 -20.7 L23.3 -16.3 L25.7 -11.4
                      L27.1 -6.2 L27.5 -0.9 L26.9 4.3 L25.3 9.3 L22.8 13.7 L19.5 17.6 L15.6 20.8
@@ -104,10 +150,12 @@
                      L-0.7 -9.8 L1.1 -9.4 L2.8 -8.8 L4.3 -7.8 L5.5 -6.6 L6.4 -5.2 L7.0 -3.8
                      L7.3 -2.3 L7.3 -0.8 L7.0 0.6 L6.4 1.8 L5.7 2.9 L4.8 3.7 L3.8 4.4 L2.7 4.7"
                   stroke="#faf7f0" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-          </g>
+          </g></g>
         </g>
-      </g>
-    </svg>
+      </svg>
+      </div>
+      <div class="track"><div class="trail"></div></div>
+    </div>
     <div class="word">Se încarcă<i>.</i><i>.</i><i>.</i></div>
   </div>
 

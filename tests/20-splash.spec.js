@@ -30,6 +30,35 @@ test.describe('Waiting screen', () => {
     expect(box.height).toBeGreaterThanOrEqual(view.height - 1);
   });
 
+  test('shows a bar that fills as the snail travels', async ({ page }) => {
+    await page.route('**/assets/*.js', (r) => r.abort());
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+    await expect(page.locator('#splash .track')).toBeVisible();
+    await expect(page.locator('#splash .trail')).toBeVisible();
+
+    /*
+      Position, not class names. Asserting that an element carries an animation
+      would pass on a keyframe that moves nothing, which is the whole thing
+      being checked here.
+    */
+    const where = async (sel) => {
+      const b = await page.locator(sel).boundingBox();
+      return { x: b.x, w: b.width };
+    };
+    const snailAt = () => where('#splash .mover');
+    const trailAt = () => where('#splash .trail');
+
+    const s0 = await snailAt();
+    const t0 = await trailAt();
+    await page.waitForTimeout(2200);
+    const s1 = await snailAt();
+    const t1 = await trailAt();
+
+    expect(s1.x, 'the snail should have moved along').toBeGreaterThan(s0.x + 5);
+    expect(t1.w, 'the trail should have grown behind him').toBeGreaterThan(t0.w + 5);
+  });
+
   test('is gone once a real screen is behind it', async ({ page }) => {
     await page.goto('/', { waitUntil: 'networkidle' });
     await expect(page.getByText('Comunitatea ta de cartier').first()).toBeVisible();
