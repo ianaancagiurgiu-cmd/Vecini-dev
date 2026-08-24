@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
-import { ScreenHeader, AddButton, Empty } from '../components/ui.jsx';
+import { ScreenHeader, AddButton, Empty, PriorityBadge } from '../components/ui.jsx';
 import ArchiveButton from '../components/ArchiveButton.jsx';
-import { timeAgo } from '../lib/format.js';
+import { timeAgo, isPriority } from '../lib/format.js';
 
 export default function Announcements() {
   const nav = useNavigate();
@@ -16,7 +16,7 @@ export default function Announcements() {
 
   const list = data.announcements
     .filter((a) => archivedIds.has(a.id) === viewingArchive)
-    .sort((a, b) => (b.pinned - a.pinned) || (b.createdAt - a.createdAt));
+    .sort((a, b) => (isPriority(b) - isPriority(a)) || (b.createdAt - a.createdAt));
 
   return (
     <div className="screen">
@@ -41,7 +41,7 @@ export default function Announcements() {
             <button onClick={() => nav('/app/announcements/' + a.id)} className="card" style={{ textAlign: 'left', width: '100%' }}>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 9, paddingRight: 42 }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--status-done-bg)', color: 'var(--green-500)', padding: '4px 9px', borderRadius: 7, fontSize: 11, fontWeight: 700 }}>📢 {t('ann_official')}</span>
-                {a.pinned && <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--amber)' }}>📌 {t('ann_pinned')}</span>}
+                {isPriority(a) && <PriorityBadge until={a.pinnedUntil} t={t} lang={lang} />}
               </div>
               <div className="serif" style={{ fontSize: 17.5, fontWeight: 600, lineHeight: 1.25, marginBottom: 6 }}>{L(a, 'title')}</div>
               <div className="muted" style={{ fontSize: 13.5, lineHeight: 1.45, marginBottom: 10, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{L(a, 'body')}</div>

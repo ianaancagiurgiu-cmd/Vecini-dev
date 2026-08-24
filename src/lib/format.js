@@ -15,6 +15,24 @@ export function timeAgo(ts, t) {
   return fill('time_ago_days', d);
 }
 
+/*
+  How long an announcement stays at the top, said the way a person would.
+
+  Within the week the weekday is what people actually plan around — "până joi"
+  places it better than a date does. Past that the day and month carry more,
+  because "până marți" nine days out is genuinely ambiguous about which Tuesday.
+*/
+export function untilLabel(ts, lang) {
+  const loc = LOCALES[lang] || LOCALES.ro;
+  const d = new Date(ts);
+  const days = Math.ceil((ts - Date.now()) / 86400000);
+  if (days <= 6) return d.toLocaleDateString(loc, { weekday: 'long' });
+  return d.toLocaleDateString(loc, { day: 'numeric', month: 'short' });
+}
+
+/** Is this announcement being held at the top right now? */
+export const isPriority = (a) => !!a?.pinnedUntil && a.pinnedUntil > Date.now();
+
 export function formatDate(ts, lang) {
   const d = new Date(ts);
   return d.toLocaleDateString(LOCALES[lang] || LOCALES.ro, { day: 'numeric', month: 'long', year: 'numeric' });

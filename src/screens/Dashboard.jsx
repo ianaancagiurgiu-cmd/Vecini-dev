@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
-import { Avatar } from '../components/ui.jsx';
-import { timeAgo } from '../lib/format.js';
+import { Avatar, PriorityBadge } from '../components/ui.jsx';
+import { timeAgo, isPriority } from '../lib/format.js';
 
 function TopBar() {
   const nav = useNavigate();
@@ -44,7 +44,7 @@ export default function Dashboard() {
   const nav = useNavigate();
   const { data, t, L, lang, counted, currentUser, userById } = useApp();
 
-  const anns = [...data.announcements].sort((a, b) => (b.pinned - a.pinned) || (b.createdAt - a.createdAt)).slice(0, 3);
+  const anns = [...data.announcements].sort((a, b) => (isPriority(b) - isPriority(a)) || (b.createdAt - a.createdAt)).slice(0, 3);
   const openIssues = data.issues.filter((i) => i.status !== 'resolved').length;
   const activePolls = data.polls.filter((p) => !p.closed && p.endsAt > Date.now()).length;
   const discs = data.discussions.filter((d) => d.status === 'approved').sort((a, b) => b.createdAt - a.createdAt).slice(0, 3);
@@ -91,7 +91,7 @@ export default function Dashboard() {
                 style={{ textAlign: 'left', border: 'none', borderRadius: 17, padding: 17, color: '#eaf3ed', background: i === 0 ? 'linear-gradient(135deg,#2f6b4f,#245840)' : '#fff', ...(i !== 0 ? { color: 'var(--ink-900)', border: '1px solid var(--border)' } : {}) }}>
                 <div style={{ display: 'flex', gap: 7, marginBottom: 9, alignItems: 'center' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: i === 0 ? 'rgba(255,255,255,.16)' : 'var(--status-done-bg)', color: i === 0 ? '#eaf3ed' : 'var(--green-500)', padding: '4px 9px', borderRadius: 7, fontSize: 11, fontWeight: 700 }}>📢 {t('ann_official')}</span>
-                  {a.pinned && <span style={{ fontSize: 11, fontWeight: 700, color: i === 0 ? '#bcd4c5' : 'var(--ink-300)' }}>📌 {t('ann_pinned')}</span>}
+                  {isPriority(a) && <PriorityBadge until={a.pinnedUntil} t={t} lang={lang} tone={i === 0 ? '#e8c98a' : 'var(--amber)'} />}
                 </div>
                 <div className="serif" style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.25, marginBottom: 6 }}>{L(a, 'title')}</div>
                 <div style={{ fontSize: 12.5, color: i === 0 ? '#bcd4c5' : 'var(--ink-300)' }}>{userById(a.authorId).name} · {timeAgo(a.createdAt, t, lang)}</div>

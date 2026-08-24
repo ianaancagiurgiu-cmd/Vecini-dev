@@ -53,22 +53,22 @@ export const member_phones = [
 ];
 
 export const announcements = [
-  { id: 'a1', community_id: CID, author_id: P.Ana, pinned: true, created_at: hoursAgo(5),
+  { id: 'a1', community_id: CID, author_id: P.Ana, pinned_until: daysAgo(-3), created_at: hoursAgo(5),
     title: 'Apa caldă se oprește joi, între 9 și 15',
     body: 'Se înlocuiește o vană pe coloana principală. Lucrarea e anunțată de furnizor și afectează toate cele patru scări. Vă rugăm să vă faceți rezerve de dimineață.' },
-  { id: 'a2', community_id: CID, author_id: P.Ana, pinned: false, created_at: daysAgo(2),
+  { id: 'a2', community_id: CID, author_id: P.Ana, pinned_until: null, created_at: daysAgo(2),
     title: 'Adunarea generală, sâmbătă la ora 18',
     body: 'Ne vedem în holul de la scara A. Pe ordinea de zi: bugetul pentru reparația acoperișului și oferta pentru curățenie.' },
-  { id: 'a3', community_id: CID, author_id: P.Elena, pinned: false, created_at: daysAgo(4),
+  { id: 'a3', community_id: CID, author_id: P.Elena, pinned_until: null, created_at: daysAgo(4),
     title: 'S-a montat iluminatul nou pe scara C',
     body: 'Becurile vechi au fost înlocuite cu corpuri cu senzor. Dacă observați vreunul care nu pornește, raportați la sesizări.' },
-  { id: 'a4', community_id: CID, author_id: P.Ana, pinned: false, created_at: daysAgo(9),
+  { id: 'a4', community_id: CID, author_id: P.Ana, pinned_until: null, created_at: daysAgo(9),
     title: 'Program nou pentru ridicarea gunoiului',
     body: 'De luni, mașina vine marțea și vinerea dimineața. Vă rugăm să scoateți sacii cu o seară înainte.' },
-  { id: 'a5', community_id: CID, author_id: P.Elena, pinned: false, created_at: daysAgo(16),
+  { id: 'a5', community_id: CID, author_id: P.Elena, pinned_until: null, created_at: daysAgo(16),
     title: 'Curățenie generală în subsol, duminică',
     body: 'Cine are lucruri depozitate acolo e rugat să le mute până sâmbătă seara.' },
-  { id: 'a6', community_id: CID, author_id: P.Ana, pinned: false, created_at: daysAgo(23),
+  { id: 'a6', community_id: CID, author_id: P.Ana, pinned_until: null, created_at: daysAgo(23),
     title: 'Cotele de întreținere pe luna trecută sunt afișate',
     body: 'Le găsiți la avizier și pe grupul asociației. Termenul de plată rămâne data de 25.' },
 ];

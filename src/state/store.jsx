@@ -320,7 +320,7 @@ export function AppProvider({ children }) {
         users,
         members: (members || []).map((m) => ({ userId: m.user_id, role: m.role, joinedAt: new Date(m.joined_at).getTime() })),
         community: { id: community.id, name: community.name, address: community.address, description: community.description, code: community.code, joinMode: community.join_mode, kind: community.kind || 'bloc', memberCount: (members || []).length, staircases: 1 },
-        announcements: (announcements || []).map((a) => ({ ...a, authorId: a.author_id, createdAt: new Date(a.created_at).getTime() })),
+        announcements: (announcements || []).map((a) => ({ ...a, authorId: a.author_id, createdAt: new Date(a.created_at).getTime(), pinnedUntil: a.pinned_until ? new Date(a.pinned_until).getTime() : null })),
         discussions: discussionsFull.map((d) => ({ ...d, authorId: d.author_id, createdAt: new Date(d.created_at).getTime(), replies: d.replies.map((r) => ({ ...r, authorId: r.author_id, createdAt: new Date(r.created_at).getTime() })) })),
         issues: issuesFull.map((i) => ({ ...i, reporterId: i.reporter_id, photo: i.photo_url, createdAt: new Date(i.created_at).getTime(), history: i.history.map((h) => ({ ...h, byId: h.by_id, at: new Date(h.at).getTime() })), comments: i.comments.map((c) => ({ ...c, authorId: c.author_id, createdAt: new Date(c.created_at).getTime() })) })),
         polls: pollsFull.map((p) => ({ ...p, authorId: p.author_id, createdAt: new Date(p.created_at).getTime(), endsAt: new Date(p.ends_at).getTime() })),
@@ -743,9 +743,16 @@ export function AppProvider({ children }) {
       showToast(t('ann_members_notified'));
       return row.id;
     },
-    togglePin: async (id) => {
-      const a = data.announcements.find((x) => x.id === id);
-      await supabase.from('announcements').update({ pinned: !a?.pinned }).eq('id', id);
+    /*
+      Priority is a deadline, not a flag. Passing null lets an announcement go
+      immediately; passing a date holds it up until then, after which it drops
+      on its own with nobody having to remember it.
+    */
+    setPriority: async (id, until) => {
+      const { error } = await supabase.from('announcements')
+        .update({ pinned_until: until ? new Date(until).toISOString() : null })
+        .eq('id', id);
+      if (error) { showToast(t('ann_priority_error')); throw error; }
       await refreshAll();
     },
 

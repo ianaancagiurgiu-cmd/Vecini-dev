@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../state/store.jsx';
+import { untilLabel } from '../lib/format.js';
 
 export const LANGS = [
   { code: 'ro', flag: '🇷🇴', short: 'RO', name: 'Română' },
@@ -140,6 +141,19 @@ export function Empty({ icon = '🌿', children }) {
 }
 
 // A generic top header inside a screen
+/*
+  How long an announcement is being held at the top. The date is part of the
+  badge rather than hidden in the editor, because it is the half that tells a
+  reader whether the notice still concerns them.
+*/
+export function PriorityBadge({ until, t, lang, tone }) {
+  return (
+    <span style={{ fontSize: 11.5, fontWeight: 700, color: tone || 'var(--amber)', whiteSpace: 'nowrap' }}>
+      {t('ann_priority')} · {t('ann_priority_until').replace('{date}', untilLabel(until, lang))}
+    </span>
+  );
+}
+
 export function ScreenHeader({ title, onBack, right, kicker }) {
   return (
     <div style={{ position: 'sticky', top: 0, zIndex: 40, background: 'var(--app-bg)', paddingTop: 6 }}>
