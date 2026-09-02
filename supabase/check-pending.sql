@@ -17,7 +17,8 @@ with expected(fisier, obiect, tip, la_ce_e) as (values
   ('0009_neighbour_phones', 'public.shares_community',  'function', 'cine are voie să vadă un număr'),
   ('0010_admin_handover',   'public.keep_one_admin',    'function', 'oprește rămânerea fără administrator'),
   ('0010_admin_handover',   'public.set_member_role',   'function', 'schimbarea rolului unui membru'),
-  ('0010_admin_handover',   'public.transfer_admin',    'function', 'predarea comunității altcuiva')
+  ('0010_admin_handover',   'public.transfer_admin',    'function', 'predarea comunității altcuiva'),
+  ('0011_priority_until',   'announcements.pinned_until', 'column', 'anunțuri prioritare, cu termen')
 )
 select
   e.fisier,
@@ -25,6 +26,13 @@ select
   e.la_ce_e,
   case when e.tip = 'table'
          then to_regclass(e.obiect) is not null
+       when e.tip = 'column'
+         then exists (
+           select 1 from information_schema.columns
+            where table_schema = 'public'
+              and table_name  = split_part(e.obiect, '.', 1)
+              and column_name = split_part(e.obiect, '.', 2)
+         )
          else to_regprocedure(e.obiect || '(' ||
                 case e.obiect
                   when 'public.shares_community' then 'uuid'
