@@ -207,6 +207,7 @@
   <h1>Vecini<span class="domain">.app</span></h1>
   <p class="thesis">Everything about the building in one place, instead of scrolling back through the group chat to find it.</p>
   <div class="meta">
+    <span><b>Iana Giurgiu</b></span>
     <span><b>Role</b> &nbsp;Product · UX · Development · QA · Deployment</span>
     <span><b>Built</b> &nbsp;July to September 2026</span>
     <span><b>Status</b> &nbsp;Live</span>
@@ -215,47 +216,55 @@
 
 <section class="col">
   <div class="label">Problem</div>
-  <h2>Buildings coordinate on WhatsApp, and WhatsApp loses things.</h2>
+  <h2>Every building I know runs on a WhatsApp group, and things get lost there.</h2>
   <p class="lede">
     In Romanian apartment buildings the <em class="ro">asociația de proprietari</em> runs everything
     through a group chat. The hot water going off on Thursday, the lift stuck between floors, the
-    vote on whether to repair the roof this year, all of it arrives in the same stream, in the same
-    grey bubbles, and all of it has scrolled away by evening.
+    vote on whether to repair the roof this year, it all arrives in the same stream and it has all
+    scrolled away by the evening.
   </p>
   <p>
-    Announcements that matter get buried under chatter within a few hours. Problems get reported but
-    never get a status, so the same broken intercom is reported four times by four people who each
-    assume nobody has done anything about it. Decisions get made by whoever is still arguing at
-    eleven at night, and afterwards there is no record of who actually agreed to what.
+    I watched this happen in my own building for years. Announcements that matter get buried under
+    chatter within a few hours. Problems get reported but they never get a status, so the same broken
+    intercom is reported four times by four people who each assume nobody has done anything about it.
+    And the decisions get made by whoever is still arguing at eleven at night, with no record
+    afterwards of who actually agreed to what.
   </p>
   <p>
-    The neighbours who most need the announcement tend to be the older ones, the people who would
-    have read a notice pinned to the <em class="ro">avizier</em> in the hall. They are also the least
-    likely to scroll back three hundred messages looking for it.
+    The neighbours who most need to see an announcement are usually the older ones, the people who
+    would have read a notice pinned on the <em class="ro">avizier</em> in the hall. They are also the
+    least likely to scroll back three hundred messages looking for it.
   </p>
 </section>
 
 <section class="col">
   <div class="label">My role</div>
-  <h2>Everything except writing the code by hand.</h2>
+  <h2>I ran it the way I run any project, and this time I did every role myself.</h2>
   <p>
-    I decided what the app does, what it deliberately leaves out, and what every screen says. I wrote
-    the specifications in plain language, checked each change on my own phone, and cut features when
-    they turned out to be worth less than they cost.
+    I have been a Project Manager for over 6 years, on tech projects with teams of 10 and more, in
+    healthcare research and in the energy industry. The work here was the same as it was there:
+    decide what we are actually delivering, write it down clearly enough that somebody can build it,
+    keep the scope honest when it starts to grow, and check that what came back is what was agreed.
   </p>
   <p>
-    I tested the way a user would rather than the way a test suite does, by opening the app and
-    noticing what felt wrong. That found things no automated test would have flagged:
+    What was different is that I covered all of the roles. I decided what the app does and what it
+    deliberately leaves out, I wrote the text on every screen, I tested each change on my own phone
+    before it went anywhere, and I ran the deployment and the database migrations myself.
+  </p>
+  <p>
+    The testing is the part I would keep if I could only keep one. I opened the app the way a
+    neighbour would and noticed what felt wrong, and that found things no automated test would have
+    flagged:
   </p>
   <ul class="caught">
     <li><span><b>The install prompt sat under the navigation bar.</b> It rendered correctly and read well, and on a real screen the bottom third of it was covered.</span></li>
     <li><span><b>Pinned announcements were pointless.</b> Nothing ever un-pinned them, so a notice about last month's water outage stayed at the top forever. The fix was to make pinning expire on a date.</span></li>
-    <li><span><b>The loading bar flickered.</b> It swept across and snapped back to zero every second and a half. That reads as the screen glitching rather than as progress.</span></li>
+    <li><span><b>The loading bar flickered.</b> It swept across and snapped back to zero every second and a half, which reads as the screen glitching rather than as progress.</span></li>
     <li><span><b>"1 răspunsuri".</b> Romanian counts in three forms rather than two, and the dashboard was getting the singular wrong on every discussion that had one reply.</span></li>
   </ul>
   <p style="margin-top:22px">
-    I also did the parts nobody puts in a portfolio. Buying the domain, pointing DNS at the host,
-    running database migrations against production, pasting the email templates in by hand.
+    I also did the parts nobody puts in a portfolio. Buying the domain, pointing the DNS at the host,
+    running database migrations against production, and pasting the email templates in by hand.
   </p>
 </section>
 
@@ -271,8 +280,8 @@
     person chose to share it.
   </p>
   <p>
-    Around those: joining by invitation code, three languages, push notifications, an archive so
-    long lists stay readable, admin handover so a community is never left without one, and account
+    Around those: joining by invitation code, three languages, push notifications, an archive so long
+    lists stay readable, admin handover so a community is never left without one, and account
     deletion that anonymises rather than erases.
   </p>
   <div class="figures">
@@ -308,15 +317,15 @@
 
 <section class="col">
   <div class="label">Product calls</div>
-  <h2>The decisions that took longest were about what to leave out.</h2>
+  <h2>Most of my time went on deciding what not to build.</h2>
   <div class="calls">
     <div class="call">
       <h3>Deleting an account anonymises, it does not erase</h3>
       <p>
         Removing a departing neighbour's rows outright would tear holes through the building's own
-        record, leaving replies that answer nobody and issues that nobody reported. Their name,
-        email, phone number and access are deleted. What they wrote stays, attributed to a neighbour
-        who left.
+        record, leaving replies that answer nobody and issues that nobody reported. So their name,
+        email, phone number and access are deleted, and what they wrote stays, attributed to a
+        neighbour who left.
       </p>
     </div>
     <div class="call">
@@ -347,16 +356,19 @@
 
 <section class="col">
   <div class="label">Tech &amp; AI workflow</div>
-  <h2>I wrote the specification and judged the result.</h2>
+  <h2>I managed the project. The delivery team was AI.</h2>
   <p class="lede">
     Every feature started as a sentence about what a neighbour should be able to do. I described the
     behaviour, looked at what came back on screen, and sent it round again when it was wrong. That is
-    most of what product work has always been, with the typing taken out.
+    what I have always done with a delivery team, with the difference that the loop takes minutes
+    instead of a sprint.
   </p>
   <p>
-    The parts that mattered most were the ones I sent back. A pinned announcement that never expires.
-    A progress bar that lies about how far along it is. A plural form that is right for two of the
-    three cases Romanian has. A passing test suite would not have caught any of them.
+    What I brought to it was not the typing. It was knowing what to accept and what to send back, and
+    the things I sent back are the ones I am proudest of. A pinned announcement that never expires. A
+    progress bar that lies about how far along it is. A plural form that is only right for two of the
+    three cases Romanian has. A passing test suite would not have caught any of those, and neither
+    would anyone who had not sat with the product.
   </p>
   <div class="stack">
     <dl class="layer"><dt>Direction</dt><dd>Claude Code, Claude Design</dd></dl>
@@ -365,9 +377,9 @@
     <dl class="layer"><dt>Delivery</dt><dd>Netlify, custom domain, Resend for email</dd></dl>
   </div>
   <p style="margin-top:26px">
-    Access rules live in the database rather than in the interface, so a rule cannot be walked around
-    by anything that talks to the data directly. Every migration was verified against a real
-    PostgreSQL instance before it touched production.
+    The access rules live in the database rather than in the interface, so a rule cannot be walked
+    around by anything that talks to the data directly, and every migration was verified against a
+    real PostgreSQL instance before it touched production.
   </p>
 </section>
 
@@ -380,9 +392,14 @@
       on its own domain with automated deploys, and it is in use by a real building.
     </p>
   </div>
+  <p style="margin-top:26px">
+    But the part I am most pleased with is not really on this page. It is that the people in my
+    building now have somewhere to put things, and that the announcement about the water is still
+    there on Thursday morning, when somebody actually needs it.
+  </p>
 </section>
 
 <footer class="col">
   Vecini, a neighbourhood community app for Romanian apartment buildings.
-  Built July to September 2026.
+  Built July to September 2026 by Iana Giurgiu.
 </footer>
