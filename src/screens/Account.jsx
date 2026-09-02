@@ -67,7 +67,21 @@ function Row({ label, value, faint, last }) {
 
 export default function Account() {
   const nav = useNavigate();
-  const { t, currentUser, role, data, session, pendingEmail, hasPasswordLogin, setContact, showToast } = useApp();
+  const { t, currentUser, role, data, session, pendingEmail, hasPasswordLogin, setName, setContact, showToast } = useApp();
+
+  const [name, setNameField] = useState(currentUser.name);
+  const [nameErr, setNameErr] = useState('');
+  const [savingName, setSavingName] = useState(false);
+  const nameChanged = name.trim() !== currentUser.name;
+
+  const saveName = async () => {
+    setNameErr('');
+    if (name.trim().length < 2) { setNameErr(t('acc_name_bad')); return; }
+    setSavingName(true);
+    try { await setName(name); showToast(t('acc_name_saved')); }
+    catch (e) { setNameErr(t(e?.code === 'name_too_short' ? 'acc_name_bad' : 'acc_name_error')); }
+    finally { setSavingName(false); }
+  };
 
   const saved = data.myContact;
   const [phone, setPhoneField] = useState(saved.phone);
@@ -139,9 +153,24 @@ export default function Account() {
             attempt. */}
         {pendingEmail && <PendingEmail email={pendingEmail} />}
 
-        <div className="eyebrow" style={{ margin: '14px 0 2px' }}>{t('acc_details')}</div>
+        {/* Editable, because it is the one detail here that is genuinely yours
+            to decide: people marry, people mistype at sign-up, and this is the
+            name every byline in the community carries. */}
+        <div className="eyebrow" style={{ margin: '14px 0 2px' }}>{t('acc_name')}</div>
+        <div className="card">
+          <input className="input" type="text" autoComplete="name" value={name}
+            onChange={(e) => { setNameField(e.target.value); setNameErr(''); }} />
+          <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45, marginTop: 8 }}>{t('acc_name_hint')}</div>
+          {nameErr && <div style={{ color: 'var(--terracotta)', fontSize: 13, fontWeight: 600, marginTop: 8 }}>{nameErr}</div>}
+          {nameChanged && (
+            <button className="btn btn--primary" style={{ marginTop: 12 }} disabled={savingName} onClick={saveName}>
+              {t('save')}
+            </button>
+          )}
+        </div>
+
+        <div className="eyebrow" style={{ margin: '18px 0 2px' }}>{t('acc_details')}</div>
         <div className="card" style={{ paddingTop: 2, paddingBottom: 2 }}>
-          <Row label={t('acc_name')} value={currentUser.name} />
           <Row label={t('acc_email')} value={email} />
           <Row label={t('acc_apartment')} value={currentUser.apartment || t('acc_not_set')} faint={!currentUser.apartment} />
           <Row label={t('acc_community')} value={data.community?.name || '—'} />

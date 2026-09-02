@@ -510,6 +510,30 @@ export function AppProvider({ children }) {
     who actually live near them. Keeping it on the profile meant it inherited
     the profile's rule, which is "anyone signed in, anywhere".
   */
+  /*
+    Your own name.
+
+    Written to the profile, which is what every byline and the neighbour list
+    read, and mirrored into the auth metadata so the two do not drift — that
+    copy is only consulted when a profile row is first created, but a stale one
+    there would resurface as the old name if the row ever had to be rebuilt.
+
+    setProfile by hand afterwards: the profile has its own loader keyed on the
+    user id, so refreshAll alone would leave the name on this screen stale until
+    the next reload.
+  */
+  const setName = async (name) => {
+    const v = String(name || '').trim().replace(/\s+/g, ' ');
+    if (v.length < 2) throw taggedError('name_too_short');
+    const { data: row, error } = await supabase.from('profiles')
+      .update({ full_name: v }).eq('id', userId).select('*').single();
+    if (error) throw error;
+    setProfile(row);
+    // Best effort, and deliberately not fatal: the app never reads this copy.
+    try { await supabase.auth.updateUser({ data: { full_name: v } }); } catch { /* ignore */ }
+    await refreshAll();
+  };
+
   const setContact = async ({ phone, visible }) => {
     const { error } = await supabase.from('member_phones').upsert(
       { user_id: userId, phone: phone.trim() || null, visible, updated_at: new Date().toISOString() },
@@ -940,7 +964,7 @@ export function AppProvider({ children }) {
     userById, actions, toast, showToast,
     signUpEmail, signInEmail, signInGoogle, sendPasswordReset, signOut,
     setNewPassword, changePassword, changeEmail, pendingEmail, recoveryMode,
-    setContact, deleteAccount, profile, recheckEmail,
+    setName, setContact, deleteAccount, profile, recheckEmail,
     // Google-only accounts have no password to change; offer "set one" instead.
     hasPasswordLogin: !!session?.user?.identities?.some((i) => i.provider === 'email'),
     joinByCode, createCommunity, findCommunityByCode,
