@@ -173,7 +173,7 @@
 <header class="col">
   <div class="kicker">Case study</div>
   <h1>Vecini<span class="dom">.app</span></h1>
-  <p class="thesis">A production community platform for Romanian apartment buildings, taken from problem statement to live product in eight weeks by one person.</p>
+  <p class="thesis">A production platform for Romanian owners’ associations, taken from problem statement to live product in eight weeks by one person.</p>
   <dl class="meta">
     <div><dt>Client</dt><dd>Self-initiated product</dd></div>
     <div><dt>Role</dt><dd>Product ownership, UX, delivery, QA, launch</dd></div>
@@ -194,9 +194,10 @@
   <div class="label">Context</div>
   <h2>Shared decisions, made in a place that cannot hold them.</h2>
   <p class="lede">
-    Romanian apartment buildings are governed by an owners' association and coordinated almost
-    entirely through WhatsApp groups. Maintenance notices, fault reports and decisions about shared
-    money all move through the same conversation, and all of it is out of view within hours.
+    Romanian residential communities, whether a block of flats, a street of houses or a mix of both,
+    are governed by an owners’ association and coordinated almost entirely through WhatsApp groups.
+    Maintenance notices, fault reports and decisions about shared money all move through the same
+    conversation, and all of it is out of view within hours.
   </p>
   <p>
     Three failures follow. Information that matters is buried under conversation. Reported faults
@@ -212,12 +213,13 @@
 
 <section class="col">
   <div class="label">Constraints</div>
-  <h2>Four conditions that shaped every decision after them.</h2>
+  <h2>Five conditions that shaped every decision after them.</h2>
   <ul class="bullets">
     <li><span><b>Adoption had to cost nothing.</b> A neighbour will not create an app store account to read a notice about the water. The product installs from a link to the home screen, with no download and no store listing.</span></li>
     <li><span><b>Personal data in a small community is unusually sensitive.</b> Everyone already knows everyone, which makes any exposure local and permanent. Access rules could not be a matter of hiding controls in the interface.</span></li>
     <li><span><b>Nobody administers this full time.</b> The committee are volunteers. Anything that depends on a person remembering to do it will not be done.</span></li>
     <li><span><b>Three languages from the first release.</b> Romanian, English and Hungarian at full parity, including the plural rules that differ between them.</span></li>
+    <li><span><b>One product for communities of different shapes.</b> An owners’ association may be a block of forty flats, a street of twelve houses, or both at once. The product asks which it is and adapts its own language accordingly, down to dropping the staircase count where there are no staircases.</span></li>
   </ul>
 </section>
 
@@ -273,7 +275,7 @@
   <div class="calls">
     <div class="call">
       <h3>Account deletion anonymises rather than erases</h3>
-      <p>Removing a departing member's records outright would tear holes through the building's own history, leaving replies that answer nobody and faults that nobody reported. Identity, contact details and access are deleted. Contributions remain, attributed to a member who left.</p>
+      <p>Removing a departing member’s records outright would tear holes through the community’s own record, leaving replies that answer nobody and faults that nobody reported. Identity, contact details and access are deleted. Contributions remain, attributed to a member who left.</p>
       <p class="tradeoff"><b>Trade-off accepted.</b> A stricter reading of erasure would remove everything. This keeps the community's shared record intact while removing every field that identifies a person, and the choice is documented so it stays deliberate.</p>
     </div>
     <div class="call">
@@ -326,7 +328,7 @@
   <div class="label">Outcome</div>
   <div class="result">
     <p class="live">Live at <a href="https://vecini.app">vecini.app</a></p>
-    <p class="note">Installable from a browser onto the home screen, with no store listing and no download. Running on its own domain with continuous deployment, in use by a residential building.</p>
+    <p class="note">Installable from a browser onto the home screen, with no store listing and no download. Running on its own domain with continuous deployment, in use by a residential community.</p>
   </div>
 </section>
 
@@ -341,14 +343,14 @@
   </div>
 </section>
 
-<footer class="col">Vecini, a community platform for Romanian apartment buildings. Delivered 2026 by Iana Giurgiu.</footer>
+<footer class="col">Vecini, a platform for Romanian owners’ associations. Delivered 2026 by Iana Giurgiu.</footer>
 </main>
 
 <main id="doc-ro" hidden>
 <header class="col">
   <div class="kicker">Studiu de caz</div>
   <h1>Vecini<span class="dom">.app</span></h1>
-  <p class="thesis">O platformă de comunitate pentru blocurile din România, dusă de la enunțul problemei până la produs în funcțiune în opt săptămâni, de un singur om.</p>
+  <p class="thesis">O platformă pentru comunitățile de proprietari din România, dusă de la enunțul problemei până la produs în funcțiune în opt săptămâni, de un singur om.</p>
   <dl class="meta">
     <div><dt>Client</dt><dd>Produs propriu</dd></div>
     <div><dt>Rol</dt><dd>Product, UX, execuție, testare, lansare</dd></div>
@@ -369,9 +371,10 @@
   <div class="label">Context</div>
   <h2>Decizii comune, luate într-un loc care nu le poate păstra.</h2>
   <p class="lede">
-    Blocurile din România sunt conduse de asociația de proprietari și se coordonează aproape în
-    întregime prin grupuri de WhatsApp. Anunțurile despre lucrări, sesizările și deciziile despre
-    banii comuni trec toate prin aceeași conversație și dispar din vedere în câteva ore.
+    Comunitățile de proprietari din România, fie că vorbim de un bloc, de o stradă de case sau de
+    amândouă, sunt conduse de asociația de proprietari și se coordonează aproape în întregime prin
+    grupuri de WhatsApp. Anunțurile despre lucrări, sesizările și deciziile despre banii comuni trec
+    toate prin aceeași conversație și dispar din vedere în câteva ore.
   </p>
   <p>
     De aici decurg trei probleme. Informația importantă se îngroapă sub discuții. Sesizările nu
@@ -388,12 +391,13 @@
 
 <section class="col">
   <div class="label">Constrângeri</div>
-  <h2>Patru condiții care au determinat tot ce a urmat.</h2>
+  <h2>Cinci condiții care au determinat tot ce a urmat.</h2>
   <ul class="bullets">
     <li><span><b>Adoptarea trebuia să nu coste nimic.</b> Un vecin nu își face cont în magazinul de aplicații ca să citească un anunț despre apă. Produsul se instalează dintr-un link pe ecranul principal, fără descărcare și fără listare în magazin.</span></li>
     <li><span><b>Datele personale într-o comunitate mică sunt neobișnuit de sensibile.</b> Toți se cunosc între ei, ceea ce face orice expunere locală și permanentă. Regulile de acces nu puteau fi o chestiune de ascuns butoane în interfață.</span></li>
     <li><span><b>Nimeni nu administrează asta cu normă întreagă.</b> Comitetul e format din voluntari. Orice depinde de faptul că un om își aduce aminte să facă ceva, nu se va face.</span></li>
     <li><span><b>Trei limbi de la prima versiune.</b> Română, engleză și maghiară, complet traduse, inclusiv regulile de plural care diferă între ele.</span></li>
+    <li><span><b>Un singur produs pentru comunități de forme diferite.</b> O asociație de proprietari poate fi un bloc de patruzeci de apartamente, o stradă de douăsprezece case, sau amândouă la un loc. Produsul întreabă care e cazul și își potrivește textele după asta, până la a nu mai afișa numărul de scări acolo unde nu există scări.</span></li>
   </ul>
 </section>
 
@@ -449,8 +453,8 @@
   <div class="calls">
     <div class="call">
       <h3>Ștergerea contului anonimizează, nu elimină</h3>
-      <p>Ștergerea completă a datelor unui membru care pleacă ar rupe găuri în istoria blocului, lăsând răspunsuri care nu răspund nimănui și sesizări pe care nu le-a făcut nimeni. Identitatea, datele de contact și accesul se șterg. Contribuțiile rămân, atribuite unui vecin care a plecat.</p>
-      <p class="tradeoff"><b>Compromis asumat.</b> O citire mai strictă a dreptului la ștergere ar elimina tot. Varianta asta păstrează intactă memoria comună a blocului, ștergând în același timp fiecare câmp care identifică o persoană, iar alegerea e documentată ca să rămână deliberată.</p>
+      <p>Ștergerea completă a datelor unui membru care pleacă ar rupe găuri în memoria comunității, lăsând răspunsuri care nu răspund nimănui și sesizări pe care nu le-a făcut nimeni. Identitatea, datele de contact și accesul se șterg. Contribuțiile rămân, atribuite unui vecin care a plecat.</p>
+      <p class="tradeoff"><b>Compromis asumat.</b> O citire mai strictă a dreptului la ștergere ar elimina tot. Varianta asta păstrează intactă memoria comună a comunității, ștergând în același timp fiecare câmp care identifică o persoană, iar alegerea e documentată ca să rămână deliberată.</p>
     </div>
     <div class="call">
       <h3>Anunțurile prioritare au un termen, nu un semn</h3>
@@ -502,7 +506,7 @@
   <div class="label">Rezultat</div>
   <div class="result">
     <p class="live">În funcțiune la <a href="https://vecini.app">vecini.app</a></p>
-    <p class="note">Se instalează din browser pe ecranul principal, fără listare în magazin și fără descărcare. Rulează pe domeniu propriu, cu publicare automată, folosit de un bloc de locuințe.</p>
+    <p class="note">Se instalează din browser pe ecranul principal, fără listare în magazin și fără descărcare. Rulează pe domeniu propriu, cu publicare automată, folosit de o comunitate de proprietari.</p>
   </div>
 </section>
 
@@ -517,7 +521,7 @@
   </div>
 </section>
 
-<footer class="col">Vecini, o platformă de comunitate pentru blocurile din România. Livrat în 2026 de Iana Giurgiu.</footer>
+<footer class="col">Vecini, o platformă pentru comunitățile de proprietari din România. Livrat în 2026 de Iana Giurgiu.</footer>
 </main>
 
 <script>
