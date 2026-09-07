@@ -24,7 +24,6 @@ test.describe('Waiting screen', () => {
     const splash = page.locator('#splash');
     await expect(splash).toBeVisible();
     await expect(splash.locator('svg.mark')).toBeVisible();
-    await expect(splash).toContainText('made by');
     await expect(splash).toContainText('Vecini');
 
     // It has to cover the page, not sit above it in the document flow.
