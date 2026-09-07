@@ -19,6 +19,55 @@ import { useBack } from '../lib/useBack.js';
   on the calendar is worse than no calendar.
 */
 
+/*
+  The staff controls, as a row of small tools rather than a stack of full-width
+  buttons.
+
+  Three blocks the width of the screen read as the point of the screen, when the
+  point of the screen is the announcement above them. Made smaller they stop
+  competing with it — and they fit on one line, which is the honest shape for
+  "things you can do to this" rather than "what to do next".
+
+  Labelled, not icon-only. An icon alone is a guess, and the one that would have
+  to carry "hold this at the top until Thursday" does not exist. The short word
+  is what you read; the long sentence is still there for anyone listening to the
+  screen rather than looking at it.
+*/
+function Tool({ icon, label, title, onClick, disabled, danger }) {
+  return (
+    <button onClick={onClick} disabled={disabled} aria-label={title} title={title}
+      style={{
+        flex: 1, minWidth: 0, background: 'none', border: 'none', padding: '2px 0',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+        color: danger ? 'var(--terracotta)' : 'var(--green-600)',
+        opacity: disabled ? .5 : 1,
+      }}>
+      <span style={{
+        width: 42, height: 42, borderRadius: 13, display: 'inline-flex',
+        alignItems: 'center', justifyContent: 'center',
+        border: '1px solid var(--border)', background: '#fff',
+      }}>{icon}</span>
+      <span style={{
+        fontSize: 11.5, fontWeight: 600, lineHeight: 1.2, textAlign: 'center',
+        maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>{label}</span>
+    </button>
+  );
+}
+
+const Stroke = ({ d, ...rest }) => (
+  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true" {...rest}>
+    <path d={d} stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const PencilIcon = () => <Stroke d="M4 20h4L19.5 8.5a2.1 2.1 0 00-3-3L5 17v3zM14.5 6.5l3 3" />;
+// Up to a line: held at the top of the list. Down from one: let go of it.
+const RaiseIcon = () => <Stroke d="M5 4h14M12 20V8M12 8l-4 4M12 8l4 4" />;
+const LowerIcon = () => <Stroke d="M5 20h14M12 4v12M12 16l-4-4M12 16l4-4" />;
+const ClockIcon = () => <Stroke d="M12 21a9 9 0 100-18 9 9 0 000 18zM12 7v5l3.5 2" />;
+const TrashIcon = () => <Stroke d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v5M14 11v5" />;
+
 function Row({ label, value }) {
   return (
     <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
@@ -143,28 +192,32 @@ export default function AnnouncementDetail() {
             {!editing ? (
               // Stacked rather than side by side: at half a phone's width these
               // labels wrap to three cramped lines each.
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <button onClick={() => nav(`/app/announcements/${a.id}/edit`)} className="btn btn--ghost" style={{ padding: '12px', fontSize: 13.5 }}>
-                  {t('ann_edit_title')}
-                </button>
-                <button onClick={open} className="btn btn--ghost" style={{ padding: '12px', fontSize: 13.5 }}>
-                  {priority ? t('ann_priority_edit') : t('ann_priority_set')}
-                </button>
-                {priority && (
-                  <button onClick={release} disabled={busy} className="btn btn--ghost"
-                    style={{ padding: '12px', fontSize: 13.5, color: 'var(--terracotta)', opacity: busy ? .5 : 1 }}>
-                    {t('ann_priority_clear')}
-                  </button>
-                )}
-                {/* Behind a confirmation, because it is the one thing on this
-                    screen that cannot be undone. */}
-                {!confirming ? (
-                  <button onClick={() => setConfirming(true)} className="btn btn--ghost"
-                    style={{ padding: '12px', fontSize: 13.5, color: 'var(--terracotta)' }}>
-                    {t('ann_remove')}
-                  </button>
-                ) : (
-                  <div style={{ background: 'var(--section-bg)', borderRadius: 12, padding: 13 }}>
+              <>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4 }}>
+                  <Tool icon={<PencilIcon />} label={t('ann_act_edit')} title={t('ann_edit_title')}
+                    onClick={() => nav(`/app/announcements/${a.id}/edit`)} />
+                  {/* Both states say "Prioritar" rather than "Schimbă data":
+                      an announcement now has a date of its own, so a tool
+                      labelled with the word "date" would read as changing when
+                      the meeting is. The clock says which date is meant, and
+                      the badge above already says until when. */}
+                  <Tool icon={priority ? <ClockIcon /> : <RaiseIcon />}
+                    label={priority ? t('ann_act_priority_edit') : t('ann_act_priority')}
+                    title={priority ? t('ann_priority_edit') : t('ann_priority_set')}
+                    onClick={open} />
+                  {priority && (
+                    <Tool icon={<LowerIcon />} label={t('ann_act_unpriority')} title={t('ann_priority_clear')}
+                      onClick={release} disabled={busy} />
+                  )}
+                  <Tool icon={<TrashIcon />} label={t('ann_act_delete')} title={t('ann_remove')}
+                    onClick={() => setConfirming(true)} danger />
+                </div>
+
+                {/* Deletion still asks, in full words: it is the one thing on
+                    this screen that cannot be undone, and a small tool is an
+                    easy thing to hit by accident. */}
+                {confirming && (
+                  <div style={{ background: 'var(--section-bg)', borderRadius: 12, padding: 13, marginTop: 14 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 10 }}>{t('ann_remove_confirm')}</div>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button onClick={() => setConfirming(false)} className="btn btn--ghost" style={{ flex: 1, padding: '9px', fontSize: 13 }}>{t('cancel')}</button>
@@ -173,7 +226,7 @@ export default function AnnouncementDetail() {
                     </div>
                   </div>
                 )}
-              </div>
+              </>
             ) : (
               <div style={{ background: 'var(--section-bg)', borderRadius: 12, padding: 14 }}>
                 <label htmlFor="prio-until" style={{ display: 'block', fontSize: 13.5, fontWeight: 600, marginBottom: 8 }}>
