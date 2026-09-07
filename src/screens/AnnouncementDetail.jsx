@@ -20,43 +20,34 @@ import { useBack } from '../lib/useBack.js';
 */
 
 /*
-  The staff controls, as a row of small tools rather than a stack of full-width
-  buttons.
+  The staff controls, in the corner of the screen rather than under the notice.
 
-  Three blocks the width of the screen read as the point of the screen, when the
-  point of the screen is the announcement above them. Made smaller they stop
-  competing with it — and they fit on one line, which is the honest shape for
-  "things you can do to this" rather than "what to do next".
+  They were three buttons the width of the screen, which read as the point of
+  the screen — when the point of the screen is the announcement itself. These
+  are the same shape as the put-away control on a list card: a bare icon, quiet
+  grey, no tile and no label, out of the way until looked for. Colour is kept
+  for saying something is on, not for decoration.
 
-  Labelled, not icon-only. An icon alone is a guess, and the one that would have
-  to carry "hold this at the top until Thursday" does not exist. The short word
-  is what you read; the long sentence is still there for anyone listening to the
-  screen rather than looking at it.
+  No visible text, so the name has to be carried some other way; aria-label and
+  title do that, and are the only thing a screen reader has to go on.
 */
-function Tool({ icon, label, title, onClick, disabled, danger }) {
+function Tool({ icon, title, onClick, disabled, on }) {
   return (
     <button onClick={onClick} disabled={disabled} aria-label={title} title={title}
       style={{
-        flex: 1, minWidth: 0, background: 'none', border: 'none', padding: '2px 0',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-        color: danger ? 'var(--terracotta)' : 'var(--green-600)',
+        width: 38, height: 38, borderRadius: 11, flexShrink: 0,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        background: 'none', border: 'none', padding: 0,
+        color: on ? 'var(--green-600)' : 'var(--ink-300)',
         opacity: disabled ? .5 : 1,
       }}>
-      <span style={{
-        width: 42, height: 42, borderRadius: 13, display: 'inline-flex',
-        alignItems: 'center', justifyContent: 'center',
-        border: '1px solid var(--border)', background: '#fff',
-      }}>{icon}</span>
-      <span style={{
-        fontSize: 11.5, fontWeight: 600, lineHeight: 1.2, textAlign: 'center',
-        maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}>{label}</span>
+      {icon}
     </button>
   );
 }
 
 const Stroke = ({ d, ...rest }) => (
-  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true" {...rest}>
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true" {...rest}>
     <path d={d} stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
@@ -139,10 +130,66 @@ export default function AnnouncementDetail() {
     finally { setBusy(false); }
   };
 
+  const tools = isStaff ? (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginRight: -8 }}>
+      <Tool icon={<PencilIcon />} title={t('ann_edit_title')}
+        onClick={() => nav(`/app/announcements/${a.id}/edit`)} />
+      {/* Green when it is already held up, grey when it is not — the same way
+          the put-away control on a list card says which state it is in. */}
+      <Tool icon={priority ? <ClockIcon /> : <RaiseIcon />} on={priority}
+        title={priority ? t('ann_priority_edit') : t('ann_priority_set')}
+        onClick={open} />
+      {priority && (
+        <Tool icon={<LowerIcon />} title={t('ann_priority_clear')} onClick={release} disabled={busy} />
+      )}
+      <Tool icon={<TrashIcon />} title={t('ann_remove')} onClick={() => { setEditing(false); setConfirming(true); }} />
+    </div>
+  ) : null;
+
   return (
     <div className="screen">
-      <ScreenHeader title={t('ann_title')} onBack={goBack} />
+      <ScreenHeader title={t('ann_title')} onBack={goBack} right={tools} />
       <div className="pad" style={{ paddingTop: 20 }}>
+        {/*
+          Both of these open from an icon in the corner above, so they belong up
+          here beside it rather than at the foot of the screen — a panel that
+          answers a tap you cannot see the result of is the same as nothing
+          happening.
+        */}
+        {editing && (
+          <div style={{ background: 'var(--section-bg)', borderRadius: 12, padding: 14, marginBottom: 18 }}>
+            <label htmlFor="prio-until" style={{ display: 'block', fontSize: 13.5, fontWeight: 600, marginBottom: 8 }}>
+              {t('ann_priority_label')}
+            </label>
+            <input id="prio-until" type="date" className="input" value={when}
+              min={asInputDate(Date.now())}
+              onChange={(e) => { setWhen(e.target.value); setErr(''); }} />
+            <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45, marginTop: 8 }}>{t('ann_priority_hint')}</div>
+            {err && <div style={{ color: 'var(--terracotta)', fontSize: 13, fontWeight: 600, marginTop: 8 }}>{err}</div>}
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <button onClick={() => setEditing(false)} className="btn btn--ghost" style={{ flex: 1, padding: '10px', fontSize: 13.5 }}>{t('cancel')}</button>
+              <button onClick={save} disabled={busy || !when} className="btn btn--primary"
+                style={{ flex: 1, padding: '10px', fontSize: 13.5, opacity: (busy || !when) ? .5 : 1 }}>
+                {t('save')}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Deletion still asks, in full words: it is the one thing here that
+            cannot be undone, and a bare icon is an easy thing to hit by
+            accident — which is more true, not less, now that it is a bare icon. */}
+        {confirming && (
+          <div style={{ background: 'var(--section-bg)', borderRadius: 12, padding: 14, marginBottom: 18 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 10 }}>{t('ann_remove_confirm')}</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setConfirming(false)} className="btn btn--ghost" style={{ flex: 1, padding: '10px', fontSize: 13.5 }}>{t('cancel')}</button>
+              <button onClick={remove} disabled={busy} className="btn btn--terracotta"
+                style={{ flex: 1, padding: '10px', fontSize: 13.5, opacity: busy ? .5 : 1 }}>{t('ann_remove')}</button>
+            </div>
+          </div>
+        )}
+
         <div style={{ display: 'flex', gap: 9, alignItems: 'center', marginBottom: 14, flexWrap: 'wrap' }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--status-done-bg)', color: 'var(--green-500)', padding: '5px 11px', borderRadius: 8, fontSize: 12, fontWeight: 700 }}>📢 {t('ann_official')}</span>
           {priority && <PriorityBadge until={a.pinnedUntil} t={t} lang={lang} />}
@@ -184,70 +231,6 @@ export default function AnnouncementDetail() {
         </div>
 
         <div style={{ fontSize: 15.5, lineHeight: 1.6, whiteSpace: 'pre-wrap', color: '#3f433b' }}>{L(a, 'body')}</div>
-
-        {/* The control used to be a bare pin emoji in the header, with no label
-            and its state told only by colour. */}
-        {isStaff && (
-          <div style={{ marginTop: 26, paddingTop: 18, borderTop: '1px solid var(--border)' }}>
-            {!editing ? (
-              // Stacked rather than side by side: at half a phone's width these
-              // labels wrap to three cramped lines each.
-              <>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4 }}>
-                  <Tool icon={<PencilIcon />} label={t('ann_act_edit')} title={t('ann_edit_title')}
-                    onClick={() => nav(`/app/announcements/${a.id}/edit`)} />
-                  {/* Both states say "Prioritar" rather than "Schimbă data":
-                      an announcement now has a date of its own, so a tool
-                      labelled with the word "date" would read as changing when
-                      the meeting is. The clock says which date is meant, and
-                      the badge above already says until when. */}
-                  <Tool icon={priority ? <ClockIcon /> : <RaiseIcon />}
-                    label={priority ? t('ann_act_priority_edit') : t('ann_act_priority')}
-                    title={priority ? t('ann_priority_edit') : t('ann_priority_set')}
-                    onClick={open} />
-                  {priority && (
-                    <Tool icon={<LowerIcon />} label={t('ann_act_unpriority')} title={t('ann_priority_clear')}
-                      onClick={release} disabled={busy} />
-                  )}
-                  <Tool icon={<TrashIcon />} label={t('ann_act_delete')} title={t('ann_remove')}
-                    onClick={() => setConfirming(true)} danger />
-                </div>
-
-                {/* Deletion still asks, in full words: it is the one thing on
-                    this screen that cannot be undone, and a small tool is an
-                    easy thing to hit by accident. */}
-                {confirming && (
-                  <div style={{ background: 'var(--section-bg)', borderRadius: 12, padding: 13, marginTop: 14 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 10 }}>{t('ann_remove_confirm')}</div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button onClick={() => setConfirming(false)} className="btn btn--ghost" style={{ flex: 1, padding: '9px', fontSize: 13 }}>{t('cancel')}</button>
-                      <button onClick={remove} disabled={busy} className="btn btn--terracotta"
-                        style={{ flex: 1, padding: '9px', fontSize: 13, opacity: busy ? .5 : 1 }}>{t('ann_remove')}</button>
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div style={{ background: 'var(--section-bg)', borderRadius: 12, padding: 14 }}>
-                <label htmlFor="prio-until" style={{ display: 'block', fontSize: 13.5, fontWeight: 600, marginBottom: 8 }}>
-                  {t('ann_priority_label')}
-                </label>
-                <input id="prio-until" type="date" className="input" value={when}
-                  min={asInputDate(Date.now())}
-                  onChange={(e) => { setWhen(e.target.value); setErr(''); }} />
-                <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45, marginTop: 8 }}>{t('ann_priority_hint')}</div>
-                {err && <div style={{ color: 'var(--terracotta)', fontSize: 13, fontWeight: 600, marginTop: 8 }}>{err}</div>}
-                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                  <button onClick={() => setEditing(false)} className="btn btn--ghost" style={{ flex: 1, padding: '10px', fontSize: 13.5 }}>{t('cancel')}</button>
-                  <button onClick={save} disabled={busy || !when} className="btn btn--primary"
-                    style={{ flex: 1, padding: '10px', fontSize: 13.5, opacity: (busy || !when) ? .5 : 1 }}>
-                    {t('save')}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

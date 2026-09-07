@@ -124,4 +124,34 @@ test.describe('Priority announcements', () => {
     await expect(page.getByRole('button', { name: 'Deprioritizează anunț' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Schimbă data prioritate anunț' })).toBeVisible();
   });
+
+  /*
+    The staff controls are bare icons in the corner now, with no words beside
+    them. That is fine to look at and nothing at all to listen to unless each
+    one carries its own name — and an unnamed icon button is announced as
+    "button", which is no help to anybody.
+
+    Written against the buttons the screen actually renders rather than a list
+    of expected names, so a tool added later is covered without anyone
+    remembering to come back here.
+  */
+  test('every icon in the corner says what it is', async ({ page }) => {
+    await asStaff(page);
+    await page.goto('/#/app/announcements/a1');
+    await expect(page.getByText('Se înlocuiește o vană.')).toBeVisible();
+
+    const named = await page.evaluate(() => {
+      const header = document.querySelector('.screen > div');
+      return [...header.querySelectorAll('button')].map((b) => ({
+        text: b.textContent.trim(),
+        name: b.getAttribute('aria-label') || '',
+      }));
+    });
+
+    expect(named.length, 'no buttons found in the header').toBeGreaterThan(3);
+    for (const b of named) {
+      // The back arrow is in here too, and it is named the same way.
+      expect(b.name.length, `a header button with no name, showing "${b.text}"`).toBeGreaterThan(2);
+    }
+  });
 });

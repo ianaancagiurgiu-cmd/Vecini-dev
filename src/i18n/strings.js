@@ -218,11 +218,6 @@ export const STRINGS = {
     ann_remove_confirm: 'Ștergi anunțul? Vecinii nu îl vor mai vedea.',
     ann_need_title: 'Scrie un titlu.',
     ann_tab_dated: 'Calendar',
-    ann_act_edit: 'Modifică',
-    ann_act_priority: 'Prioritar',
-    ann_act_priority_edit: 'Prioritar',
-    ann_act_unpriority: 'Coboară',
-    ann_act_delete: 'Șterge',
 
     // Discussions
     disc_title: 'Discuții',
@@ -711,11 +706,6 @@ export const STRINGS = {
     ann_remove_confirm: 'Delete this announcement? Neighbours will no longer see it.',
     ann_need_title: 'Write a title.',
     ann_tab_dated: 'Calendar',
-    ann_act_edit: 'Edit',
-    ann_act_priority: 'Priority',
-    ann_act_priority_edit: 'Priority',
-    ann_act_unpriority: 'Lower',
-    ann_act_delete: 'Delete',
 
     disc_title: 'Discussions',
     disc_new: 'New topic',
@@ -1185,11 +1175,6 @@ export const STRINGS = {
     ann_remove_confirm: 'Törlöd a hirdetést? A szomszédok többé nem látják.',
     ann_need_title: 'Írj egy címet.',
     ann_tab_dated: 'Naptár',
-    ann_act_edit: 'Szerkesztés',
-    ann_act_priority: 'Kiemelés',
-    ann_act_priority_edit: 'Kiemelés',
-    ann_act_unpriority: 'Levétel',
-    ann_act_delete: 'Törlés',
 
     disc_title: 'Beszélgetések',
     disc_new: 'Új téma',
