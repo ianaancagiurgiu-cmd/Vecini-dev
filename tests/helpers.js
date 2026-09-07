@@ -125,6 +125,33 @@ function matches(row, op, arg) {
   }
 }
 
+/*
+  PostgREST's "order=column.asc" / "column.desc", possibly several, comma
+  separated. Ignoring it used to leave rows in fixture order, which quietly
+  turned a correct assertion about ordering into a failure with no visible
+  cause: the screen looked right by hand and wrong under test.
+*/
+function applyOrder(rows, spec) {
+  if (!spec) return rows;
+  const terms = spec.split(',').map((term) => {
+    const [column, ...flags] = term.split('.');
+    return { column, desc: flags.includes('desc'), nullsFirst: flags.includes('nullsfirst') };
+  });
+  return rows.slice().sort((a, b) => {
+    for (const { column, desc, nullsFirst } of terms) {
+      const x = a[column];
+      const y = b[column];
+      if (x === y) continue;
+      // Nulls sort last unless asked otherwise, as PostgREST does by default.
+      if (x === null || x === undefined) return nullsFirst ? -1 : 1;
+      if (y === null || y === undefined) return nullsFirst ? 1 : -1;
+      const cmp = x < y ? -1 : 1;
+      return desc ? -cmp : cmp;
+    }
+    return 0;
+  });
+}
+
 function applyQuery(rows, params) {
   let out = rows;
   for (const [key, raw] of params) {
@@ -133,6 +160,7 @@ function applyQuery(rows, params) {
     const arg = rest.join('.');
     out = out.filter((row) => matches(row[key], op, arg));
   }
+  out = applyOrder(out, params.get('order'));
   const limit = Number(params.get('limit'));
   if (Number.isFinite(limit) && limit > 0) out = out.slice(0, limit);
   return out;

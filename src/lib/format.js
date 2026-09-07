@@ -33,6 +33,48 @@ export function untilLabel(ts, lang) {
 /** Is this announcement being held at the top right now? */
 export const isPriority = (a) => !!a?.pinnedUntil && a.pinnedUntil > Date.now();
 
+/*
+  When an event is, written the way somebody would say it out loud.
+
+  Calendar dates are counted by the day they fall on, not by hours elapsed: an
+  event at nine tomorrow morning is "tomorrow" whether you look at it now or at
+  eleven tonight, and a subtraction of milliseconds gets that wrong every time
+  it crosses midnight.
+*/
+const startOfDay = (ts) => { const d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime(); };
+export const daysBetween = (ts) => Math.round((startOfDay(ts) - startOfDay(Date.now())) / 86400000);
+
+/** "Mâine", "sâmbătă", "14 sept." — the day, without the clock. */
+export function eventDay(ts, lang, t) {
+  const loc = LOCALES[lang] || LOCALES.ro;
+  const away = daysBetween(ts);
+  if (away === 0) return t('ev_today');
+  if (away === 1) return t('ev_tomorrow');
+  const d = new Date(ts);
+  // Inside the coming week the weekday is what people plan around; beyond it,
+  // "Tuesday" stops identifying which Tuesday.
+  if (away > 1 && away <= 6) return d.toLocaleDateString(loc, { weekday: 'long' });
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  return d.toLocaleDateString(loc, { day: 'numeric', month: 'short', ...(sameYear ? {} : { year: 'numeric' }) });
+}
+
+/** "18:00", in the reader's own locale. */
+export const eventTime = (ts, lang) =>
+  new Date(ts).toLocaleTimeString(LOCALES[lang] || LOCALES.ro, { hour: '2-digit', minute: '2-digit' });
+
+/** The whole thing: "Mâine · 18:00", or just the day when it runs all day. */
+export function eventWhen(ev, lang, t) {
+  const day = eventDay(ev.startsAt, lang, t);
+  if (ev.allDay) return day;
+  return `${day} · ${eventTime(ev.startsAt, lang)}`;
+}
+
+/** Has it already happened? All-day events count until the end of their day. */
+export function isPast(ev) {
+  const end = ev.endsAt || ev.startsAt;
+  return ev.allDay ? startOfDay(end) < startOfDay(Date.now()) : end < Date.now();
+}
+
 export function formatDate(ts, lang) {
   const d = new Date(ts);
   return d.toLocaleDateString(LOCALES[lang] || LOCALES.ro, { day: 'numeric', month: 'long', year: 'numeric' });

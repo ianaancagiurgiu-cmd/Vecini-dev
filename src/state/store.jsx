@@ -32,8 +32,9 @@ const emptyData = () => ({
   discussions: [],
   issues: [],
   polls: [],
+  events: [],
   notifications: [],
-  notifPrefs: { announcements: true, replies: true, issues: true, polls: true, push: false },
+  notifPrefs: { announcements: true, replies: true, issues: true, polls: true, events: true, push: false },
   deletedAccounts: 0,
   // What this person has put away, per kind. Nobody else's list is affected.
   archived: { announcement: [], discussion: [], issue: [] },
@@ -209,11 +210,13 @@ export function AppProvider({ children }) {
 
       const memberIds = (members || []).map((m) => m.user_id);
 
-      const [{ data: announcements }, { data: discussions }, { data: issues }, { data: polls }, { data: notifications }, { data: notifPrefsRow }, { data: archivedRows }, { data: phoneRows }] = await Promise.all([
+      const [{ data: announcements }, { data: discussions }, { data: issues }, { data: polls }, { data: events }, { data: notifications }, { data: notifPrefsRow }, { data: archivedRows }, { data: phoneRows }] = await Promise.all([
         supabase.from('announcements').select('*').eq('community_id', cid).order('created_at', { ascending: false }),
         supabase.from('discussions').select('*').eq('community_id', cid).neq('status', 'hidden').order('created_at', { ascending: false }),
         supabase.from('issues').select('*').eq('community_id', cid).order('created_at', { ascending: false }),
         supabase.from('polls').select('*').eq('community_id', cid).order('created_at', { ascending: false }),
+        // Soonest first: every screen that reads this asks what is coming up.
+        supabase.from('events').select('*').eq('community_id', cid).order('starts_at', { ascending: true }),
         supabase.from('notifications').select('*').eq('community_id', cid).eq('user_id', userId).order('created_at', { ascending: false }),
         supabase.from('notification_prefs').select('*').eq('user_id', userId).maybeSingle(),
         supabase.from('archived_items').select('kind,item_id').eq('user_id', userId),
@@ -324,8 +327,16 @@ export function AppProvider({ children }) {
         discussions: discussionsFull.map((d) => ({ ...d, authorId: d.author_id, createdAt: new Date(d.created_at).getTime(), replies: d.replies.map((r) => ({ ...r, authorId: r.author_id, createdAt: new Date(r.created_at).getTime() })) })),
         issues: issuesFull.map((i) => ({ ...i, reporterId: i.reporter_id, photo: i.photo_url, createdAt: new Date(i.created_at).getTime(), history: i.history.map((h) => ({ ...h, byId: h.by_id, at: new Date(h.at).getTime() })), comments: i.comments.map((c) => ({ ...c, authorId: c.author_id, createdAt: new Date(c.created_at).getTime() })) })),
         polls: pollsFull.map((p) => ({ ...p, authorId: p.author_id, createdAt: new Date(p.created_at).getTime(), endsAt: new Date(p.ends_at).getTime() })),
+        events: (events || []).map((e) => ({
+          ...e,
+          authorId: e.author_id,
+          allDay: e.all_day,
+          startsAt: new Date(e.starts_at).getTime(),
+          endsAt: e.ends_at ? new Date(e.ends_at).getTime() : null,
+          createdAt: new Date(e.created_at).getTime(),
+        })),
         notifications: (notifications || []).map((n) => ({ ...n, createdAt: new Date(n.created_at).getTime() })),
-        notifPrefs: notifPrefsRow || { announcements: true, replies: true, issues: true, polls: true, push: false },
+        notifPrefs: notifPrefsRow || { announcements: true, replies: true, issues: true, polls: true, events: true, push: false },
         archived,
         myContact: phones[userId] || { phone: '', visible: false },
         deletedAccounts: deletedAccounts || 0,
@@ -868,6 +879,48 @@ export function AppProvider({ children }) {
       showToast(t('poll_vote_saved'));
     },
     closePoll: async (pollId) => { await supabase.from('polls').update({ closed: true }).eq('id', pollId); await refreshAll(); },
+
+    /*
+      The calendar.
+
+      An all-day event is stored at midday rather than at midnight: the column is
+      absolute time, and a date pinned to midnight lands on the day before for
+      anyone an hour behind. From midday it survives a twelve-hour shift either
+      way and still reads as the right date.
+    */
+    addEvent: async ({ title, description, location, startsAt, endsAt, allDay }) => {
+      const { data: row, error } = await supabase.from('events').insert({
+        community_id: cid, author_id: userId,
+        title, description: description || '', location: location || '',
+        starts_at: new Date(startsAt).toISOString(),
+        ends_at: endsAt ? new Date(endsAt).toISOString() : null,
+        all_day: !!allDay,
+      }).select('*').single();
+      if (error) { showToast(t('ev_error')); throw error; }
+      await notifyMembers(userId, 'event', STRINGS[lang].ev_new_notif, title, '/app/calendar/' + row.id);
+      await refreshAll();
+      showToast(t('ev_created'));
+      return row.id;
+    },
+    updateEvent: async (id, { title, description, location, startsAt, endsAt, allDay }) => {
+      const { error } = await supabase.from('events').update({
+        title, description: description || '', location: location || '',
+        starts_at: new Date(startsAt).toISOString(),
+        ends_at: endsAt ? new Date(endsAt).toISOString() : null,
+        all_day: !!allDay,
+      }).eq('id', id);
+      if (error) { showToast(t('ev_error')); throw error; }
+      await refreshAll();
+      showToast(t('ev_saved'));
+    },
+    // Cancelling is a real thing that happens, and a stale meeting on the
+    // calendar is worse than no meeting.
+    removeEvent: async (id) => {
+      const { error } = await supabase.from('events').delete().eq('id', id);
+      if (error) { showToast(t('ev_error')); throw error; }
+      await refreshAll();
+      showToast(t('ev_removed'));
+    },
 
     moderate: async (discId, action, newCat) => {
       const patch = action === 'approve' ? { status: 'approved' } : action === 'hide' ? { status: 'hidden' } : { status: 'approved', category: newCat };

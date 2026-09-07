@@ -29,6 +29,9 @@ import Issues from './screens/Issues.jsx';
 import IssueDetail from './screens/IssueDetail.jsx';
 import IssueNew from './screens/IssueNew.jsx';
 import Polls from './screens/Polls.jsx';
+import Calendar from './screens/Calendar.jsx';
+import EventDetail from './screens/EventDetail.jsx';
+import EventNew from './screens/EventNew.jsx';
 import PollDetail from './screens/PollDetail.jsx';
 import PollNew from './screens/PollNew.jsx';
 import Search from './screens/Search.jsx';
@@ -116,6 +119,11 @@ export default function App() {
           <Route path="polls" element={<Polls />} />
           <Route path="polls/new" element={<PollNew />} />
           <Route path="polls/:id" element={<PollDetail />} />
+          {/* "new" before ":id", or the literal is swallowed as an id. */}
+          <Route path="calendar" element={<Calendar />} />
+          <Route path="calendar/new" element={<EventNew />} />
+          <Route path="calendar/:id" element={<EventDetail />} />
+          <Route path="calendar/:id/edit" element={<EventNew />} />
           <Route path="neighbours" element={<Neighbours />} />
           <Route path="search" element={<Search />} />
           <Route path="notifications" element={<Notifications />} />

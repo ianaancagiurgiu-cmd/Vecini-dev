@@ -28,6 +28,7 @@ export default function Notifications() {
     { key: 'replies', label: t('notif_p_replies') },
     { key: 'issues', label: t('notif_p_issues') },
     { key: 'polls', label: t('notif_p_polls') },
+    { key: 'events', label: t('notif_p_events') },
   ];
 
   // Push needs a browser permission prompt, so it can fail in ways a plain

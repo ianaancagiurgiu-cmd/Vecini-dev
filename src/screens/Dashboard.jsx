@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { Avatar, PriorityBadge } from '../components/ui.jsx';
-import { timeAgo, isPriority } from '../lib/format.js';
+import { timeAgo, isPriority, eventDay, eventTime, isPast } from '../lib/format.js';
 
 function TopBar() {
   const nav = useNavigate();
@@ -47,6 +47,8 @@ export default function Dashboard() {
   const anns = [...data.announcements].sort((a, b) => (isPriority(b) - isPriority(a)) || (b.createdAt - a.createdAt)).slice(0, 3);
   const openIssues = data.issues.filter((i) => i.status !== 'resolved').length;
   const activePolls = data.polls.filter((p) => !p.closed && p.endsAt > Date.now()).length;
+  // Only what has not happened yet, soonest first. The store already sorts.
+  const soon = data.events.filter((e) => !isPast(e)).slice(0, 2);
   const discs = data.discussions.filter((d) => d.status === 'approved').sort((a, b) => b.createdAt - a.createdAt).slice(0, 3);
 
   return (
@@ -76,6 +78,35 @@ export default function Dashboard() {
       <div className="pad" style={{ paddingTop: 18, display: 'flex', gap: 11 }}>
         <StatTile n={openIssues} label={t('dash_open_issues')} tint={{ bg: 'var(--status-prog-bg)', fg: 'var(--status-prog-fg)' }} onClick={() => nav('/app/issues')} />
         <StatTile n={activePolls} label={t('dash_active_polls')} tint={{ bg: 'var(--status-new-bg)', fg: 'var(--status-new-fg)' }} onClick={() => nav('/app/polls')} />
+      </div>
+
+      {/* what is coming up */}
+      <div className="pad" style={{ paddingTop: 22 }}>
+        <div className="section-head">
+          <h2>{t('dash_upcoming')}</h2>
+          <button className="see-all" onClick={() => nav('/app/calendar')} style={{ background: 'none', border: 'none' }}>{t('dash_see_all')}</button>
+        </div>
+        {/* Shown even when empty: it is the only way in to the calendar, and a
+            section that disappears takes the way in with it. */}
+        {soon.length === 0 ? (
+          <div className="muted" style={{ fontSize: 14 }}>{t('ev_empty')}</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {soon.map((e) => (
+              <button key={e.id} onClick={() => nav('/app/calendar/' + e.id)} className="card"
+                style={{ textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 19 }}>📅</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.title}</div>
+                  <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
+                    {eventDay(e.startsAt, lang, t)}{!e.allDay && ` · ${eventTime(e.startsAt, lang)}`}
+                    {e.location && ` · ${e.location}`}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* recent announcements */}
