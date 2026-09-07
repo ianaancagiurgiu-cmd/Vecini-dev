@@ -12,7 +12,9 @@
     "demo:capture": "node demo/capture.mjs",
     "demo:stage": "rm -rf public/demo-stage && mkdir -p public/demo-stage && cp demo/stage.html demo/timeline.mjs public/demo-stage/ && cp -r demo/screens public/demo-stage/screens && vite build",
     "demo:preview": "node demo/preview-frames.mjs",
-    "demo:render": "node demo/render.mjs"
+    "demo:render": "node demo/render.mjs",
+    "gen:icons": "node scripts/gen-icons.mjs",
+    "gen:sql": "node scripts/build-pending-sql.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.1",

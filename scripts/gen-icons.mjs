@@ -21,7 +21,9 @@
 */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright';
+// From @playwright/test rather than 'playwright': that is the package.json
+// dependency, and the other is only there because this one pulls it in.
+import { chromium } from '@playwright/test';
 
 const root = new URL('../', import.meta.url);
 const out = (name) => fileURLToPath(new URL(`public/${name}`, root));

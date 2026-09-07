@@ -8,6 +8,10 @@
   the migration in that row's file has not been run, and the feature beside it
   will fail when somebody uses it — not at deploy time, which is why this is
   worth checking rather than assuming.
+
+  Every migration from 0007 on has to appear here; scripts/build-pending-sql.mjs
+  refuses to build the bundle if one of them does not, so this cannot fall
+  behind the way the bundle once did.
 */
 with expected(fisier, obiect, tip, la_ce_e) as (values
   ('0007_account_deletion', 'public.deleted_accounts',  'table',    'contorul de conturi șterse'),
@@ -18,7 +22,9 @@ with expected(fisier, obiect, tip, la_ce_e) as (values
   ('0010_admin_handover',   'public.keep_one_admin',    'function', 'oprește rămânerea fără administrator'),
   ('0010_admin_handover',   'public.set_member_role',   'function', 'schimbarea rolului unui membru'),
   ('0010_admin_handover',   'public.transfer_admin',    'function', 'predarea comunității altcuiva'),
-  ('0011_priority_until',   'announcements.pinned_until', 'column', 'anunțuri prioritare, cu termen')
+  ('0011_priority_until',   'announcements.pinned_until', 'column', 'anunțuri prioritare, cu termen'),
+  ('0012_events',           'public.events',            'table',    'calendarul asociației'),
+  ('0012_events',           'notification_prefs.events', 'column',  'comutatorul pentru notificările de calendar')
 )
 select
   e.fisier,
@@ -44,13 +50,30 @@ select
 from expected e
 order by e.fisier, e.obiect;
 
--- The trigger is separate: a function can exist without being wired to the
--- table, and then nothing enforces it.
-select
-  '0010_admin_handover' as fisier,
-  'trg_keep_one_admin'  as obiect,
-  'declanșatorul care aplică regula de mai sus' as la_ce_e,
-  exists (
-    select 1 from pg_trigger
-     where tgname = 'trg_keep_one_admin' and not tgisinternal
-  ) as exista;
+/*
+  Two things a "does it exist" check cannot see.
+
+  The trigger is separate because a function can exist without being wired to
+  the table, and then nothing enforces it.
+
+  pref_allows is separate because it existed long before the calendar did:
+  adding the events column without teaching the function about it would leave a
+  switch on the settings screen that changes nothing. There is no way to ask the
+  function whether it knows the type — passing it a row it has no branch for
+  gives the same answer as passing one it does — so this reads its text.
+*/
+select '0010_admin_handover' as fisier,
+       'trg_keep_one_admin'  as obiect,
+       'declanșatorul care aplică regula de mai sus' as la_ce_e,
+       exists (
+         select 1 from pg_trigger
+          where tgname = 'trg_keep_one_admin' and not tgisinternal
+       ) as exista
+union all
+select '0012_events',
+       'pref_allows(''event'')',
+       'notificările de calendar chiar pot fi oprite',
+       exists (
+         select 1 from pg_proc
+          where proname = 'pref_allows' and prosrc like '%when ''event''%'
+       );
