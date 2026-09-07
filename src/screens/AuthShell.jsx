@@ -24,7 +24,9 @@ export function AuthShell({ title, sub, children, footer }) {
       </div>
       <div className="pad" style={{ paddingTop: 18 }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 9, marginBottom: 24 }}>
-          <span style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--green-600)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 19, fontFamily: 'var(--font-display)' }}>V</span>
+          {/* The wordmark beside it already says the name, so the mark is
+              decoration as far as a screen reader is concerned. */}
+          <img src="/logo.svg" alt="" style={{ height: 34, width: 'auto', display: 'block' }} />
           <span className="serif" style={{ fontSize: 22, fontWeight: 600, color: 'var(--green-ink)' }}>Vecini</span>
         </div>
         <h1 className="display" style={{ fontSize: 30, margin: '0 0 8px' }}>{title}</h1>

@@ -1,82 +1,94 @@
-// Generates the PWA app icons (public/icon-*.png) from scratch.
-// No image libraries available, so this writes minimal PNGs directly:
-// a full-bleed Vecini-green square with a white serif-ish "V".
-// Full-bleed + centred glyph keeps it valid as a maskable icon.
-import { deflateSync } from 'zlib';
-import { writeFileSync, mkdirSync } from 'fs';
+/*
+  Draws every raster copy of the Vecini mark from the one vector original.
 
-const GREEN = [0x2f, 0x6b, 0x4f];
-const WHITE = [0xff, 0xff, 0xff];
+      node scripts/gen-icons.mjs
 
-function crc32(buf) {
-  let c, crc = 0xffffffff;
-  for (let n = 0; n < buf.length; n++) {
-    c = (crc ^ buf[n]) & 0xff;
-    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-    crc = (crc >>> 8) ^ c;
-  }
-  return (crc ^ 0xffffffff) >>> 0;
+  Output:
+    public/icon-180.png           iOS home screen (iOS rounds the corners itself)
+    public/icon-192.png           Android / desktop, unmasked
+    public/icon-512.png           the same, large
+    public/icon-maskable-512.png  Android adaptive icons, mark inside the safe circle
+    public/favicon.svg            browser tab, mark on its own cream tile
+    public/logo-email.png         transparent, for the email templates
+
+  Nothing here is hand-drawn: public/logo.svg is the source and this only places
+  it. Re-run it whenever that file changes, and commit what comes out — the PNGs
+  are served as-is, they are not part of the Vite build.
+
+  It renders through the Chromium that Playwright already installs for the test
+  suite, which is why this is a script you run rather than a build step: a
+  contributor without browsers can still build the app.
+*/
+import { readFileSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { chromium } from 'playwright';
+
+const root = new URL('../', import.meta.url);
+const out = (name) => fileURLToPath(new URL(`public/${name}`, root));
+
+const source = readFileSync(fileURLToPath(new URL('public/logo.svg', root)), 'utf8');
+const inner = source.slice(source.indexOf('>', source.indexOf('<svg')) + 1, source.lastIndexOf('</svg>'));
+const [, vbW, vbH] = source.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/).map(Number);
+
+// The cream of the logo artwork, which is also the app's paper.
+const CREAM = '#f4efe4';
+
+/*
+  Her artwork puts the mark across 69% of the tile, sitting a little below the
+  middle — the roof needs less room above it than the two figures need below.
+  Reproduced here rather than re-centred, so the icon on the home screen is the
+  logo she drew and not a variation on it.
+*/
+const ART = { scale: 244 / 352, cx: 0.5, cy: 0.531 };
+
+/*
+  Android masks an adaptive icon down to whatever shape the launcher likes, and
+  guarantees only the middle 80% circle survives. The whole mark has to fit
+  inside that circle, corner to corner, which means drawing it smaller.
+*/
+const SAFE = (() => {
+  const half = Math.hypot(vbW, vbH) / 2;                  // mark's half-diagonal
+  return { scale: (0.4 * 352 / half) * (vbW / 352), cx: 0.5, cy: 0.5 };
+})();
+
+function page(size, { scale, cx, cy }, background) {
+  const w = size * scale, h = w * (vbH / vbW);
+  return `<!doctype html><meta charset="utf-8"><body style="margin:0">
+    <div style="position:relative;width:${size}px;height:${size}px;overflow:hidden;
+                background:${background || 'transparent'}">
+      <svg viewBox="0 0 ${vbW} ${vbH}" width="${w}" height="${h}"
+           xmlns="http://www.w3.org/2000/svg"
+           style="position:absolute;left:${size * cx - w / 2}px;top:${size * cy - h / 2}px">${inner}</svg>
+    </div></body>`;
 }
 
-function chunk(type, data) {
-  const len = Buffer.alloc(4);
-  len.writeUInt32BE(data.length);
-  const body = Buffer.concat([Buffer.from(type, 'ascii'), data]);
-  const crc = Buffer.alloc(4);
-  crc.writeUInt32BE(crc32(body));
-  return Buffer.concat([len, body, crc]);
+const browser = await chromium.launch();
+const tab = await browser.newPage({ deviceScaleFactor: 1 });
+
+async function shot(file, size, placement, background) {
+  await tab.setViewportSize({ width: size, height: size });
+  await tab.setContent(page(size, placement, background));
+  await tab.screenshot({ path: out(file), omitBackground: !background });
+  console.log(file, `${size}x${size}`);
 }
 
-// Shortest distance from a point to a line segment.
-function distToSegment(px, py, x1, y1, x2, y2) {
-  const dx = x2 - x1, dy = y2 - y1;
-  const lenSq = dx * dx + dy * dy;
-  let t = lenSq === 0 ? 0 : ((px - x1) * dx + (py - y1) * dy) / lenSq;
-  t = Math.max(0, Math.min(1, t));
-  const cx = x1 + t * dx, cy = y1 + t * dy;
-  return Math.hypot(px - cx, py - cy);
-}
+await shot('icon-180.png', 180, ART, CREAM);
+await shot('icon-192.png', 192, ART, CREAM);
+await shot('icon-512.png', 512, ART, CREAM);
+await shot('icon-maskable-512.png', 512, SAFE, CREAM);
+// Twice the 44 px the emails draw it at, for the screens that ask for it.
+await shot('logo-email.png', 88, { scale: 1, cx: 0.5, cy: 0.5 }, null);
 
-function renderIcon(size) {
-  // "V": two thick strokes meeting at the bottom centre.
-  const top = 0.30 * size, bottom = 0.71 * size;
-  const leftX = 0.30 * size, rightX = 0.70 * size, midX = 0.5 * size;
-  const half = 0.055 * size; // half stroke width
+await browser.close();
 
-  const raw = Buffer.alloc((size * 3 + 1) * size);
-  let o = 0;
-  for (let y = 0; y < size; y++) {
-    raw[o++] = 0; // filter: none
-    for (let x = 0; x < size; x++) {
-      const px = x + 0.5, py = y + 0.5;
-      const d = Math.min(
-        distToSegment(px, py, leftX, top, midX, bottom),
-        distToSegment(px, py, rightX, top, midX, bottom),
-      );
-      // Anti-alias across one pixel of the stroke edge.
-      const cov = Math.max(0, Math.min(1, half + 0.5 - d));
-      const c = [0, 1, 2].map((i) => Math.round(GREEN[i] + (WHITE[i] - GREEN[i]) * cov));
-      raw[o++] = c[0]; raw[o++] = c[1]; raw[o++] = c[2];
-    }
-  }
-
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(size, 0);
-  ihdr.writeUInt32BE(size, 4);
-  ihdr[8] = 8;  // bit depth
-  ihdr[9] = 2;  // colour type: truecolour RGB
-  return Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    chunk('IHDR', ihdr),
-    chunk('IDAT', deflateSync(raw, { level: 9 })),
-    chunk('IEND', Buffer.alloc(0)),
-  ]);
-}
-
-mkdirSync(new URL('../public/', import.meta.url).pathname, { recursive: true });
-for (const size of [180, 192, 512]) {
-  const path = new URL(`../public/icon-${size}.png`, import.meta.url).pathname;
-  const png = renderIcon(size);
-  writeFileSync(path, png);
-  console.log(`public/icon-${size}.png`, Math.round(png.length / 1024) + 'KB');
-}
+// A tab favicon is a 16 px square: the mark alone would be a smudge of two
+// colours, so it keeps the tile the logo artwork gives it.
+const w = ART.scale * 100, h = w * (vbH / vbW);
+const n = (v) => v.toFixed(2);
+writeFileSync(out('favicon.svg'), `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="22" fill="${CREAM}"/>
+  <svg x="${n(100 * ART.cx - w / 2)}" y="${n(100 * ART.cy - h / 2)}" width="${n(w)}" height="${n(h)}"
+       viewBox="0 0 ${vbW} ${vbH}">${inner.trim()}</svg>
+</svg>
+`);
+console.log('favicon.svg');

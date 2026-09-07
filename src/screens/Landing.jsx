@@ -5,7 +5,9 @@ import { LangSwitch } from '../components/ui.jsx';
 function Logo({ size = 40 }) {
   return (
     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-      <span style={{ width: size, height: size, borderRadius: size * 0.28, background: 'var(--green-600)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: size * 0.55, fontFamily: 'var(--font-display)' }}>V</span>
+      {/* The wordmark beside it already says the name, so the mark is
+          decoration as far as a screen reader is concerned. */}
+      <img src="/logo.svg" alt="" style={{ height: size, width: 'auto', display: 'block' }} />
       <span className="serif" style={{ fontSize: size * 0.66, fontWeight: 600, color: 'var(--green-ink)' }}>Vecini</span>
     </div>
   );

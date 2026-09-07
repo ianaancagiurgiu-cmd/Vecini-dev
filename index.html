@@ -16,7 +16,9 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Vecini — comunitatea ta de cartier</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='28' fill='%232f6b4f'/%3E%3Ctext x='50' y='70' font-size='62' font-family='Georgia,serif' fill='white' text-anchor='middle' font-weight='600'%3EV%3C/text%3E%3C/svg%3E" />
+  <!-- The mark on its own tile: at 16 px on a tab strip, a shape with no
+       ground behind it is two smudges of colour. -->
+  <link rel="icon" href="/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -25,8 +27,14 @@
     component. Everything React draws arrives after a 566 KB bundle has been
     fetched and parsed, which is exactly the wait this is meant to cover — a
     splash that loads with the app would appear at the end of the pause instead
-    of during it. Inline styles, no image files, no requests: it paints on the
-    first frame and costs nothing.
+    of during it. Inline markup, inline styles, no requests of any kind: it
+    paints on the first frame and costs nothing.
+
+    The arrangement is WhatsApp's, and Slack's and Teams': the mark alone in the
+    middle of the screen, the maker's name small at the foot, and nothing that
+    pretends to know how far along the loading is. The mark is the same drawing
+    as public/logo.svg, copied in rather than linked so that it needs no request
+    — tests/20-splash.spec.js checks the two have not drifted apart.
 
     It sits outside #root so React never clears it. App.jsx takes it away once
     there is a real screen behind it, which is later than you would think —
@@ -36,123 +44,59 @@
   <style>
     #splash {
       position: fixed; inset: 0; z-index: 9999;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      gap: 22px; background: #faf7f0;
+      display: flex; align-items: center; justify-content: center;
+      background: #faf7f0;
       transition: opacity .45s ease;
     }
     #splash.is-done { opacity: 0; pointer-events: none; }
-    #splash .snail { width: 186px; height: auto; display: block; overflow: visible; }
 
-    #splash .word {
-      font-family: Georgia, 'Times New Roman', serif;
-      font-size: 20px; color: #545b4f; letter-spacing: .03em;
+    #splash .mark { width: 108px; height: auto; display: block; }
+
+    /* Down at the foot, out of the way of the mark, where every one of the
+       three apps she pointed at puts it. */
+    #splash .by {
+      position: absolute; left: 0; right: 0;
+      bottom: calc(46px + env(safe-area-inset-bottom, 0px));
+      text-align: center; line-height: 1.25;
     }
-    #splash .word i { font-style: normal; opacity: .25; animation: sp-dot 1.5s infinite; }
-    #splash .word i:nth-child(2) { animation-delay: .25s; }
-    #splash .word i:nth-child(3) { animation-delay: .5s; }
-    @keyframes sp-dot { 0%, 65%, 100% { opacity: .25; } 30% { opacity: 1; } }
+    #splash .by-small {
+      display: block;
+      font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-size: 13px; font-weight: 500; color: #9aa08f; letter-spacing: .01em;
+    }
+    #splash .by-name {
+      display: block; margin-top: 3px;
+      font-family: 'Newsreader', Georgia, 'Times New Roman', serif;
+      font-style: italic; font-size: 27px; color: #2f6b4f; letter-spacing: .01em;
+    }
 
     /*
-      Fills once, and only forwards.
-
-      The previous version swept a segment across on a loop, and the jump back
-      to the start read as a flicker. Nothing here knows how far along the
-      loading actually is, so this fills fast at first and then keeps slowing,
-      never quite arriving — the shape of not knowing, rather than a figure
-      invented to look precise. It reaches the end only when the app really is
-      ready, which is the one moment the number is true.
+      Barely an animation: it starts most of the way there, so the mark is on
+      screen from the first frame and only settles into place. Anything that
+      fades up from nothing would give back the blank moment this exists to
+      cover.
     */
-    #splash .track {
-      position: relative; width: 208px; height: 7px;
-      border-radius: 99px; background: #e6e0cf; overflow: hidden;
+    #splash .mark, #splash .by { animation: sp-in .55s cubic-bezier(.2, .7, .3, 1) both; }
+    #splash .by { animation-delay: .1s; }
+    @keyframes sp-in {
+      from { opacity: .35; transform: translateY(4px) scale(.98); }
+      to   { opacity: 1;   transform: none; }
     }
-    #splash .bar {
-      position: absolute; top: 0; bottom: 0; left: 0; width: 100%;
-      border-radius: 99px; background: #2f6b4f;
-      transform-origin: left center; transform: scaleX(0);
-      animation: sp-fill 14s cubic-bezier(.08, .82, .24, 1) forwards;
-    }
-    @keyframes sp-fill {
-      0%   { transform: scaleX(0); }
-      100% { transform: scaleX(.93); }
-    }
-    /* The last stretch, once there is something behind it to show. */
-    #splash.is-done .bar {
-      animation: none; transform: scaleX(1);
-      transition: transform .22s ease-out;
-    }
-
-    /* He stays put and keeps breathing: gathers at the back, pushes forward,
-       and the shell rocks a beat behind, the way a weight on your back does. */
-    #splash .bob   { animation: sp-bob 1.5s ease-in-out infinite; transform-origin: 30px 108px; }
-    #splash .shell { animation: sp-shell 1.5s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
-    #splash .horn  { animation: sp-horn 2.6s ease-in-out infinite; transform-origin: 150px 74px; }
-    #splash .horn2 { animation: sp-horn 2.6s ease-in-out infinite .45s; transform-origin: 161px 60px; }
-    @keyframes sp-bob {
-      0%, 100% { transform: scale(1, 1)      translateY(0); }
-      35%      { transform: scale(.94, 1.07) translateY(-1px); }
-      70%      { transform: scale(1.04, .96) translateY(0); }
-    }
-    @keyframes sp-shell {
-      0%, 100% { transform: rotate(0deg)  translateY(0); }
-      35%      { transform: rotate(-4deg) translateY(1px); }
-      70%      { transform: rotate(3deg)  translateY(-1px); }
-    }
-    @keyframes sp-horn { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(6deg); } }
-
     @media (prefers-reduced-motion: reduce) {
-      #splash .bob, #splash .shell, #splash .horn, #splash .horn2, #splash .word i { animation: none; }
-      #splash .word i { opacity: 1; }
-      /* Still fills, just without the easing drama. */
-      #splash .bar { animation: sp-fill 14s linear forwards; }
+      #splash .mark, #splash .by { animation: none; }
     }
   </style>
 </head>
 <body>
-  <div id="splash" role="status" aria-label="Loading">
-      <svg class="snail" viewBox="0 0 200 130" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <g class="bob">
-          <!-- the foot, one continuous shape from tail to head -->
-          <path d="M14 108 C14 92 28 86 46 86 L118 86 C136 86 142 76 143 62 C144 52 152 47 160 50
-                   C169 53 171 63 166 71 C158 86 146 100 124 106 Z"
-                fill="#efe8d6" stroke="#1a1c18" stroke-width="4.5" stroke-linejoin="round"/>
-
-          <!-- eyestalks -->
-          <g class="horn">
-            <path d="M150 60 C147 44 143 34 138 27" stroke="#1a1c18" stroke-width="4.5" stroke-linecap="round"/>
-            <circle cx="136" cy="23" r="6.5" fill="#faf7f0" stroke="#1a1c18" stroke-width="4"/>
-            <circle cx="136.5" cy="23.5" r="2.4" fill="#1a1c18"/>
-          </g>
-          <g class="horn2">
-            <path d="M161 60 C164 46 170 38 176 33" stroke="#1a1c18" stroke-width="4.5" stroke-linecap="round"/>
-            <circle cx="178" cy="29" r="6.5" fill="#faf7f0" stroke="#1a1c18" stroke-width="4"/>
-            <circle cx="178.5" cy="29.5" r="2.4" fill="#1a1c18"/>
-          </g>
-
-          <!-- a small, unbothered smile -->
-          <path d="M152 76 C156 80 161 80 165 76" stroke="#1a1c18" stroke-width="3.6" stroke-linecap="round"/>
-
-          <!-- the shell -->
-          <g transform="translate(74 56)"><g class="shell">
-            <circle r="38" fill="#2f6b4f" stroke="#1a1c18" stroke-width="4.5"/>
-            <path d="M0.0 -30.0 L5.7 -29.1 L11.0 -27.2 L15.8 -24.4 L20.0 -20.7 L23.3 -16.3 L25.7 -11.4
-                     L27.1 -6.2 L27.5 -0.9 L26.9 4.3 L25.3 9.3 L22.8 13.7 L19.5 17.6 L15.6 20.8
-                     L11.2 23.1 L6.5 24.5 L1.7 25.0 L-3.1 24.5 L-7.6 23.2 L-11.8 21.0 L-15.4 18.2
-                     L-18.3 14.7 L-20.5 10.8 L-21.9 6.6 L-22.4 2.2 L-22.1 -2.1 L-21.0 -6.2
-                     L-19.2 -9.9 L-16.7 -13.2 L-13.7 -15.9 L-10.2 -18.0 L-6.5 -19.3 L-2.7 -19.9
-                     L1.2 -19.7 L4.8 -18.8 L8.2 -17.3 L11.2 -15.1 L13.6 -12.5 L15.5 -9.5
-                     L16.7 -6.3 L17.3 -2.9 L17.3 0.4 L16.6 3.7 L15.3 6.6 L13.5 9.3 L11.2 11.4
-                     L8.7 13.1 L5.9 14.2 L3.0 14.8 L0.1 14.8 L-2.7 14.2 L-5.2 13.2 L-7.5 11.7
-                     L-9.3 9.8 L-10.8 7.7 L-11.8 5.3 L-12.3 2.9 L-12.3 0.5 L-11.8 -1.8
-                     L-11.0 -3.9 L-9.8 -5.8 L-8.3 -7.4 L-6.5 -8.5 L-4.6 -9.4 L-2.7 -9.8
-                     L-0.7 -9.8 L1.1 -9.4 L2.8 -8.8 L4.3 -7.8 L5.5 -6.6 L6.4 -5.2 L7.0 -3.8
-                     L7.3 -2.3 L7.3 -0.8 L7.0 0.6 L6.4 1.8 L5.7 2.9 L4.8 3.7 L3.8 4.4 L2.7 4.7"
-                  stroke="#faf7f0" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-          </g></g>
-        </g>
-      </svg>
-    <div class="word">Loading<i>.</i><i>.</i><i>.</i></div>
-    <div class="track"><span class="bar"></span></div>
+  <div id="splash" role="status" aria-label="Vecini se încarcă">
+    <svg class="mark" viewBox="0 0 244 250" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+      <path fill="#2f6b4f" d="M118.25 0.73 L121.33 0.03 L124.33 0.31 L128.33 2.4 L175.33 42.82 L175.83 41.73 L175.87 9.73 L176.95 5.73 L179.51 2.73 L181.33 1.36 L186.33 0.23 L218.33 0.28 L222.33 1.38 L224.13 2.73 L226.68 5.73 L227.83 10.73 L227.83 81.73 L226.83 86.73 L239.33 97.61 L242.66 101.73 L243.51 104.73 L243.47 108.73 L242.66 110.73 L241.33 112.5 L239.33 114.2 L237.33 115.25 L234.33 116.03 L231.33 115.84 L229.33 115.11 L227.33 113.82 L122.33 24.2 L121.33 24.24 L119.33 25.66 L16.32 113.73 L14.33 115.1 L12.33 115.79 L9.33 116.03 L5.33 114.82 L2.33 112.54 L0.08 108.73 L0.09 104.73 L0.99 101.73 L4.33 97.66 L115.33 2.35ZM196.33 20.23 L195.83 20.73 L195.78 50.73 L194.76 54.73 L192.81 57.73 L207.33 70.27 L207.77 69.73 L207.83 68.73 L207.83 20.73 L207.33 20.23ZM109.46 82.73 L111.33 82.24 L132.33 82.24 L134.21 82.73 L136.33 84.28 L137.33 85.85 L137.82 87.73 L137.82 108.73 L137.33 110.6 L135.78 112.73 L134.21 113.73 L132.33 114.22 L111.33 114.22 L109.46 113.73 L107.33 112.18 L106.33 110.6 L105.84 108.73 L105.84 87.73 L106.96 84.73ZM180.38 132.73 L184.33 132.25 L190.33 132.49 L194.33 133.39 L199.33 135.39 L204.33 138.58 L207.73 141.73 L211.57 146.73 L213.61 150.73 L215.57 157.73 L215.83 161.73 L215.57 166.73 L213.61 173.73 L210.33 179.54 L206.33 184.13 L201.33 187.97 L195.19 190.73 L196.07 191.73 L200.33 193.3 L204.33 195.36 L211.33 200.62 L217.63 207.73 L221.38 213.73 L224.67 220.73 L227.75 230.73 L229.62 242.73 L229.83 249.73 L229.33 250.23 L142.33 250.23 L141.83 249.73 L142.14 241.73 L143.61 232.73 L144.33 232.23 L148.33 231.99 L151.09 230.73 L153.46 228.73 L155.59 224.73 L155.59 219.73 L153.46 215.73 L151.11 213.73 L150.86 212.73 L152.02 210.73 L157.3 203.73 L162.55 198.73 L167.33 195.36 L171.33 193.3 L175.59 191.73 L176.48 190.73 L170.33 187.97 L166.33 185.04 L162.18 180.73 L158.99 175.73 L156.99 170.73 L155.96 165.73 L155.96 158.73 L156.99 153.73 L160.09 146.73 L163.02 142.73 L166.33 139.42 L172.33 135.39 L177.33 133.39Z"/>
+      <path fill="#b4532a" d="M52.39 132.73 L56.33 132.25 L62.33 132.49 L66.33 133.39 L71.33 135.39 L76.33 138.57 L79.73 141.73 L83.57 146.73 L85.61 150.73 L87.57 157.73 L87.83 161.73 L87.57 166.73 L85.61 173.73 L82.33 179.54 L78.33 184.13 L73.33 187.97 L67.19 190.73 L68.07 191.73 L72.33 193.3 L76.33 195.36 L82.3 199.73 L88.33 206.09 L92.8 212.73 L92.55 213.73 L90.2 215.73 L89.33 216.97 L88.07 219.73 L88.07 224.73 L90.2 228.73 L92.57 230.73 L95.33 231.99 L99.33 232.23 L100.05 232.73 L101.62 242.73 L101.83 249.73 L101.33 250.23 L14.33 250.23 L13.83 249.73 L14.14 241.73 L16.14 229.73 L18.99 220.73 L24.02 210.73 L29.3 203.73 L34.55 198.73 L39.33 195.36 L43.33 193.3 L47.6 191.73 L48.48 190.73 L42.33 187.97 L38.33 185.04 L34.18 180.73 L30.99 175.73 L28.99 170.73 L27.96 165.73 L27.96 158.73 L28.99 153.73 L32.09 146.73 L35.02 142.73 L38.33 139.42 L44.33 135.39 L49.33 133.39Z"/>
+    </svg>
+    <div class="by">
+      <span class="by-small">made by</span>
+      <span class="by-name">Vecini</span>
+    </div>
   </div>
 
   <div id="root"></div>

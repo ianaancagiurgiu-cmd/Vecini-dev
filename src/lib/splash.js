@@ -4,7 +4,7 @@
   Deliberately not "when React mounts". Mounting only means the bundle arrived;
   AppLayout still returns null three more times after that, while the session is
   checked, then the membership, then the community's first load. Hiding on mount
-  would swap the snail for a blank screen, which is the bug this is meant to fix.
+  would swap the mark for a blank screen, which is the bug this is meant to fix.
 
   So the caller decides when there is something real to look at, and the fade is
   left to CSS. Removing the node afterwards keeps it out of the way of taps.
@@ -25,7 +25,6 @@ export function hideSplash() {
   el.dataset.leaving = '1';
 
   const go = () => {
-    // The bar runs to the end first: the one moment it can honestly say 100%.
     el.classList.add('is-done');
     el.addEventListener('transitionend', (e) => {
       if (e.propertyName === 'opacity') el.remove();
@@ -35,7 +34,7 @@ export function hideSplash() {
   };
 
   // performance.now() is milliseconds since navigation started, which is as
-  // close to "since the snail appeared" as makes any difference.
+  // close to "since the mark appeared" as makes any difference.
   const shownFor = performance.now();
   if (shownFor >= MIN_VISIBLE_MS) go();
   else setTimeout(go, MIN_VISIBLE_MS - shownFor);

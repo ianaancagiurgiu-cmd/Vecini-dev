@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 
 /*
   The waiting screen.
@@ -12,6 +13,8 @@ import { test, expect } from '@playwright/test';
   lifts looks exactly like an app that never loads.
 */
 
+const pathsIn = (svg) => [...svg.matchAll(/<path[^>]*\sd="([^"]+)"/g)].map((m) => m[1]);
+
 test.describe('Waiting screen', () => {
   test('is painted before any script runs', async ({ page }) => {
     // Exactly the situation it exists for: markup has arrived, the bundle has not.
@@ -20,8 +23,9 @@ test.describe('Waiting screen', () => {
 
     const splash = page.locator('#splash');
     await expect(splash).toBeVisible();
-    await expect(splash.locator('svg.snail')).toBeVisible();
-    await expect(splash).toContainText('Loading');
+    await expect(splash.locator('svg.mark')).toBeVisible();
+    await expect(splash).toContainText('made by');
+    await expect(splash).toContainText('Vecini');
 
     // It has to cover the page, not sit above it in the document flow.
     const box = await splash.boundingBox();
@@ -30,34 +34,30 @@ test.describe('Waiting screen', () => {
     expect(box.height).toBeGreaterThanOrEqual(view.height - 1);
   });
 
-  test('fills the bar progressively, and never backwards', async ({ page }) => {
+  test('draws the mark itself, not a request for it', async ({ page }) => {
+    /*
+      The whole point of keeping the drawing inline is that it costs nothing to
+      paint. Someone tidying the duplication away into <img src="/logo.svg">
+      would give back the blank first frame this screen exists to cover, and
+      nothing else in the suite would notice.
+    */
     await page.route('**/assets/*.js', (r) => r.abort());
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.locator('#splash .track')).toBeVisible();
-    const bar = page.locator('#splash .bar');
+    await expect(page.locator('#splash svg.mark path')).toHaveCount(2);
+    expect(await page.locator('#splash img, #splash use, #splash object').count(),
+      'the waiting screen fetches its artwork instead of carrying it').toBe(0);
+  });
 
-    /*
-      Both halves matter, and the second is the one that was actually wrong
-      before: a segment that swept across on a loop grew and then snapped back
-      to nothing every second and a half, which reads as a flicker rather than
-      as progress. Sampling only the start and end would not have caught it.
-    */
-    const seen = [];
-    for (let i = 0; i < 10; i++) {
-      seen.push((await bar.boundingBox()).width);
-      await page.waitForTimeout(160);
-    }
+  test('carries the same drawing as public/logo.svg', async () => {
+    // Two copies of the mark, one inline and one on disk. They are allowed to
+    // exist; they are not allowed to disagree.
+    const inline = pathsIn(readFileSync(new URL('../index.html', import.meta.url), 'utf8')
+      .match(/<svg class="mark"[\s\S]*?<\/svg>/)[0]);
+    const source = pathsIn(readFileSync(new URL('../public/logo.svg', import.meta.url), 'utf8'));
 
-    const shown = seen.map((w) => Math.round(w));
-    expect(seen.at(-1), `the bar should have grown; saw ${shown.join(', ')}`)
-      .toBeGreaterThan(seen[0] + 20);
-
-    for (let i = 1; i < seen.length; i++) {
-      // A pixel of slack for rounding, but nothing that reads as a jump back.
-      expect(seen[i], `the bar went backwards at sample ${i}: ${shown.join(', ')}`)
-        .toBeGreaterThanOrEqual(seen[i - 1] - 1);
-    }
+    expect(inline.length, 'the inline mark has no paths').toBeGreaterThan(0);
+    expect(inline, 'index.html and public/logo.svg have drifted apart').toEqual(source);
   });
 
   test('is gone once a real screen is behind it', async ({ page }) => {

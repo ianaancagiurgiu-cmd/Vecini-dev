@@ -5,8 +5,11 @@
   Email-client constraints this file deliberately respects:
    - table-based layout (flexbox/grid are unreliable in email clients)
    - all CSS inline (Gmail strips <style> blocks in some contexts)
-   - no external images at all, so nothing can be blocked or fail to load:
-     the "V" mark is a coloured table cell, not a picture
+   - the one image is the logo, served from vecini.app. Clients that block
+     images until you say so will leave a small gap where it sits; the "Vecini"
+     beside it is live text, so the email still arrives signed either way
+   - the cream page colour matches the logo's own ground, so the mark is
+     supplied with a transparent background and sits directly on the paper
    - Georgia stands in for Newsreader (web fonts don't load in most clients)
    - explicit bgcolor + color-scheme so dark-mode clients don't invert badly
 -->
@@ -37,7 +40,7 @@
             <td style="padding:0 4px 22px 4px;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                  <td width="40" height="40" align="center" valign="middle" bgcolor="#2f6b4f" style="width:40px; height:40px; background-color:#2f6b4f; border-radius:11px; color:#ffffff; font-family:Georgia,'Times New Roman',serif; font-size:22px; font-weight:700; line-height:40px; text-align:center;">V</td>
+                  <td width="44" height="44" align="center" valign="middle" style="width:44px; height:44px; line-height:0; font-size:0;"><img src="https://vecini.app/logo-email.png" width="44" height="44" alt="" style="display:block; width:44px; height:44px; border:0; outline:none;"></td>
                   <td style="padding-left:10px; font-family:Georgia,'Times New Roman',serif; font-size:22px; font-weight:600; color:#1d3b2c; letter-spacing:-0.2px;">Vecini</td>
                 </tr>
               </table>
