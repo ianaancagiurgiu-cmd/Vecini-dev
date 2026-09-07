@@ -205,4 +205,42 @@ test.describe('Epic 13 — service worker push handling', () => {
     expect(navigated).toEqual(['https://vecini-comunitate.netlify.app/#/app/polls/3']);
     expect(sw.opened).toEqual([]);
   });
+
+  /*
+    Every switch in Settings has to actually reach the phone.
+
+    The edge function needs Deno and deployed secrets, so it cannot be run here
+    — but the one decision inside it that fails quietly can be lifted out and
+    exercised: which preference column governs which kind of push. A type absent
+    from that map is not refused, it is waved through, so the failure is a
+    setting that goes on looking switched off while the phone keeps buzzing.
+
+    That is not hypothetical. It is what happened to the calendar: 'event' was
+    taught to the app and to the database's pref_allows, and never to this file.
+  */
+  test('every kind of notification answers to its switch in Settings', () => {
+    const src = readFileSync(new URL('../supabase/functions/send-push/index.ts', import.meta.url), 'utf8');
+
+    const map = Object.fromEntries(
+      [...src.matchAll(/^ {2}(\w+): '(\w+)',$/gm)].map((m) => [m[1], m[2]]),
+    );
+    const fetched = src.match(/\.select\('user_id, push, ([^']+)'\)/)[1].split(', ');
+
+    for (const type of ['announcement', 'reply', 'issue', 'poll', 'event']) {
+      const column = map[type];
+      expect(column, `"${type}" has no preference column, so a push of that kind ignores Settings entirely`).toBeTruthy();
+      expect(fetched, `"${type}" is governed by ${column}, which the query never fetches — it reads as undefined and the push goes out anyway`).toContain(column);
+
+      // The filter itself: off means off, and anything else means send.
+      const keep = (prefs) => {
+        if (!prefs || prefs.push !== true) return false;
+        if (column && prefs[column] === false) return false;
+        return true;
+      };
+      expect(keep({ push: true, [column]: false }), `${type}: switched off still sends`).toBe(false);
+      expect(keep({ push: true, [column]: true }), `${type}: switched on does not send`).toBe(true);
+      expect(keep({ push: false, [column]: true }), `${type}: sends with push off altogether`).toBe(false);
+      expect(keep({ push: true }), `${type}: a switch never touched should default to sending`).toBe(true);
+    }
+  });
 });

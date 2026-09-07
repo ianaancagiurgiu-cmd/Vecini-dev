@@ -18,11 +18,24 @@ const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT') || 'mailto:admin@vecini.app'
 
 webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
+/*
+  Which switch in Settings governs which kind of push.
+
+  A type missing from this map is not refused, it is waved through — see the
+  filter below, which only rejects when it knows the column. That is deliberate
+  for a type nobody has an opinion about yet, and it is exactly how the calendar
+  slipped past: 'event' was added to the app and to the database's own
+  pref_allows, but not here. Someone who turned "Evenimente noi în calendar" off
+  stopped seeing them in the app's list and went on being buzzed by their phone.
+
+  So: anything added to notification_prefs belongs in both of the lines below.
+*/
 const PREF_COLUMN: Record<string, string> = {
   announcement: 'announcements',
   reply: 'replies',
   issue: 'issues',
   poll: 'polls',
+  event: 'events',
 };
 
 const CORS = {
@@ -96,7 +109,7 @@ Deno.serve(async (req) => {
   // Opted in to push at all, and to this category?
   const { data: prefRows } = await admin
     .from('notification_prefs')
-    .select('user_id, push, announcements, replies, issues, polls')
+    .select('user_id, push, announcements, replies, issues, polls, events')
     .in('user_id', allowedIds);
   const prefsById = new Map((prefRows || []).map((p) => [p.user_id as string, p]));
   const prefCol = PREF_COLUMN[type];
