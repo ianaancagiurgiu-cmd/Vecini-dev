@@ -16,6 +16,24 @@ const ACTIVE_COMMUNITY_KEY = 'vecini.activeCommunity.v1';
 const AppCtx = createContext(null);
 export const useApp = () => useContext(AppCtx);
 
+/*
+  The four columns that turn an announcement into something happening.
+
+  Written as one piece because they only make sense together: the database
+  refuses an end without a beginning, so clearing the date has to clear the rest
+  in the same statement rather than leaving an orphan behind.
+*/
+const dateFields = ({ startsAt, endsAt, allDay, location }) => (
+  startsAt
+    ? {
+      starts_at: new Date(startsAt).toISOString(),
+      ends_at: endsAt ? new Date(endsAt).toISOString() : null,
+      all_day: !!allDay,
+      location: location || '',
+    }
+    : { starts_at: null, ends_at: null, all_day: false, location: '' }
+);
+
 function loadPrefs() {
   try {
     const raw = localStorage.getItem(PREF_KEY);
@@ -32,7 +50,6 @@ const emptyData = () => ({
   discussions: [],
   issues: [],
   polls: [],
-  events: [],
   notifications: [],
   notifPrefs: { announcements: true, replies: true, issues: true, polls: true, events: true, push: false },
   deletedAccounts: 0,
@@ -210,13 +227,11 @@ export function AppProvider({ children }) {
 
       const memberIds = (members || []).map((m) => m.user_id);
 
-      const [{ data: announcements }, { data: discussions }, { data: issues }, { data: polls }, { data: events }, { data: notifications }, { data: notifPrefsRow }, { data: archivedRows }, { data: phoneRows }] = await Promise.all([
+      const [{ data: announcements }, { data: discussions }, { data: issues }, { data: polls }, { data: notifications }, { data: notifPrefsRow }, { data: archivedRows }, { data: phoneRows }] = await Promise.all([
         supabase.from('announcements').select('*').eq('community_id', cid).order('created_at', { ascending: false }),
         supabase.from('discussions').select('*').eq('community_id', cid).neq('status', 'hidden').order('created_at', { ascending: false }),
         supabase.from('issues').select('*').eq('community_id', cid).order('created_at', { ascending: false }),
         supabase.from('polls').select('*').eq('community_id', cid).order('created_at', { ascending: false }),
-        // Soonest first: every screen that reads this asks what is coming up.
-        supabase.from('events').select('*').eq('community_id', cid).order('starts_at', { ascending: true }),
         supabase.from('notifications').select('*').eq('community_id', cid).eq('user_id', userId).order('created_at', { ascending: false }),
         supabase.from('notification_prefs').select('*').eq('user_id', userId).maybeSingle(),
         supabase.from('archived_items').select('kind,item_id').eq('user_id', userId),
@@ -323,18 +338,24 @@ export function AppProvider({ children }) {
         users,
         members: (members || []).map((m) => ({ userId: m.user_id, role: m.role, joinedAt: new Date(m.joined_at).getTime() })),
         community: { id: community.id, name: community.name, address: community.address, description: community.description, code: community.code, joinMode: community.join_mode, kind: community.kind || 'bloc', memberCount: (members || []).length, staircases: 1 },
-        announcements: (announcements || []).map((a) => ({ ...a, authorId: a.author_id, createdAt: new Date(a.created_at).getTime(), pinnedUntil: a.pinned_until ? new Date(a.pinned_until).getTime() : null })),
+        /*
+          One list. An announcement carrying a date is what used to be an event,
+          and the calendar reads this same array rather than a table of its own —
+          which is the point: there is nothing to keep in step.
+        */
+        announcements: (announcements || []).map((a) => ({
+          ...a,
+          authorId: a.author_id,
+          createdAt: new Date(a.created_at).getTime(),
+          pinnedUntil: a.pinned_until ? new Date(a.pinned_until).getTime() : null,
+          startsAt: a.starts_at ? new Date(a.starts_at).getTime() : null,
+          endsAt: a.ends_at ? new Date(a.ends_at).getTime() : null,
+          allDay: !!a.all_day,
+          location: a.location || '',
+        })),
         discussions: discussionsFull.map((d) => ({ ...d, authorId: d.author_id, createdAt: new Date(d.created_at).getTime(), replies: d.replies.map((r) => ({ ...r, authorId: r.author_id, createdAt: new Date(r.created_at).getTime() })) })),
         issues: issuesFull.map((i) => ({ ...i, reporterId: i.reporter_id, photo: i.photo_url, createdAt: new Date(i.created_at).getTime(), history: i.history.map((h) => ({ ...h, byId: h.by_id, at: new Date(h.at).getTime() })), comments: i.comments.map((c) => ({ ...c, authorId: c.author_id, createdAt: new Date(c.created_at).getTime() })) })),
         polls: pollsFull.map((p) => ({ ...p, authorId: p.author_id, createdAt: new Date(p.created_at).getTime(), endsAt: new Date(p.ends_at).getTime() })),
-        events: (events || []).map((e) => ({
-          ...e,
-          authorId: e.author_id,
-          allDay: e.all_day,
-          startsAt: new Date(e.starts_at).getTime(),
-          endsAt: e.ends_at ? new Date(e.ends_at).getTime() : null,
-          createdAt: new Date(e.created_at).getTime(),
-        })),
         notifications: (notifications || []).map((n) => ({ ...n, createdAt: new Date(n.created_at).getTime() })),
         notifPrefs: notifPrefsRow || { announcements: true, replies: true, issues: true, polls: true, events: true, push: false },
         archived,
@@ -770,13 +791,61 @@ export function AppProvider({ children }) {
       if (error) { await refreshAll(); throw error; }
     },
 
-    addAnnouncement: async ({ title, body }) => {
-      const { data: row, error } = await supabase.from('announcements').insert({ community_id: cid, author_id: userId, title, body }).select('*').single();
-      if (error) throw error;
-      await notifyMembers(userId, 'announcement', STRINGS[lang].ann_new, title, '/app/announcements/' + row.id);
+    /*
+      Announcements, with or without a date on them.
+
+      There used to be a second table for the dated ones, and a second form, and
+      a second decision for whoever was writing. All that separated them was the
+      date, so now that is all that separates them: `startsAt` null is a notice,
+      `startsAt` set is a notice about something happening.
+
+      An all-day date is stored at midday rather than midnight. The column holds
+      absolute time, and midnight falls onto the previous day for anyone whose
+      device sits an hour behind; midday survives a twelve-hour shift either way.
+      The composer does that conversion, so what arrives here is already correct.
+    */
+    addAnnouncement: async ({ title, body, startsAt, endsAt, allDay, location }) => {
+      const { data: row, error } = await supabase.from('announcements').insert({
+        community_id: cid, author_id: userId, title, body: body || '',
+        ...dateFields({ startsAt, endsAt, allDay, location }),
+      }).select('*').single();
+      if (error) { showToast(t('ann_error')); throw error; }
+      // Two switches in Settings, so two kinds of notification. Which one this
+      // is follows from the thing itself rather than from where it was written.
+      const dated = !!startsAt;
+      await notifyMembers(
+        userId,
+        dated ? 'event' : 'announcement',
+        STRINGS[lang][dated ? 'ev_new_notif' : 'ann_new'],
+        title,
+        '/app/announcements/' + row.id,
+      );
       await refreshAll();
       showToast(t('ann_members_notified'));
       return row.id;
+    },
+    updateAnnouncement: async (id, { title, body, startsAt, endsAt, allDay, location }) => {
+      const { error } = await supabase.from('announcements').update({
+        title, body: body || '',
+        ...dateFields({ startsAt, endsAt, allDay, location }),
+      }).eq('id', id);
+      if (error) { showToast(t('ann_error')); throw error; }
+      await refreshAll();
+      showToast(t('ann_saved'));
+    },
+    /*
+      Taking one down.
+
+      Announcements had no deletion until the calendar moved in here, because a
+      notice that turned out wrong was answered with another notice. A meeting is
+      not like that: meetings get called off, and one left standing on the
+      calendar is worse than no calendar at all.
+    */
+    removeAnnouncement: async (id) => {
+      const { error } = await supabase.from('announcements').delete().eq('id', id);
+      if (error) { showToast(t('ann_error')); throw error; }
+      await refreshAll();
+      showToast(t('ann_removed'));
     },
     /*
       Priority is a deadline, not a flag. Passing null lets an announcement go
@@ -880,47 +949,6 @@ export function AppProvider({ children }) {
     },
     closePoll: async (pollId) => { await supabase.from('polls').update({ closed: true }).eq('id', pollId); await refreshAll(); },
 
-    /*
-      The calendar.
-
-      An all-day event is stored at midday rather than at midnight: the column is
-      absolute time, and a date pinned to midnight lands on the day before for
-      anyone an hour behind. From midday it survives a twelve-hour shift either
-      way and still reads as the right date.
-    */
-    addEvent: async ({ title, description, location, startsAt, endsAt, allDay }) => {
-      const { data: row, error } = await supabase.from('events').insert({
-        community_id: cid, author_id: userId,
-        title, description: description || '', location: location || '',
-        starts_at: new Date(startsAt).toISOString(),
-        ends_at: endsAt ? new Date(endsAt).toISOString() : null,
-        all_day: !!allDay,
-      }).select('*').single();
-      if (error) { showToast(t('ev_error')); throw error; }
-      await notifyMembers(userId, 'event', STRINGS[lang].ev_new_notif, title, '/app/calendar/' + row.id);
-      await refreshAll();
-      showToast(t('ev_created'));
-      return row.id;
-    },
-    updateEvent: async (id, { title, description, location, startsAt, endsAt, allDay }) => {
-      const { error } = await supabase.from('events').update({
-        title, description: description || '', location: location || '',
-        starts_at: new Date(startsAt).toISOString(),
-        ends_at: endsAt ? new Date(endsAt).toISOString() : null,
-        all_day: !!allDay,
-      }).eq('id', id);
-      if (error) { showToast(t('ev_error')); throw error; }
-      await refreshAll();
-      showToast(t('ev_saved'));
-    },
-    // Cancelling is a real thing that happens, and a stale meeting on the
-    // calendar is worse than no meeting.
-    removeEvent: async (id) => {
-      const { error } = await supabase.from('events').delete().eq('id', id);
-      if (error) { showToast(t('ev_error')); throw error; }
-      await refreshAll();
-      showToast(t('ev_removed'));
-    },
 
     moderate: async (discId, action, newCat) => {
       const patch = action === 'approve' ? { status: 'approved' } : action === 'hide' ? { status: 'hidden' } : { status: 'approved', category: newCat };

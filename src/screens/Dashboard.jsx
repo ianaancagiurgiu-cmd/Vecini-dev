@@ -44,11 +44,25 @@ export default function Dashboard() {
   const nav = useNavigate();
   const { data, t, L, lang, counted, currentUser, userById, isStaff } = useApp();
 
-  const anns = [...data.announcements].sort((a, b) => (isPriority(b) - isPriority(a)) || (b.createdAt - a.createdAt)).slice(0, 3);
   const openIssues = data.issues.filter((i) => i.status !== 'resolved').length;
   const activePolls = data.polls.filter((p) => !p.closed && p.endsAt > Date.now()).length;
-  // Only what has not happened yet, soonest first. The store already sorts.
-  const soon = data.events.filter((e) => !isPast(e)).slice(0, 2);
+  // The announcements that carry a date, soonest first — the same list the
+  // calendar view reads, cut to what fits here.
+  const soon = data.announcements
+    .filter((a) => a.startsAt && !isPast(a))
+    .sort((a, b) => a.startsAt - b.startsAt)
+    .slice(0, 2);
+  /*
+    Now that a meeting is an announcement, the same card would otherwise turn up
+    twice on this screen — once under what is coming and once under what was
+    said. Both are true of it, but a screen that shows you a thing twice reads
+    as a mistake, so the one that has already appeared above is dropped here.
+  */
+  const alreadyShown = new Set(soon.map((a) => a.id));
+  const anns = data.announcements
+    .filter((a) => !alreadyShown.has(a.id))
+    .sort((a, b) => (isPriority(b) - isPriority(a)) || (b.createdAt - a.createdAt))
+    .slice(0, 3);
   const discs = data.discussions.filter((d) => d.status === 'approved').sort((a, b) => b.createdAt - a.createdAt).slice(0, 3);
 
   return (
@@ -84,20 +98,20 @@ export default function Dashboard() {
       <div className="pad" style={{ paddingTop: 22 }}>
         <div className="section-head">
           <h2>{t('dash_upcoming')}</h2>
-          <button className="see-all" onClick={() => nav('/app/calendar')} style={{ background: 'none', border: 'none' }}>{t('dash_see_all')}</button>
+          <button className="see-all" onClick={() => nav('/app/announcements/calendar')} style={{ background: 'none', border: 'none' }}>{t('dash_see_all')}</button>
         </div>
-        {/* Shown even when empty: it is the only way in to the calendar, and a
-            section that disappears takes the way in with it. */}
+        {/* Shown even when empty. A section that disappears when there is
+            nothing in it never teaches anyone that it exists. */}
         {soon.length === 0 ? (
           <div className="muted" style={{ fontSize: 14 }}>{t('ev_empty')}</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {soon.map((e) => (
-              <button key={e.id} onClick={() => nav('/app/calendar/' + e.id)} className="card"
+              <button key={e.id} onClick={() => nav('/app/announcements/' + e.id)} className="card"
                 style={{ textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12 }}>
                 <span style={{ fontSize: 19 }}>📅</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.title}</div>
+                  <div style={{ fontWeight: 700, fontSize: 14.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{L(e, 'title')}</div>
                   <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
                     {eventDay(e.startsAt, lang, t)}{!e.allDay && ` · ${eventTime(e.startsAt, lang)}`}
                     {e.location && ` · ${e.location}`}
@@ -108,15 +122,14 @@ export default function Dashboard() {
           </div>
         )}
         {/*
-          The calendar is the one section with no place in the bottom bar, so
-          "see all" is the only way to it and the button to put something in it
-          was a screen further in — far enough that an admin looking straight at
-          this section could not find it. Quiet rather than primary: it is what
-          this section can do, not what the screen is for.
+          The calendar has no place in the bottom bar, so the button to put
+          something in it used to be two screens away — far enough that an admin
+          looking straight at this section could not find it. Quiet rather than
+          primary: it is what this section can do, not what the screen is for.
         */}
         {isStaff && (
           <button className="btn btn--ghost" style={{ marginTop: 11 }}
-            onClick={() => nav('/app/calendar/new')}>
+            onClick={() => nav('/app/announcements/new?date=1')}>
             + {t('ev_new')}
           </button>
         )}

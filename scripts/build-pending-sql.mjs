@@ -39,6 +39,8 @@ const DESCRIERI = {
     'anunturile prioritare capata termen: stau sus pana la o data, apoi coboara singure',
   '0012_events.sql':
     'calendarul asociatiei: sedinte si termene cu data lor, separat de textul anunturilor',
+  '0013_announcement_dates.sql':
+    'anuntul si evenimentul devin acelasi lucru: un anunt poate avea o data, iar calendarul e felul in care te uiti la cele cu data',
 };
 
 const files = readdirSync(dir)

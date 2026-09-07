@@ -23,8 +23,8 @@ with expected(fisier, obiect, tip, la_ce_e) as (values
   ('0010_admin_handover',   'public.set_member_role',   'function', 'schimbarea rolului unui membru'),
   ('0010_admin_handover',   'public.transfer_admin',    'function', 'predarea comunității altcuiva'),
   ('0011_priority_until',   'announcements.pinned_until', 'column', 'anunțuri prioritare, cu termen'),
-  ('0012_events',           'public.events',            'table',    'calendarul asociației'),
-  ('0012_events',           'notification_prefs.events', 'column',  'comutatorul pentru notificările de calendar')
+  ('0012_events',           'notification_prefs.events', 'column',  'comutatorul pentru notificările de calendar'),
+  ('0013_announcement_dates', 'announcements.starts_at', 'column',  'data de pe anunț — ce ține locul calendarului')
 )
 select
   e.fisier,
@@ -76,4 +76,22 @@ select '0012_events',
        exists (
          select 1 from pg_proc
           where proname = 'pref_allows' and prosrc like '%when ''event''%'
-       );
+       )
+union all
+-- Ștergerea a venit odată cu calendarul: o ședință anulată trebuie să poată fi
+-- dată jos, iar anunțurile nu aveau până acum voie să fie șterse deloc.
+select '0013_announcement_dates',
+       'announcements_delete',
+       'un anunț sau o ședință anulată poate fi ștearsă',
+       exists (
+         select 1 from pg_policy
+          where polrelid = 'public.announcements'::regclass and polname = 'announcements_delete'
+       )
+union all
+-- Singurul rând care e adevărat prin absență: dacă tabelul vechi mai există,
+-- migrarea nu a ajuns până la capăt și undeva mai sunt evenimente pe care
+-- aplicația nu le mai citește.
+select '0013_announcement_dates',
+       'events (tabelul vechi)',
+       'a dispărut — calendarul nu mai e o listă separată',
+       to_regclass('public.events') is null;

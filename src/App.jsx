@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet, useLocation, useParams } from 'react-router-dom';
 import { useApp } from './state/store.jsx';
 import { hideSplash } from './lib/splash.js';
 import { PhoneChrome } from './components/Chrome.jsx';
@@ -29,9 +29,6 @@ import Issues from './screens/Issues.jsx';
 import IssueDetail from './screens/IssueDetail.jsx';
 import IssueNew from './screens/IssueNew.jsx';
 import Polls from './screens/Polls.jsx';
-import Calendar from './screens/Calendar.jsx';
-import EventDetail from './screens/EventDetail.jsx';
-import EventNew from './screens/EventNew.jsx';
 import PollDetail from './screens/PollDetail.jsx';
 import PollNew from './screens/PollNew.jsx';
 import Search from './screens/Search.jsx';
@@ -43,6 +40,18 @@ import Moderation from './screens/Moderation.jsx';
 import Members from './screens/Members.jsx';
 import Neighbours from './screens/Neighbours.jsx';
 import CommunitySettings from './screens/CommunitySettings.jsx';
+
+/*
+  An address from before the calendar and the announcements were one thing.
+
+  Every event kept its own id when it became an announcement, so the id in the
+  old link is the id of the announcement it turned into — a notification sitting
+  in somebody's list from last week still opens the right screen.
+*/
+function OldEventLink({ edit }) {
+  const { id } = useParams();
+  return <Navigate to={`/app/announcements/${id}${edit ? '/edit' : ''}`} replace />;
+}
 
 function AppLayout() {
   const { authed, authLoading, hasCommunity, membershipResolved, data } = useApp();
@@ -107,9 +116,14 @@ export default function App() {
 
         <Route path="/app" element={<AppLayout />}>
           <Route index element={<Dashboard />} />
+          {/* The calendar is a view of the announcements, not a place of its
+              own, so it lives at an address under them. Literal segments before
+              ":id", or they are swallowed as identifiers. */}
           <Route path="announcements" element={<Announcements />} />
+          <Route path="announcements/calendar" element={<Announcements />} />
           <Route path="announcements/new" element={<AnnouncementNew />} />
           <Route path="announcements/:id" element={<AnnouncementDetail />} />
+          <Route path="announcements/:id/edit" element={<AnnouncementNew />} />
           <Route path="discussions" element={<Discussions />} />
           <Route path="discussions/new" element={<DiscussionNew />} />
           <Route path="discussions/:id" element={<DiscussionDetail />} />
@@ -119,11 +133,16 @@ export default function App() {
           <Route path="polls" element={<Polls />} />
           <Route path="polls/new" element={<PollNew />} />
           <Route path="polls/:id" element={<PollDetail />} />
-          {/* "new" before ":id", or the literal is swallowed as an id. */}
-          <Route path="calendar" element={<Calendar />} />
-          <Route path="calendar/new" element={<EventNew />} />
-          <Route path="calendar/:id" element={<EventDetail />} />
-          <Route path="calendar/:id/edit" element={<EventNew />} />
+          {/*
+            Where the calendar used to live. Notifications sent before the two
+            were folded together still carry these addresses, and an event kept
+            its own id when it became an announcement, so every one of them still
+            lands on the thing it was about.
+          */}
+          <Route path="calendar" element={<Navigate to="/app/announcements/calendar" replace />} />
+          <Route path="calendar/new" element={<Navigate to="/app/announcements/new?date=1" replace />} />
+          <Route path="calendar/:id" element={<OldEventLink />} />
+          <Route path="calendar/:id/edit" element={<OldEventLink edit />} />
           <Route path="neighbours" element={<Neighbours />} />
           <Route path="search" element={<Search />} />
           <Route path="notifications" element={<Notifications />} />
