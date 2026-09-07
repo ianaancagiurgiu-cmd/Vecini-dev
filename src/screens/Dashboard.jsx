@@ -42,7 +42,7 @@ function StatTile({ n, label, tint, onClick }) {
 
 export default function Dashboard() {
   const nav = useNavigate();
-  const { data, t, L, lang, counted, currentUser, userById } = useApp();
+  const { data, t, L, lang, counted, currentUser, userById, isStaff } = useApp();
 
   const anns = [...data.announcements].sort((a, b) => (isPriority(b) - isPriority(a)) || (b.createdAt - a.createdAt)).slice(0, 3);
   const openIssues = data.issues.filter((i) => i.status !== 'resolved').length;
@@ -106,6 +106,19 @@ export default function Dashboard() {
               </button>
             ))}
           </div>
+        )}
+        {/*
+          The calendar is the one section with no place in the bottom bar, so
+          "see all" is the only way to it and the button to put something in it
+          was a screen further in — far enough that an admin looking straight at
+          this section could not find it. Quiet rather than primary: it is what
+          this section can do, not what the screen is for.
+        */}
+        {isStaff && (
+          <button className="btn btn--ghost" style={{ marginTop: 11 }}
+            onClick={() => nav('/app/calendar/new')}>
+            + {t('ev_new')}
+          </button>
         )}
       </div>
 

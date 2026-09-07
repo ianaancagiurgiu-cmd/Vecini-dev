@@ -225,4 +225,45 @@ test.describe('Calendar', () => {
     // Past events have no business on the dashboard.
     await expect(page.getByText('Curățenie de primăvară')).toHaveCount(0);
   });
+
+  /*
+    The calendar is not in the bottom bar, so an admin who never taps "see all"
+    never meets the button that fills it. Iana looked straight at this section
+    and could not find a way to add anything, which is the whole bug: a section
+    you cannot act on reads as a section that does not work.
+  */
+  test('an admin can start an event from the dashboard, without going to the calendar first', async ({ page }) => {
+    await asRole(page, 'admin');
+    await page.goto('/#/app/');
+
+    await page.getByRole('button', { name: '+ Eveniment nou' }).click();
+    await expect.poll(() => new URL(page.url()).hash).toBe('#/app/calendar/new');
+    await expect(page.locator('#ev-title')).toBeVisible();
+  });
+
+  test('a member is offered no such button', async ({ page }) => {
+    await asRole(page, 'member');
+    await page.goto('/#/app/');
+
+    await expect(page.getByText('Ce urmează')).toBeVisible();
+    await expect(page.getByRole('button', { name: '+ Eveniment nou' })).toHaveCount(0);
+  });
+
+  test('the button is there before there is anything in the calendar', async ({ page }) => {
+    // The empty state is exactly when it matters most, and exactly where a
+    // section rendered only around a list would have dropped it.
+    const me = fakeUser();
+    await signedInAs(page, {
+      user: me,
+      tables: {
+        communities: [community],
+        memberships: [{ id: 'm1', user_id: me.id, community_id: 'c1', role: 'admin', joined_at: new Date().toISOString() }],
+        events: [],
+      },
+    });
+    await page.goto('/#/app/');
+
+    await expect(page.getByText('Niciun eveniment programat.')).toBeVisible();
+    await expect(page.getByRole('button', { name: '+ Eveniment nou' })).toBeVisible();
+  });
 });
