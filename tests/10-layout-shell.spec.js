@@ -67,7 +67,21 @@ test.describe('App shell layout', () => {
   test('content scrolls inside the screen while the page stays put', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 560 }); // force overflow
     await page.goto('/');
-    await page.waitForTimeout(400);
+
+    /*
+      Waits for the waiting screen to be gone, rather than for a fixed 400ms.
+      That wait failed three times across one afternoon under a loaded machine
+      and passed alone every time — noise that teaches you to ignore a red
+      suite. What it was really racing is this: the splash covers the whole
+      app, so a wheel event sent while it is still up goes to the splash and
+      the scroll region never moves. It stays up for a minimum of 500ms by
+      design, which the 400 was under.
+
+      Two other preconditions were tried first and are not enough on their own:
+      the markup overflows before React has even mounted, and the landing text
+      is visible while the splash is still over the top of it.
+    */
+    await page.locator('#splash').waitFor({ state: 'detached', timeout: 10000 });
 
     const overflow = await page.evaluate(() => {
       const sc = document.querySelector('.phone__scroll');
@@ -77,14 +91,11 @@ test.describe('App shell layout', () => {
 
     await page.mouse.move(195, 280);
     await page.mouse.wheel(0, 400);
-    await page.waitForTimeout(250);
 
-    const after = await page.evaluate(() => ({
-      inner: document.querySelector('.phone__scroll').scrollTop,
-      win: window.scrollY,
-    }));
-    expect(after.inner).toBeGreaterThan(0);
-    expect(after.win).toBe(0);
+    await expect.poll(() => page.evaluate(() => document.querySelector('.phone__scroll').scrollTop))
+      .toBeGreaterThan(0);
+    // The inner region scrolled; the page behind it did not move at all.
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
   });
 
   /*

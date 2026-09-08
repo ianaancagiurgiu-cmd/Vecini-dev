@@ -35,7 +35,7 @@ function scroller(from) {
   return null;
 }
 
-export function installKeyboardScrollLock() {
+export function revealFocusedFieldAboveKeyboard() {
   document.addEventListener('focusin', (e) => {
     if (!isField(e.target)) return;
 
