@@ -32,6 +32,7 @@ export function installViewportDebug() {
       : 'none';
     const rect = focused && focused !== document.body ? focused.getBoundingClientRect() : null;
 
+    const scroller = document.querySelector('.phone__scroll');
     el.textContent = [
       line('vv.h', vv ? Math.round(vv.height) : undefined),
       line('vv.top', vv ? Math.round(vv.offsetTop) : undefined),
@@ -42,6 +43,8 @@ export function installViewportDebug() {
     ].join('  ') + '\n' + [
       line('focus', tag),
       line('field.bottom', rect ? Math.round(rect.bottom) : undefined),
+      line('body.pos', getComputedStyle(document.body).position),
+      line('scroll.top', scroller ? scroller.scrollTop : undefined),
     ].join('  ');
   };
 
