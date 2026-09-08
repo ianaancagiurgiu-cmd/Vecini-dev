@@ -67,7 +67,7 @@ function Row({ label, value, faint, last }) {
 
 export default function Account() {
   const nav = useNavigate();
-  const { t, currentUser, role, data, session, pendingEmail, hasPasswordLogin, setName, setContact, showToast } = useApp();
+  const { t, currentUser, role, data, session, pendingEmail, hasPasswordLogin, setName, setApartment, setContact, showToast } = useApp();
 
   const [name, setNameField] = useState(currentUser.name);
   const [nameErr, setNameErr] = useState('');
@@ -81,6 +81,24 @@ export default function Account() {
     try { await setName(name); showToast(t('acc_name_saved')); }
     catch (e) { setNameErr(t(e?.code === 'name_too_short' ? 'acc_name_bad' : 'acc_name_error')); }
     finally { setSavingName(false); }
+  };
+
+  /*
+    Which word fits depends on what kind of place this community is. Asking
+    someone at a house for their "apartament" reads as the app not having
+    noticed where they live — the same reasoning the dashboard's tagline
+    already follows.
+  */
+  const kind = data.community?.kind || 'bloc';
+  const [apartment, setApartmentField] = useState(currentUser.apartment || '');
+  const [savingApartment, setSavingApartment] = useState(false);
+  const apartmentChanged = apartment.trim() !== (currentUser.apartment || '');
+
+  const saveApartment = async () => {
+    setSavingApartment(true);
+    try { await setApartment(apartment); showToast(t('acc_apartment_saved')); }
+    catch { showToast(t('acc_name_error')); }
+    finally { setSavingApartment(false); }
   };
 
   const saved = data.myContact;
@@ -169,10 +187,25 @@ export default function Account() {
           )}
         </div>
 
+        {/* Editable, like the name above: it is what tells a neighbour which
+            door is yours, and it stayed blank for everyone as long as the only
+            way to see it was also the only place it could never be set. */}
+        <div className="eyebrow" style={{ margin: '18px 0 2px' }}>{t(`acc_apartment_${kind}`)}</div>
+        <div className="card">
+          <input id="acc-apartment" className="input" type="text" value={apartment}
+            placeholder={t(`acc_apartment_ph_${kind}`)}
+            onChange={(e) => setApartmentField(e.target.value)} />
+          <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45, marginTop: 8 }}>{t(`acc_apartment_hint_${kind}`)}</div>
+          {apartmentChanged && (
+            <button className="btn btn--primary" style={{ marginTop: 12 }} disabled={savingApartment} onClick={saveApartment}>
+              {t('save')}
+            </button>
+          )}
+        </div>
+
         <div className="eyebrow" style={{ margin: '18px 0 2px' }}>{t('acc_details')}</div>
         <div className="card" style={{ paddingTop: 2, paddingBottom: 2 }}>
           <Row label={t('acc_email')} value={email} />
-          <Row label={t('acc_apartment')} value={currentUser.apartment || t('acc_not_set')} faint={!currentUser.apartment} />
           <Row label={t('acc_community')} value={data.community?.name || '—'} />
           <Row label={t('acc_role')} value={roleLabel} />
           <Row label={t('acc_signin')} value={signinLabel} last />

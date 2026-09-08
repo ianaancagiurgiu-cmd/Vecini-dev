@@ -566,6 +566,21 @@ export function AppProvider({ children }) {
     await refreshAll();
   };
 
+  /*
+    Which apartment or house is yours, so a neighbour looking for you can tell
+    which door to knock on. Unlike the name, empty is a real answer here —
+    someone may not want to say, or may not have gotten to it yet — so this
+    accepts '' and writes it as the column's own default rather than refusing.
+  */
+  const setApartment = async (apartment) => {
+    const v = String(apartment || '').trim();
+    const { data: row, error } = await supabase.from('profiles')
+      .update({ apartment: v }).eq('id', userId).select('*').single();
+    if (error) throw error;
+    setProfile(row);
+    await refreshAll();
+  };
+
   const setContact = async ({ phone, visible }) => {
     const { error } = await supabase.from('member_phones').upsert(
       { user_id: userId, phone: phone.trim() || null, visible, updated_at: new Date().toISOString() },
@@ -1045,7 +1060,7 @@ export function AppProvider({ children }) {
     userById, actions, toast, showToast,
     signUpEmail, signInEmail, signInGoogle, sendPasswordReset, signOut,
     setNewPassword, changePassword, changeEmail, pendingEmail, recoveryMode,
-    setName, setContact, deleteAccount, profile, recheckEmail,
+    setName, setApartment, setContact, deleteAccount, profile, recheckEmail,
     // Google-only accounts have no password to change; offer "set one" instead.
     hasPasswordLogin: !!session?.user?.identities?.some((i) => i.provider === 'email'),
     joinByCode, createCommunity, findCommunityByCode,

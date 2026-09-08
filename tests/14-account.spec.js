@@ -27,7 +27,9 @@ test.describe('Epic 14 — Account and email change', () => {
     // The address used to appear nowhere in the app at all.
     await expect(page.getByText('mihai@exemplu.ro').first()).toBeVisible();
     await expect(page.getByText('Aleea Teilor 15-20')).toBeVisible();
-    await expect(page.getByText('Ap. 12')).toBeVisible();
+    // Editable now, so the value lives in an input rather than as plain text —
+    // see tests/23-edit-name.spec.js for the editing behaviour itself.
+    await expect(page.locator('#acc-apartment')).toHaveValue('Ap. 12');
     await expect(page.getByText('Email și parolă')).toBeVisible();
 
     // and both changes are reachable from here
