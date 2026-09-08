@@ -174,6 +174,64 @@ export function ScreenHeader({ title, onBack, right, kicker }) {
   );
 }
 
+/*
+  A heart under a comment.
+
+  Drawn rather than typed: ❤️ is a different picture on every platform, and at
+  this size the difference between Apple's and Android's is the difference
+  between a heart and a red blob. One path, filled or not, is the same shape
+  everywhere and follows the app's own colours.
+
+  The count is hidden at zero. "♡ 0" invites nobody and reads as a score of
+  nothing; a bare outline reads as something you could press.
+*/
+export function HeartButton({ on, count, onClick, label }) {
+  const { t, showToast } = useApp();
+  const [busy, setBusy] = useState(false);
+
+  /*
+    The store has already coloured the heart in by the time this awaits, so
+    there is nothing to say on success — a toast per heart would be noise for
+    something meant to cost nothing. A failure is the opposite: the heart is
+    about to move back on its own, and without a word that looks like the tap
+    was ignored.
+
+    The busy guard is for the double tap, where two requests would be in flight
+    disagreeing about whether the heart is on. The database refuses the
+    duplicate as well, but only one of these two answers arrives quickly.
+  */
+  const press = async () => {
+    if (busy) return;
+    setBusy(true);
+    try { await onClick(); } catch (e) { showToast(t('react_error')); } finally { setBusy(false); }
+  };
+
+  return (
+    <button
+      onClick={press}
+      aria-pressed={on}
+      aria-label={label}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 5,
+        background: 'none', border: 'none', padding: '6px 2px',
+        // Under the finger it is 32px tall even though the mark is 16px: the
+        // bubble above it is a tap target too, and a heart that needs aiming
+        // gets pressed by accident or not at all.
+        minHeight: 32,
+        color: on ? 'var(--terracotta)' : 'var(--ink-300)',
+        fontSize: 12.5, fontWeight: 700,
+      }}
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"
+        fill={on ? 'currentColor' : 'none'} stroke="currentColor"
+        strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 20.3S3.8 14.9 3.8 9.4A4.6 4.6 0 0 1 12 6.6a4.6 4.6 0 0 1 8.2 2.8c0 5.5-8.2 10.9-8.2 10.9Z" />
+      </svg>
+      {count > 0 && <span>{count}</span>}
+    </button>
+  );
+}
+
 // Round "+" action button used in headers
 export function AddButton({ onClick, label }) {
   return (

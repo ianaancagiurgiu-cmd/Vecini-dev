@@ -24,7 +24,9 @@ with expected(fisier, obiect, tip, la_ce_e) as (values
   ('0010_admin_handover',   'public.transfer_admin',    'function', 'predarea comunității altcuiva'),
   ('0011_priority_until',   'announcements.pinned_until', 'column', 'anunțuri prioritare, cu termen'),
   ('0012_events',           'notification_prefs.events', 'column',  'comutatorul pentru notificările de calendar'),
-  ('0013_announcement_dates', 'announcements.starts_at', 'column',  'data de pe anunț — ce ține locul calendarului')
+  ('0013_announcement_dates', 'announcements.starts_at', 'column',  'data de pe anunț — ce ține locul calendarului'),
+  ('0014_reactions',        'public.reactions',          'table',   'inimioara pe comentarii și pe răspunsuri'),
+  ('0014_reactions',        'public.can_react',          'function', 'cine are voie să aprecieze un comentariu')
 )
 select
   e.fisier,
@@ -41,6 +43,7 @@ select
          )
          else to_regprocedure(e.obiect || '(' ||
                 case e.obiect
+                  when 'public.can_react'        then 'uuid,uuid'
                   when 'public.shares_community' then 'uuid'
                   when 'public.set_member_role'  then 'uuid,uuid,text'
                   when 'public.transfer_admin'   then 'uuid,uuid'

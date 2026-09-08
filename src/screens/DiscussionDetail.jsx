@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
-import { ScreenHeader, Avatar } from '../components/ui.jsx';
+import { ScreenHeader, Avatar, HeartButton } from '../components/ui.jsx';
 import { timeAgo, CATEGORIES, catLabel } from '../lib/format.js';
 
 export default function DiscussionDetail() {
   const nav = useNavigate();
   const { id } = useParams();
-  const { data, t, L, lang, counted, userById, actions } = useApp();
+  const { data, t, L, lang, counted, userById, currentUser, actions } = useApp();
   const [reply, setReply] = useState('');
   const d = data.discussions.find((x) => x.id === id);
   if (!d) return <div className="screen"><ScreenHeader title={t('disc_title')} onBack={() => nav('/app/discussions')} /></div>;
@@ -36,18 +36,27 @@ export default function DiscussionDetail() {
       <div className="pad" style={{ paddingTop: 18 }}>
         <div style={{ fontSize: 13.5, fontWeight: 700, color: '#5a5e54', marginBottom: 14 }}>💬 {counted('disc_replies', d.replies.length)}</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {d.replies.map((r) => (
-            <div key={r.id} style={{ display: 'flex', gap: 11 }}>
-              <Avatar user={userById(r.authorId)} size={34} />
-              <div style={{ flex: 1, background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '11px 14px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontWeight: 700, fontSize: 13.5 }}>{userById(r.authorId).name}</span>
-                  <span className="faint" style={{ fontSize: 11.5 }}>{timeAgo(r.createdAt, t, lang)}</span>
+          {d.replies.map((r) => {
+            const hearts = r.reactions || [];
+            const mine = hearts.includes(currentUser.id);
+            return (
+              <div key={r.id} style={{ display: 'flex', gap: 11 }}>
+                <Avatar user={userById(r.authorId)} size={34} />
+                <div className="comment-col">
+                  <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '11px 14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <span style={{ fontWeight: 700, fontSize: 13.5 }}>{userById(r.authorId).name}</span>
+                      <span className="faint" style={{ fontSize: 11.5 }}>{timeAgo(r.createdAt, t, lang)}</span>
+                    </div>
+                    <div style={{ fontSize: 14, lineHeight: 1.5, color: '#3f433b' }}>{L(r, 'body')}</div>
+                  </div>
+                  <HeartButton on={mine} count={hearts.length}
+                    label={mine ? t('react_remove') : t('react_add')}
+                    onClick={() => actions.toggleReaction('reply', r.id)} />
                 </div>
-                <div style={{ fontSize: 14, lineHeight: 1.5, color: '#3f433b' }}>{L(r, 'body')}</div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

@@ -174,6 +174,9 @@ export const STRINGS = {
     /* Not "Anunțuri recente": the section holds every notice from the
        administration, dated or not, so what identifies it is who it comes
        from rather than how new it is. */
+    react_error: 'Nu s-a putut trimite. Încearcă din nou.',
+    react_add: 'Apreciază',
+    react_remove: 'Retrage aprecierea',
     dash_from_admin: 'De la administrație',
     dash_recent_disc: 'Discuții recente',
     dash_open_issues: 'sesizări active',
@@ -677,6 +680,9 @@ export const STRINGS = {
 
     dash_hi: 'Hi',
     dash_welcome: 'Welcome back',
+    react_error: 'That did not go through. Try again.',
+    react_add: 'Like this',
+    react_remove: 'Take your like back',
     dash_from_admin: 'From the administration',
     dash_recent_disc: 'Recent discussions',
     dash_open_issues: 'open issues',
@@ -1156,6 +1162,9 @@ export const STRINGS = {
     dash_welcome: 'Örülünk, hogy visszatértél',
     // "Official notices", in the app's own word for an announcement — a
     // literal "from the administration" has no settled Hungarian form here.
+    react_error: 'Nem sikerült elküldeni. Próbáld újra.',
+    react_add: 'Tetszik',
+    react_remove: 'Tetszés visszavonása',
     dash_from_admin: 'Hivatalos hirdetések',
     dash_recent_disc: 'Legutóbbi beszélgetések',
     dash_open_issues: 'nyitott hiba',

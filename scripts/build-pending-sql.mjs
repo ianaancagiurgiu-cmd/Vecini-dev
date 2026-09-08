@@ -41,6 +41,8 @@ const DESCRIERI = {
     'calendarul asociatiei: sedinte si termene cu data lor, separat de textul anunturilor',
   '0013_announcement_dates.sql':
     'anuntul si evenimentul devin acelasi lucru: un anunt poate avea o data, iar calendarul e felul in care te uiti la cele cu data',
+  '0014_reactions.sql':
+    'inimioara: poti aprecia un comentariu de la o sesizare sau un raspuns dintr-o discutie, o singura data, si o poti retrage',
 };
 
 const files = readdirSync(dir)

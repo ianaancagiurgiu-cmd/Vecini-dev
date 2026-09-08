@@ -17,6 +17,14 @@ const AppCtx = createContext(null);
 export const useApp = () => useContext(AppCtx);
 
 /*
+  The only reaction the app offers. It is a value rather than a choice on
+  purpose: one tap, nothing to pick from, nothing to learn. The database column
+  it goes into is free text, so a second kind can be added here later without
+  another migration to talk somebody through running against production.
+*/
+export const HEART = '❤️';
+
+/*
   The four columns that turn an announcement into something happening.
 
   Written as one piece because they only make sense together: the database
@@ -227,7 +235,7 @@ export function AppProvider({ children }) {
 
       const memberIds = (members || []).map((m) => m.user_id);
 
-      const [{ data: announcements }, { data: discussions }, { data: issues }, { data: polls }, { data: notifications }, { data: notifPrefsRow }, { data: archivedRows }, { data: phoneRows }] = await Promise.all([
+      const [{ data: announcements }, { data: discussions }, { data: issues }, { data: polls }, { data: notifications }, { data: notifPrefsRow }, { data: archivedRows }, { data: phoneRows }, { data: reactionRows }] = await Promise.all([
         supabase.from('announcements').select('*').eq('community_id', cid).order('created_at', { ascending: false }),
         supabase.from('discussions').select('*').eq('community_id', cid).neq('status', 'hidden').order('created_at', { ascending: false }),
         supabase.from('issues').select('*').eq('community_id', cid).order('created_at', { ascending: false }),
@@ -238,6 +246,16 @@ export function AppProvider({ children }) {
         // Row-level security does the filtering: this comes back with your own
         // row, plus the neighbours who chose to be reachable. Nothing else.
         supabase.from('member_phones').select('user_id,phone,visible'),
+        /*
+          Hearts on comments — unfiltered, for the same reason: the policy on
+          the table only ever returns rows attached to a comment in a community
+          you belong to, so there is nothing left here to narrow. Naming the
+          comment ids instead would mean building an `in` list out of every
+          comment on every issue and every reply in every discussion, and doing
+          it after those have loaded, which turns one parallel request into a
+          second round trip for something this small.
+        */
+        supabase.from('reactions').select('issue_comment_id,reply_id,user_id,emoji'),
       ]);
 
       const discIds = (discussions || []).map((d) => d.id);
@@ -333,6 +351,30 @@ export function AppProvider({ children }) {
         .select('id', { count: 'exact', head: true })
         .eq('community_id', cid);
 
+      /*
+        Who hearted what, as two lookups built in one pass.
+
+        Kept as a list of user ids per comment, the same shape as an issue's
+        supporters, because the two questions a screen asks are "how many" and
+        "am I one of them" — both of which a list of ids answers without a
+        second query. The emoji check is not dead weight: the column exists so
+        a second kind of reaction can be added without another migration, and
+        on the day that happens a heart count that silently included them would
+        be wrong rather than merely incomplete.
+      */
+      const heartsBy = (column) => {
+        const by = new Map();
+        (reactionRows || []).forEach((r) => {
+          if (r.emoji !== HEART || !r[column]) return;
+          const seen = by.get(r[column]);
+          if (seen) seen.push(r.user_id);
+          else by.set(r[column], [r.user_id]);
+        });
+        return by;
+      };
+      const heartsOnComments = heartsBy('issue_comment_id');
+      const heartsOnReplies = heartsBy('reply_id');
+
       if (!mounted.current) return;
       setData({
         users,
@@ -353,8 +395,8 @@ export function AppProvider({ children }) {
           allDay: !!a.all_day,
           location: a.location || '',
         })),
-        discussions: discussionsFull.map((d) => ({ ...d, authorId: d.author_id, createdAt: new Date(d.created_at).getTime(), replies: d.replies.map((r) => ({ ...r, authorId: r.author_id, createdAt: new Date(r.created_at).getTime() })) })),
-        issues: issuesFull.map((i) => ({ ...i, reporterId: i.reporter_id, photo: i.photo_url, createdAt: new Date(i.created_at).getTime(), history: i.history.map((h) => ({ ...h, byId: h.by_id, at: new Date(h.at).getTime() })), comments: i.comments.map((c) => ({ ...c, authorId: c.author_id, createdAt: new Date(c.created_at).getTime() })) })),
+        discussions: discussionsFull.map((d) => ({ ...d, authorId: d.author_id, createdAt: new Date(d.created_at).getTime(), replies: d.replies.map((r) => ({ ...r, authorId: r.author_id, createdAt: new Date(r.created_at).getTime(), reactions: heartsOnReplies.get(r.id) || [] })) })),
+        issues: issuesFull.map((i) => ({ ...i, reporterId: i.reporter_id, photo: i.photo_url, createdAt: new Date(i.created_at).getTime(), history: i.history.map((h) => ({ ...h, byId: h.by_id, at: new Date(h.at).getTime() })), comments: i.comments.map((c) => ({ ...c, authorId: c.author_id, createdAt: new Date(c.created_at).getTime(), reactions: heartsOnComments.get(c.id) || [] })) })),
         polls: pollsFull.map((p) => ({ ...p, authorId: p.author_id, createdAt: new Date(p.created_at).getTime(), endsAt: new Date(p.ends_at).getTime() })),
         notifications: (notifications || []).map((n) => ({ ...n, createdAt: new Date(n.created_at).getTime() })),
         notifPrefs: notifPrefsRow || { announcements: true, replies: true, issues: true, polls: true, events: true, push: false },
@@ -916,6 +958,47 @@ export function AppProvider({ children }) {
       if (supported) await supabase.from('issue_supporters').delete().eq('issue_id', issueId).eq('user_id', userId);
       else await supabase.from('issue_supporters').insert({ issue_id: issueId, user_id: userId });
       await refreshAll();
+    },
+    /*
+      A heart on a comment, or on a reply in a discussion.
+
+      `where` is 'comment' or 'reply' — the two are one table with two nullable
+      references, so this is the only place the app has to know which of them
+      it is holding.
+
+      The screen changes before the write goes out, unlike toggleSupport next
+      door, which reloads the entire community after every press. On a support
+      button, pressed once per issue, nobody notices; a heart is tapped in
+      passing and often twice, and a round trip before the colour changes reads
+      as a button that does not work. If the write fails the reload puts the
+      truth back — which is the same recovery archiving uses.
+
+      No notification goes out. A heart is meant to be cheap to give, and a
+      phone buzzing for each one makes it expensive for the person receiving
+      them; they will see it next time they open the issue.
+    */
+    toggleReaction: async (where, id) => {
+      const column = where === 'reply' ? 'reply_id' : 'issue_comment_id';
+      const list = where === 'reply'
+        ? data.discussions.flatMap((d) => d.replies)
+        : data.issues.flatMap((i) => i.comments);
+      const mine = (list.find((x) => x.id === id)?.reactions || []).includes(userId);
+
+      const swap = (rows) => rows.map((r) => (
+        r.id === id
+          ? { ...r, reactions: mine ? (r.reactions || []).filter((u) => u !== userId) : [...(r.reactions || []), userId] }
+          : r
+      ));
+      setData((d) => (where === 'reply'
+        ? { ...d, discussions: d.discussions.map((x) => ({ ...x, replies: swap(x.replies) })) }
+        : { ...d, issues: d.issues.map((x) => ({ ...x, comments: swap(x.comments) })) }
+      ));
+
+      const { error } = mine
+        ? await supabase.from('reactions').delete()
+            .eq(column, id).eq('user_id', userId).eq('emoji', HEART)
+        : await supabase.from('reactions').insert({ [column]: id, user_id: userId, emoji: HEART });
+      if (error) { await refreshAll(); throw error; }
     },
     addIssueComment: async (issueId, body) => {
       await supabase.from('issue_comments').insert({ issue_id: issueId, author_id: userId, body });

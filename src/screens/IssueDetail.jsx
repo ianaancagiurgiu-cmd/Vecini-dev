@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
-import { ScreenHeader, Badge, Avatar } from '../components/ui.jsx';
+import { ScreenHeader, Badge, Avatar, HeartButton } from '../components/ui.jsx';
 import { timeAgo, formatDate, CATEGORIES, catLabel, STATUS } from '../lib/format.js';
 
 const NEXT = { new: ['progress', 'resolved'], progress: ['resolved', 'new'], resolved: ['progress'] };
@@ -90,18 +90,29 @@ export default function IssueDetail() {
       <div className="pad" style={{ paddingTop: 20 }}>
         <div style={{ fontSize: 13.5, fontWeight: 700, color: '#5a5e54', marginBottom: 14 }}>💬 {i.comments.length}</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 8 }}>
-          {i.comments.map((c) => (
-            <div key={c.id} style={{ display: 'flex', gap: 10 }}>
-              <Avatar user={userById(c.authorId)} size={32} />
-              <div style={{ flex: 1, background: '#fff', border: '1px solid var(--border)', borderRadius: 13, padding: '10px 13px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                  <span style={{ fontWeight: 700, fontSize: 13 }}>{userById(c.authorId).name}</span>
-                  <span className="faint" style={{ fontSize: 11.5 }}>{timeAgo(c.createdAt, t, lang)}</span>
+          {i.comments.map((c) => {
+            const hearts = c.reactions || [];
+            const mine = hearts.includes(currentUser.id);
+            return (
+              <div key={c.id} style={{ display: 'flex', gap: 10 }}>
+                <Avatar user={userById(c.authorId)} size={32} />
+                {/* The heart sits under the bubble rather than inside it: it is
+                    something a reader adds, not part of what was written. */}
+                <div className="comment-col">
+                  <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 13, padding: '10px 13px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                      <span style={{ fontWeight: 700, fontSize: 13 }}>{userById(c.authorId).name}</span>
+                      <span className="faint" style={{ fontSize: 11.5 }}>{timeAgo(c.createdAt, t, lang)}</span>
+                    </div>
+                    <div style={{ fontSize: 13.5, color: '#3f433b', lineHeight: 1.45 }}>{L(c, 'body')}</div>
+                  </div>
+                  <HeartButton on={mine} count={hearts.length}
+                    label={mine ? t('react_remove') : t('react_add')}
+                    onClick={() => actions.toggleReaction('comment', c.id)} />
                 </div>
-                <div style={{ fontSize: 13.5, color: '#3f433b', lineHeight: 1.45 }}>{L(c, 'body')}</div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
