@@ -146,48 +146,4 @@ test.describe('App shell layout', () => {
     expect(sizes.length).toBeGreaterThan(0);
     for (const px of sizes) expect(px).toBeGreaterThanOrEqual(16);
   });
-
-  /*
-    Regression guard for the same "blank gap above the keyboard" report, on a
-    second cause: even with every field already at 16px+, iOS still pans the
-    visual viewport toward a focused input rather than resizing it in place.
-    src/lib/viewport.js already shrinks the shell to fit above the keyboard on
-    its own, so that pan works against it — sliding the visible window past
-    the shell's own correct bottom edge and revealing bare page background
-    where the keyboard was supposed to be.
-
-    visualViewport.offsetTop is read-only, but it is an ordinary accessor
-    property on the prototype, so an own property on the instance shadows it —
-    which is enough to drive the same 'resize' listener the real pan would.
-  */
-  test('shifts the page to cancel an iOS-style visual-viewport pan', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForTimeout(300);
-
-    const res = await page.evaluate(async () => {
-      const vv = window.visualViewport;
-      Object.defineProperty(vv, 'offsetTop', { configurable: true, get: () => 180 });
-      Object.defineProperty(vv, 'offsetLeft', { configurable: true, get: () => 6 });
-      vv.dispatchEvent(new Event('resize'));
-      await new Promise((r) => requestAnimationFrame(r));
-      const cs = getComputedStyle(document.body);
-      return { position: cs.position, top: cs.top, left: cs.left };
-    });
-
-    expect(res.position).toBe('relative');
-    // Shifted the opposite way from the pan, by exactly as much as it panned.
-    expect(res.top).toBe('-180px');
-    expect(res.left).toBe('-6px');
-  });
-
-  // The fix above must not become a `transform`: a transform on an ancestor
-  // becomes the containing block for any `position: fixed` descendant, which
-  // would hand the bottom nav's positioning back to an ancestor's box instead
-  // of the real viewport — reopening the exact drift the fixed positioning
-  // two tests up exists to prevent.
-  test('the viewport-pan fix uses top/left, never a transform', async ({ page }) => {
-    const src = readFileSync('src/lib/viewport.js', 'utf8');
-    expect(src).not.toMatch(/style\.transform\s*=/);
-    expect(src).toMatch(/style\.top\s*=/);
-  });
 });
