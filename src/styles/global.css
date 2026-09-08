@@ -196,9 +196,52 @@ textarea.input { resize: vertical; min-height: 96px; font-weight: 400; line-heig
   border-radius: var(--r-card); padding: 16px;
 }
 
-/* The column beside a commenter's avatar: the bubble, and the heart under it.
-   min-width lets a long unbroken word shrink instead of pushing the row wide. */
-.comment-col { flex: 1; min-width: 0; }
+/*
+  A comment, and the heart hanging off the bottom edge of it — the arrangement
+  WhatsApp uses, where the reaction belongs to the message rather than sitting
+  in a row of its own underneath.
+
+  Two things follow from hanging it over the edge. The bubble carries a little
+  more padding at the foot, so the pill never lands on the last line of text;
+  and the column carries padding below, so it never lands on the next comment.
+
+  min-width lets a long unbroken word shrink instead of pushing the row wide.
+*/
+.comment-col { flex: 1; min-width: 0; padding-bottom: 12px; }
+
+/*
+  The foot is deeper than the head by the height of the pill that overlaps it.
+  Without that, a last line of text running to the right-hand edge ends up
+  underneath the heart — which only shows up on the one comment whose wrapping
+  happens to be unlucky, and not on any of the ones you tested with.
+*/
+.comment-bubble {
+  position: relative;
+  background: #fff; border: 1px solid var(--border);
+  border-radius: 14px; padding: 11px 14px 20px;
+}
+
+/*
+  Sized up from WhatsApp's, and this is the one place the two cannot match.
+  There, the pill only reports reactions — you add one by holding the message
+  down, a gesture with nothing on screen to suggest it exists. Here the pill is
+  the control itself, so it has to be big enough to aim at and visible before
+  anybody has pressed it: empty it is a hairline outline of a heart, and it
+  fills in and takes a number once it holds something.
+*/
+.heart-pill {
+  position: absolute; right: 11px; bottom: -12px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  height: 28px; min-width: 40px; padding: 0 9px;
+  border-radius: 999px;
+  background: #fff; border: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(35, 38, 32, .07);
+  color: var(--ink-300); font-size: 12px; font-weight: 700;
+}
+.heart-pill.is-on {
+  color: var(--terracotta);
+  background: #fdf3ee; border-color: #eccebd;
+}
 
 .badge {
   display: inline-flex; align-items: center; gap: 6px;

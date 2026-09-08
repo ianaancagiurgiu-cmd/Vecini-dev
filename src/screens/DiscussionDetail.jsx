@@ -43,16 +43,16 @@ export default function DiscussionDetail() {
               <div key={r.id} style={{ display: 'flex', gap: 11 }}>
                 <Avatar user={userById(r.authorId)} size={34} />
                 <div className="comment-col">
-                  <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '11px 14px' }}>
+                  <div className="comment-bubble">
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                       <span style={{ fontWeight: 700, fontSize: 13.5 }}>{userById(r.authorId).name}</span>
                       <span className="faint" style={{ fontSize: 11.5 }}>{timeAgo(r.createdAt, t, lang)}</span>
                     </div>
                     <div style={{ fontSize: 14, lineHeight: 1.5, color: '#3f433b' }}>{L(r, 'body')}</div>
+                    <HeartButton on={mine} count={hearts.length}
+                      label={mine ? t('react_remove') : t('react_add')}
+                      onClick={() => actions.toggleReaction('reply', r.id)} />
                   </div>
-                  <HeartButton on={mine} count={hearts.length}
-                    label={mine ? t('react_remove') : t('react_add')}
-                    onClick={() => actions.toggleReaction('reply', r.id)} />
                 </div>
               </div>
             );

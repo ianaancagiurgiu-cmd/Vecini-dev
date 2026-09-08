@@ -211,18 +211,9 @@ export function HeartButton({ on, count, onClick, label }) {
       onClick={press}
       aria-pressed={on}
       aria-label={label}
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 5,
-        background: 'none', border: 'none', padding: '6px 2px',
-        // Under the finger it is 32px tall even though the mark is 16px: the
-        // bubble above it is a tap target too, and a heart that needs aiming
-        // gets pressed by accident or not at all.
-        minHeight: 32,
-        color: on ? 'var(--terracotta)' : 'var(--ink-300)',
-        fontSize: 12.5, fontWeight: 700,
-      }}
+      className={`heart-pill${on ? ' is-on' : ''}`}
     >
-      <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"
+      <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"
         fill={on ? 'currentColor' : 'none'} stroke="currentColor"
         strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 20.3S3.8 14.9 3.8 9.4A4.6 4.6 0 0 1 12 6.6a4.6 4.6 0 0 1 8.2 2.8c0 5.5-8.2 10.9-8.2 10.9Z" />

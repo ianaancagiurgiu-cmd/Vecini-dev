@@ -96,19 +96,17 @@ export default function IssueDetail() {
             return (
               <div key={c.id} style={{ display: 'flex', gap: 10 }}>
                 <Avatar user={userById(c.authorId)} size={32} />
-                {/* The heart sits under the bubble rather than inside it: it is
-                    something a reader adds, not part of what was written. */}
                 <div className="comment-col">
-                  <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 13, padding: '10px 13px' }}>
+                  <div className="comment-bubble">
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
                       <span style={{ fontWeight: 700, fontSize: 13 }}>{userById(c.authorId).name}</span>
                       <span className="faint" style={{ fontSize: 11.5 }}>{timeAgo(c.createdAt, t, lang)}</span>
                     </div>
                     <div style={{ fontSize: 13.5, color: '#3f433b', lineHeight: 1.45 }}>{L(c, 'body')}</div>
+                    <HeartButton on={mine} count={hearts.length}
+                      label={mine ? t('react_remove') : t('react_add')}
+                      onClick={() => actions.toggleReaction('comment', c.id)} />
                   </div>
-                  <HeartButton on={mine} count={hearts.length}
-                    label={mine ? t('react_remove') : t('react_add')}
-                    onClick={() => actions.toggleReaction('comment', c.id)} />
                 </div>
               </div>
             );

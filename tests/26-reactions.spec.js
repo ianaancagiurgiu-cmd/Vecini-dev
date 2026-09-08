@@ -135,6 +135,46 @@ test.describe('Hearting a comment', () => {
     await expect(hearts.first()).not.toContainText('0');
   });
 
+  /*
+    Where the pill sits, which is WhatsApp's arrangement: hanging off the
+    bottom edge of the bubble, half over it, rather than in a row of its own
+    underneath.
+
+    Worth a test rather than an eye, because the failure mode is invisible in
+    the comment you happen to be looking at. The pill overlaps the foot of the
+    bubble, so the room it needs comes from the bubble's bottom padding — get
+    that wrong and the heart lands on top of the last line of text, but only on
+    the comments whose wrapping happens to reach the right-hand edge.
+  */
+  test('the heart hangs off the bubble edge without landing on the text', async ({ page }) => {
+    await withReactions(page, { rows: [{ issue_comment_id: 'c1c1', user_id: NEIGHBOUR }] });
+    await page.goto('/#/app/issues/i1');
+    await expect(page.getByText('Am sunat la firma de lift')).toBeVisible();
+
+    const m = await page.evaluate(() => {
+      const bubble = document.querySelector('.comment-bubble');
+      const pill = bubble.querySelector('.heart-pill');
+      const body = bubble.lastElementChild.previousElementSibling; // the message text
+      const r = (el) => el.getBoundingClientRect();
+      return {
+        overhang: Math.round(r(pill).bottom - r(bubble).bottom),
+        clearOfText: Math.round(r(pill).top - r(body).bottom),
+        insideOnTheRight: Math.round(r(bubble).right - r(pill).right),
+        height: Math.round(r(pill).height),
+      };
+    });
+
+    // Over the edge, not merely touching it, and not floating free of it.
+    expect(m.overhang, `pill hangs ${m.overhang}px past the bubble`).toBeGreaterThan(6);
+    expect(m.overhang).toBeLessThan(20);
+    // And clear of the words.
+    expect(m.clearOfText, `only ${m.clearOfText}px between the text and the heart`).toBeGreaterThanOrEqual(0);
+    expect(m.insideOnTheRight).toBeGreaterThan(0);
+    // Big enough to hit: WhatsApp's pill only reports reactions, this one is
+    // the button that makes them.
+    expect(m.height).toBeGreaterThanOrEqual(28);
+  });
+
   test('pressing it fills the heart and writes the row', async ({ page }) => {
     const { me, sent } = await withReactions(page);
     await page.goto('/#/app/issues/i1');
