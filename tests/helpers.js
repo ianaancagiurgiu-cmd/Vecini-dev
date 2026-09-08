@@ -171,17 +171,39 @@ function applyQuery(rows, params) {
  * Anything not listed answers with an empty list, which is what most of the
  * app's queries expect.
  */
-export async function signedInAs(page, { user = fakeUser(), tables = {} } = {}) {
+export async function signedInAs(page, { user = fakeUser(), tables = {}, onboarding = false } = {}) {
   const ref = supabaseRef();
   if (!ref) throw new Error('no VITE_SUPABASE_URL in .env, cannot fake a session');
 
-  await page.addInitScript(({ ref, user }) => {
+  await page.addInitScript(({ ref, user, onboarding }) => {
     localStorage.setItem(`sb-${ref}-auth-token`, JSON.stringify({
       access_token: 'stub', token_type: 'bearer', expires_in: 999999,
       expires_at: Math.floor(Date.now() / 1000) + 999999,
       refresh_token: 'stub', user,
     }));
-  }, { ref, user });
+
+    /*
+      Six seconds after the app mounts, the onboarding sheet slides over the
+      whole screen and eats every click behind it. A test that runs longer than
+      that is racing a timer it never asked for — and the race was invisible
+      only because the app used to mount slowly enough to lose it. Making the
+      first paint faster tipped 21 specs into failure at once, all of them with
+      "<div> intercepts pointer events".
+
+      So the signed-in phone is one that has already been asked and said no,
+      which is the state of every phone after the first week. The four specs in
+      25-push-onboarding.spec.js — the only ones the sheet is the subject of —
+      pass onboarding: true to get the freshly-installed phone back.
+
+      Shape and key come from src/lib/install.js: silence() writes exactly this.
+    */
+    if (!onboarding) {
+      localStorage.setItem('vecini.onboarding.v1', JSON.stringify({
+        installCount: 3, installUntil: Number.MAX_SAFE_INTEGER,
+        pushCount: 3, pushUntil: Number.MAX_SAFE_INTEGER,
+      }));
+    }
+  }, { ref, user, onboarding });
 
   const fixtures = {
     profiles: [{ id: user.id, full_name: user.user_metadata.full_name, apartment: 'Ap. 12', avatar_color: '#8c3c52' }],

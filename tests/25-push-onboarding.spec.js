@@ -56,6 +56,9 @@ async function signIn(page, over = {}) {
   const me = fakeUser();
   await signedInAs(page, {
     user: me,
+    // These four specs are about the sheet itself, so they need the phone that
+    // has never been asked — everywhere else it is silenced, see helpers.js.
+    onboarding: true,
     tables: {
       communities: [community],
       memberships: [{ id: 'm1', user_id: me.id, community_id: 'c1', role: 'member', joined_at: new Date().toISOString() }],
