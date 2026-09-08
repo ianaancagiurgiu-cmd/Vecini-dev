@@ -135,17 +135,34 @@ export default function Announcements() {
           {list.map((a) => (
             <div key={a.id} style={{ position: 'relative' }}>
               <button onClick={() => nav('/app/announcements/' + a.id)} className="card" style={{ textAlign: 'left', width: '100%' }}>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 9, paddingRight: 42, flexWrap: 'wrap' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--status-done-bg)', color: 'var(--green-500)', padding: '4px 9px', borderRadius: 7, fontSize: 11, fontWeight: 700 }}>📢 {t('ann_official')}</span>
-                  {isPriority(a) && <PriorityBadge until={a.pinnedUntil} t={t} lang={lang} />}
-                  {/* So the noticeboard says when, without being sorted by it. */}
-                  {a.startsAt && (
-                    <span className="badge" style={{ background: isPast(a) ? 'var(--section-bg)' : 'var(--status-done-bg)', color: isPast(a) ? 'var(--ink-400)' : 'var(--green-500)' }}>
-                      📅 {isPast(a) ? t('ev_passed') : eventDay(a.startsAt, lang, t)}
-                    </span>
-                  )}
-                </div>
-                <div className="serif" style={{ fontSize: 17.5, fontWeight: 600, lineHeight: 1.25, marginBottom: 6 }}>{L(a, 'title')}</div>
+                {/*
+                  No "OFICIAL" badge here. Every card on this screen is one —
+                  the header above already says "Doar anunțuri oficiale", once,
+                  for the whole list — so repeating it on each card said the
+                  same true thing as many times as there were cards to say it
+                  on. It stays on the dashboard and the detail screen, where an
+                  announcement turns up beside discussions and issues and the
+                  badge is the thing telling them apart.
+                */}
+                {/* Only drawn when there is a badge to show — an empty row
+                    would otherwise leave a small gap of nothing above the
+                    title on a plain announcement, now that OFICIAL no longer
+                    fills it by default. */}
+                {(isPriority(a) || a.startsAt) && (
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 9, paddingRight: 42, flexWrap: 'wrap' }}>
+                    {isPriority(a) && <PriorityBadge until={a.pinnedUntil} t={t} lang={lang} />}
+                    {/* So the noticeboard says when, without being sorted by it. */}
+                    {a.startsAt && (
+                      <span className="badge" style={{ background: isPast(a) ? 'var(--section-bg)' : 'var(--status-done-bg)', color: isPast(a) ? 'var(--ink-400)' : 'var(--green-500)' }}>
+                        📅 {isPast(a) ? t('ev_passed') : eventDay(a.startsAt, lang, t)}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {/* paddingRight guards the archive icon whether or not a badge
+                    row came first — a plain announcement now has nothing else
+                    to hold the title clear of it. */}
+                <div className="serif" style={{ fontSize: 17.5, fontWeight: 600, lineHeight: 1.25, marginBottom: 6, paddingRight: 42 }}>{L(a, 'title')}</div>
                 {L(a, 'body') && (
                   <div className="muted" style={{ fontSize: 13.5, lineHeight: 1.45, marginBottom: 10, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{L(a, 'body')}</div>
                 )}

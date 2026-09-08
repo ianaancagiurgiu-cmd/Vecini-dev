@@ -155,3 +155,57 @@ test.describe('Priority announcements', () => {
     }
   });
 });
+
+/*
+  The "OFICIAL" badge.
+
+  Every announcement is official — only staff can write one — so on the list
+  screen the badge said the same true thing on every single card, when the
+  header above the list already says it once for all of them ("Doar anunțuri
+  oficiale"). It still earns its place on the dashboard and the detail screen,
+  where an announcement turns up next to discussions, issues and polls and the
+  badge is what tells them apart.
+*/
+test.describe('The OFICIAL badge', () => {
+  test('is not repeated on every card in the list', async ({ page }) => {
+    await asStaff(page);
+    await page.goto('/#/app/announcements');
+
+    // Said once, for the whole list. (getByText is a substring match, and
+    // "oficiale" here would itself satisfy a bare search for "OFICIAL" — this
+    // is the one place that is supposed to say it, so its presence is asserted
+    // by name rather than assumed.)
+    await expect(page.getByText('Doar anunțuri oficiale')).toBeVisible();
+    // And not once per card: the badge is "📢 OFICIAL", exactly, on a card.
+    await expect(page.locator('.card').getByText('📢 OFICIAL', { exact: true })).toHaveCount(0);
+  });
+
+  test('still marks an announcement on the dashboard, among other kinds of card', async ({ page }) => {
+    const me = fakeUser();
+    await signedInAs(page, {
+      user: me,
+      tables: {
+        communities: [community],
+        memberships: [{ id: 'm1', user_id: me.id, community_id: 'c1', role: 'admin', joined_at: new Date().toISOString() }],
+        announcements: [{
+          id: 'd1', community_id: 'c1', author_id: me.id,
+          title: 'Curățenie generală', body: 'Sâmbătă dimineața.',
+          pinned_until: null, starts_at: null, ends_at: null, all_day: false, location: '',
+          created_at: new Date().toISOString(),
+        }],
+      },
+    });
+    await page.goto('/#/app/');
+
+    await expect(page.getByText('Curățenie generală')).toBeVisible();
+    await expect(page.getByText('OFICIAL')).toBeVisible();
+  });
+
+  test('still marks it on the detail screen', async ({ page }) => {
+    await asStaff(page);
+    await page.goto('/#/app/announcements/a3');
+
+    await expect(page.getByText('S-a montat iluminatul nou')).toBeVisible();
+    await expect(page.getByText('OFICIAL')).toBeVisible();
+  });
+});
