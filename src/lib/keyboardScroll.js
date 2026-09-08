@@ -1,71 +1,69 @@
 /*
-  Keeping a focused field visible above the keyboard, on an iOS home-screen
-  install specifically.
+  Bringing a focused field up into the strip of screen the keyboard has not
+  covered.
 
-  The diagnostic readout in viewportDebug.js ruled out the theory this started
-  from: visualViewport.offsetTop and window.scrollY both stay 0 the entire
-  time, on the phone this actually broke on, yet the screen still visibly
-  shifts — the debug band, `position: fixed; top: 0`, is invisible until the
-  page is scrolled back up to see it. Nothing in JS reports the shift, which
-  means there is nothing to measure and compensate for; the previous attempt
-  tried to cancel a number that was always zero, and only ever changed
-  something else.
+  viewport.js now leaves the shell at full window height while someone types, so
+  the keyboard simply covers its lower half — which means the field they tapped
+  can easily be underneath it, and something has to move it.
 
-  So instead of correcting a shift after the fact, this stops the shift from
-  having anything to act on. The moment a field is focused, body is taken out
-  of document flow entirely — `position: fixed` — which cannot be scrolled by
-  anything, native keyboard-avoidance included; `overflow: hidden` alone
-  turned out not to be enough to stop it. With nowhere left for the page to
-  go, this then does the one thing that was actually wanted — bring the field
-  into view — itself, inside the one scroll container the app already
-  controls (`.phone__scroll`), rather than leaving it to whatever the OS was
-  attempting.
+  scrollIntoView({ block: 'center' }) is not that something: it centres the
+  field in the *scroll container*, which is now the full height of the window,
+  so it lands halfway down a screen whose bottom half is keyboard. Measured at
+  Iana's geometry, that put the field at 369–418 with the keyboard starting at
+  394 — centred, and still half hidden.
+
+  What the field has to be centred in is the visible strip, and the one thing
+  iOS does report reliably is how tall that strip is: visualViewport.height. So
+  the sums are done here against that, and the app's own scroll container is
+  moved by the difference.
+
+  Twice, at two different moments: the first pass is for the common case, the
+  second lands after iOS has finished its own attempt and its keyboard
+  animation, so ours has the last word.
 */
-let lockedY = 0;
-let locked = false;
+const isField = (el) => !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT');
 
-function isField(el) {
-  return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT');
-}
+// Enough room left above the field for its own label, and to clear a sticky
+// screen header where there is one.
+const ROOM_ABOVE = 76;
 
-function lock() {
-  if (locked) return;
-  locked = true;
-  lockedY = window.scrollY || 0;
-  document.body.style.position = 'fixed';
-  document.body.style.top = `${-lockedY}px`;
-  document.body.style.left = '0';
-  document.body.style.right = '0';
-  document.body.style.width = '100%';
-}
-
-function unlock() {
-  if (!locked) return;
-  locked = false;
-  document.body.style.position = '';
-  document.body.style.top = '';
-  document.body.style.left = '';
-  document.body.style.right = '';
-  document.body.style.width = '';
-  window.scrollTo(0, lockedY);
+function scroller(from) {
+  for (let el = from.parentElement; el; el = el.parentElement) {
+    const oy = getComputedStyle(el).overflowY;
+    if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight) return el;
+  }
+  return null;
 }
 
 export function installKeyboardScrollLock() {
   document.addEventListener('focusin', (e) => {
     if (!isField(e.target)) return;
-    lock();
-    // A beat for the keyboard's own opening animation and for --app-h to
-    // settle, so the field is scrolled against the space it will actually
-    // have rather than the space it had a moment before.
-    setTimeout(() => {
-      e.target.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    }, 300);
-  });
 
-  document.addEventListener('focusout', (e) => {
-    if (!isField(e.target)) return;
-    // Only once nothing else has already taken focus — moving from one field
-    // straight to the next should not visibly unlock and relock in between.
-    setTimeout(() => { if (!isField(document.activeElement)) unlock(); }, 50);
+    const reveal = () => {
+      // Still the same field? Moving straight on to the next one must not drag
+      // the screen back to the one just left.
+      if (document.activeElement !== e.target) return;
+      const box = scroller(e.target);
+      if (!box) return;
+
+      const strip = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      const r = e.target.getBoundingClientRect();
+      // Centred in the strip, but never so high that the label above it goes
+      // under the header.
+      const target = Math.max(ROOM_ABOVE, (strip - r.height) / 2);
+      const delta = r.top - target;
+      if (Math.abs(delta) < 2) return;
+
+      // Assigned rather than scrollTo({behavior}): the container sets
+      // scroll-behavior: smooth, and a smooth scroll overlapping the keyboard
+      // animation gets interrupted halfway.
+      const before = box.scrollTop;
+      box.style.scrollBehavior = 'auto';
+      box.scrollTop = before + delta;
+      box.style.scrollBehavior = '';
+    };
+
+    setTimeout(reveal, 120);
+    setTimeout(reveal, 450);
   });
 }

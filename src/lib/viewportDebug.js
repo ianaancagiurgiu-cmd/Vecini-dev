@@ -11,6 +11,13 @@
   Remove installViewportDebug() from main.jsx (and this file) once the real
   fix is confirmed working — this has no reason to ship to real users.
 */
+/*
+  Which build is on screen. Safari caches index.html independently of the
+  installed app, so "I tested it and nothing changed" and "I tested the version
+  from before the change" look identical from here — this tells them apart.
+*/
+const BUILD = 'kbd-4';
+
 export function installViewportDebug() {
   const el = document.createElement('div');
   el.id = 'vp-debug';
@@ -18,7 +25,9 @@ export function installViewportDebug() {
     'position:fixed', 'top:0', 'left:0', 'right:0', 'z-index:99999',
     'background:rgba(20,10,0,.88)', 'color:#7fffb0',
     'font:11px/1.5 ui-monospace,Menlo,monospace',
-    'padding:4px 8px', 'white-space:pre', 'pointer-events:none',
+    // Wraps rather than running off the edge: the first screenshots of this
+    // had the numbers I most needed cut off the right-hand side.
+    'padding:4px 8px', 'white-space:pre-wrap', 'pointer-events:none',
   ].join(';');
   document.body.appendChild(el);
 
@@ -33,7 +42,7 @@ export function installViewportDebug() {
     const rect = focused && focused !== document.body ? focused.getBoundingClientRect() : null;
 
     const scroller = document.querySelector('.phone__scroll');
-    el.textContent = [
+    el.textContent = `build ${BUILD}\n` + [
       line('vv.h', vv ? Math.round(vv.height) : undefined),
       line('vv.top', vv ? Math.round(vv.offsetTop) : undefined),
       line('vv.left', vv ? Math.round(vv.offsetLeft) : undefined),

@@ -146,4 +146,60 @@ test.describe('App shell layout', () => {
     expect(sizes.length).toBeGreaterThan(0);
     for (const px of sizes) expect(px).toBeGreaterThanOrEqual(16);
   });
+
+  /*
+    The blank slab above the keyboard, reproduced at the numbers measured on
+    Iana's own phone: the window stays 797 tall and the keyboard leaves 394
+    visible.
+
+    Two separate things went wrong there, and both are checked, because fixing
+    either alone still leaves the field unusable:
+
+      - --app-h shrank to the visible 394, so the shell was clipped to a
+        height the keyboard was covering anyway, and the strip below the
+        content had nothing in it. That is the blank.
+      - even unclipped, scrollIntoView({block:'center'}) centres the field in
+        the scroll container — now a full 797 tall — which put it at 369-418,
+        straddling the keyboard line at 394. Centred, and still half hidden.
+
+    The keyboard is simulated the way the real one arrives, by shadowing
+    visualViewport.height and firing its resize, rather than by setting --app-h
+    directly — which would bypass exactly the code under test. (The first
+    version of this test did set it directly, and "passed" against logic it had
+    stepped over.)
+  */
+  test('a focused field stays above the keyboard, with no blank slab under it', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 797 });
+    await page.goto('/#/signup');
+    await page.waitForTimeout(500);
+
+    // The last field on the form, not the first: near the top of the page,
+    // centring in the container and centring in the visible strip land in much
+    // the same place, and the difference between right and wrong disappears.
+    // This one sits at 586, comfortably under where the keyboard will be.
+    const field = page.locator('input.input').last();
+    await field.click();
+
+    await page.evaluate(() => {
+      Object.defineProperty(window.visualViewport, 'height', { configurable: true, get: () => 394 });
+      window.visualViewport.dispatchEvent(new Event('resize'));
+    });
+    await page.waitForTimeout(700); // past both reveal passes in keyboardScroll.js
+
+    const m = await page.evaluate(() => {
+      const r = document.activeElement.getBoundingClientRect();
+      return {
+        phoneH: Math.round(document.querySelector('.phone').getBoundingClientRect().height),
+        fieldTop: Math.round(r.top),
+        fieldBottom: Math.round(r.bottom),
+      };
+    });
+
+    // The shell keeps its full height: shrinking it only ever carved out a
+    // dead strip under content the keyboard was already covering.
+    expect(m.phoneH, `the shell shrank to ${m.phoneH}, which is the blank slab`).toBeGreaterThan(700);
+    // And the field is inside the part the keyboard leaves visible.
+    expect(m.fieldBottom, `the field's bottom at ${m.fieldBottom} is under the keyboard at 394`).toBeLessThan(394);
+    expect(m.fieldTop).toBeGreaterThan(0);
+  });
 });
