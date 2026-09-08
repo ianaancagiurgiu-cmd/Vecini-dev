@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
-import { ScreenHeader, Avatar, HeartButton } from '../components/ui.jsx';
+import { ScreenHeader, Avatar, HeartButton, Composer } from '../components/ui.jsx';
 import { timeAgo, CATEGORIES, catLabel } from '../lib/format.js';
 
 export default function DiscussionDetail() {
@@ -61,10 +61,7 @@ export default function DiscussionDetail() {
       </div>
 
       {/* reply box */}
-      <div className="composer-bar" style={{ marginTop: 20 }}>
-        <input className="input" value={reply} onChange={(e) => setReply(e.target.value)} placeholder={t('disc_reply_ph')} style={{ flex: 1 }} onKeyDown={(e) => e.key === 'Enter' && send()} />
-        <button className="btn btn--primary" onClick={send} disabled={!reply.trim()} style={{ width: 'auto', padding: '0 18px' }}>➤</button>
-      </div>
+      <Composer value={reply} onChange={setReply} onSend={send} placeholder={t('disc_reply_ph')} style={{ marginTop: 20 }} />
     </div>
   );
 }

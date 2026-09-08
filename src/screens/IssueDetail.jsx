@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
-import { ScreenHeader, Badge, Avatar, HeartButton } from '../components/ui.jsx';
+import { ScreenHeader, Badge, Avatar, HeartButton, Composer } from '../components/ui.jsx';
 import { timeAgo, formatDate, CATEGORIES, catLabel, STATUS } from '../lib/format.js';
 
 const NEXT = { new: ['progress', 'resolved'], progress: ['resolved', 'new'], resolved: ['progress'] };
@@ -114,10 +114,7 @@ export default function IssueDetail() {
         </div>
       </div>
 
-      <div className="composer-bar">
-        <input className="input" value={comment} onChange={(e) => setComment(e.target.value)} placeholder={t('iss_comment_ph')} style={{ flex: 1 }} onKeyDown={(e) => e.key === 'Enter' && sendComment()} />
-        <button className="btn btn--primary" onClick={sendComment} disabled={!comment.trim()} style={{ width: 'auto', padding: '0 18px' }}>➤</button>
-      </div>
+      <Composer value={comment} onChange={setComment} onSend={sendComment} placeholder={t('iss_comment_ph')} />
     </div>
   );
 }

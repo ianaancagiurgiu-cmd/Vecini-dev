@@ -62,7 +62,8 @@ test.describe.skip('Epic 5 — Issue Reporting', () => {
     await enterApp(page, { role: 'member' });
     await page.goto('/#/app/issues/101');
     await page.getByPlaceholder('Scrie un comentariu…').fill('Confirm și eu.');
-    await page.getByPlaceholder('Scrie un comentariu…').press('Enter');
+    // Enter starts a new line now; sending is the button.
+    await page.getByRole('button', { name: '➤' }).click();
     await expect(page.getByText('Confirm și eu.')).toBeVisible();
   });
 

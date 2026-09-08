@@ -310,7 +310,26 @@ textarea.input { resize: vertical; min-height: 96px; font-weight: 400; line-heig
   padding: 12px 20px;
   display: flex;
   gap: 9px;
+  /* The field grows upward as it fills; the send button stays where the thumb
+     last found it rather than stretching to match. */
+  align-items: flex-end;
   z-index: 45;
+}
+
+/*
+  The field you write a comment in, which grows with what you write.
+
+  It was a single-line input, so anything past one line scrolled out of sight
+  while you were still writing it — you could not read your own sentence back
+  before sending it. It stops growing at five lines and scrolls after that, so
+  a long message cannot push the whole conversation off the screen.
+
+  Overrides textarea.input above, which is shaped for the tall composers that
+  start at 96px and are dragged taller by hand.
+*/
+textarea.composer-input {
+  min-height: 0; resize: none; overflow-y: auto;
+  line-height: 1.4;
 }
 
 /* toast */

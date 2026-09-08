@@ -48,7 +48,8 @@ test.describe.skip('Epic 4 — Discussions', () => {
     await tab(page, 'Discuții');
     await page.getByText('Idei pentru locul de joacă').click();
     await page.getByPlaceholder('Scrie un răspuns…').fill('Sunt de acord!');
-    await page.getByPlaceholder('Scrie un răspuns…').press('Enter');
+    // Enter starts a new line now; sending is the button.
+    await page.getByRole('button', { name: '➤' }).click();
     await expect(page.getByText('Sunt de acord!')).toBeVisible();
   });
 });

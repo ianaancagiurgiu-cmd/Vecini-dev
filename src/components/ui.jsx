@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useLayoutEffect } from 'react';
 import { useApp } from '../state/store.jsx';
 import { untilLabel } from '../lib/format.js';
 
@@ -220,6 +220,62 @@ export function HeartButton({ on, count, onClick, label }) {
       </svg>
       {count > 0 && <span>{count}</span>}
     </button>
+  );
+}
+
+/*
+  The bar at the foot of a conversation: one field, one send button.
+
+  The field is a textarea rather than an input so that it can grow, and it is
+  measured rather than counted — setting the height to scrollHeight is the only
+  way to know how tall the text actually is once it has wrapped, since that
+  depends on the words, the width and the font. Reset to auto first, or it can
+  only ever grow: scrollHeight of an element already stretched to fit is its
+  current height.
+
+  Enter starts a new line. It used to send, which is fine for one-liners and
+  impossible for anything else — on a phone keyboard there is no shift+enter to
+  fall back on, so enter-to-send means a message can never have a second
+  paragraph. Sending is the button, plus ctrl/cmd+enter for anyone typing on a
+  keyboard that has one.
+*/
+const COMPOSER_MAX_H = 148; // about five lines, then it scrolls
+
+export function Composer({ value, onChange, onSend, placeholder, style }) {
+  const ref = useRef(null);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    /*
+      scrollHeight is the content plus its padding, and nothing else. Under
+      border-box — which everything here uses — a height set from it is short
+      by the two borders, so the last line sits two pixels below the fold: not
+      enough to see, enough for a test to catch, and exactly enough to clip the
+      descenders on the bottom line of a long message.
+    */
+    const borders = el.offsetHeight - el.clientHeight;
+    el.style.height = `${Math.min(el.scrollHeight + borders, COMPOSER_MAX_H)}px`;
+  }, [value]);
+
+  return (
+    <div className="composer-bar" style={style}>
+      <textarea
+        ref={ref}
+        rows={1}
+        className="input composer-input"
+        style={{ flex: 1 }}
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); onSend(); }
+        }}
+      />
+      <button className="btn btn--primary" onClick={onSend} disabled={!value.trim()}
+        style={{ width: 'auto', padding: '0 18px', height: 50 }}>➤</button>
+    </div>
   );
 }
 
