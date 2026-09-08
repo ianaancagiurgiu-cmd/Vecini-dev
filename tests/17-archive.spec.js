@@ -117,6 +117,16 @@ test.describe('Epic 17 — Archiving', () => {
     const writes = await trackArchiveWrites(page);
     await page.goto('/#/app/announcements');
 
+    /*
+      Waits for the list before pressing, which the tests around this one
+      already do. The click auto-waits for its own button either way, so this
+      looked redundant — but what follows it does not: the toast is on screen
+      for 2.6 seconds and then gone. Under a loaded machine the wait for the
+      list was happening after the click instead of before it, and the toast
+      had been and gone by the time anything looked for it. Failed once in a
+      full run, passed alone every time, which is the signature.
+    */
+    await expect(page.getByText('Apa oprită joi')).toBeVisible();
     await page.getByRole('button', { name: 'Arhivează' }).first().click();
 
     await expect(page.getByText('Mutat în arhivă.')).toBeVisible();

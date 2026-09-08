@@ -209,6 +209,9 @@ export function HeartButton({ on, count, onClick, label }) {
   return (
     <button
       onClick={press}
+      // The pill sits inside the bubble, and the bubble answers a long press
+      // with the message menu. Holding the heart down is not asking to edit.
+      onPointerDown={(e) => e.stopPropagation()}
       aria-pressed={on}
       aria-label={label}
       className={`heart-pill${on ? ' is-on' : ''}`}
@@ -241,8 +244,23 @@ export function HeartButton({ on, count, onClick, label }) {
 */
 const COMPOSER_MAX_H = 148; // about five lines, then it scrolls
 
-export function Composer({ value, onChange, onSend, placeholder, style }) {
+export function Composer({ value, onChange, onSend, placeholder, style, editing, onCancel }) {
+  const { t } = useApp();
   const ref = useRef(null);
+
+  /*
+    Correcting a message happens in the same box you wrote it in, rather than
+    in the bubble itself or on a screen of its own. It is already the place your
+    thumb is, it already grows to fit, and the alternative — a bubble that turns
+    into a field where it sits — has to fight the heart hanging off its corner
+    for the same few pixels.
+  */
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || !editing) return;
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+  }, [editing]);
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -261,20 +279,40 @@ export function Composer({ value, onChange, onSend, placeholder, style }) {
 
   return (
     <div className="composer-bar" style={style}>
-      <textarea
-        ref={ref}
-        rows={1}
-        className="input composer-input"
-        style={{ flex: 1 }}
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); onSend(); }
-        }}
-      />
-      <button className="btn btn--primary" onClick={onSend} disabled={!value.trim()}
-        style={{ width: 'auto', padding: '0 18px', height: 50 }}>➤</button>
+      {/*
+        In the bar's own flow rather than floating above it. The bar is sticky
+        at the foot of the conversation, so growing it makes room; an overlay
+        would have sat on top of the very message being corrected, covering the
+        heart on its corner.
+      */}
+      {editing && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: 'var(--status-done-bg)', borderRadius: 10,
+          padding: '7px 12px', fontSize: 12.5, fontWeight: 700, color: 'var(--green-600)',
+        }}>
+          {t('msg_editing')}
+          <button onClick={onCancel} style={{ background: 'none', border: 'none', font: 'inherit', color: 'var(--ink-300)' }}>
+            {t('cancel')}
+          </button>
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 9, alignItems: 'flex-end' }}>
+        <textarea
+          ref={ref}
+          rows={1}
+          className="input composer-input"
+          style={{ flex: 1 }}
+          value={value}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); onSend(); }
+          }}
+        />
+        <button className="btn btn--primary" onClick={onSend} disabled={!value.trim()}
+          style={{ width: 'auto', padding: '0 18px', height: 50 }}>{editing ? '✓' : '➤'}</button>
+      </div>
     </div>
   );
 }

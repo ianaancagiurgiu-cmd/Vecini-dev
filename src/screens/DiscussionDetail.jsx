@@ -2,18 +2,37 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { ScreenHeader, Avatar, HeartButton, Composer } from '../components/ui.jsx';
-import { timeAgo, CATEGORIES, catLabel } from '../lib/format.js';
+import { useLongPress, ActionMenu, PencilIcon } from '../components/MessageMenu.jsx';
+import { timeAgo, CATEGORIES, catLabel, canStillEdit } from '../lib/format.js';
 
 export default function DiscussionDetail() {
   const nav = useNavigate();
   const { id } = useParams();
   const { data, t, L, lang, counted, userById, currentUser, actions } = useApp();
   const [reply, setReply] = useState('');
+  // Which of your own replies you are correcting, and the menu that offered.
+  const [editing, setEditing] = useState(null);
+  const [menu, setMenu] = useState(null);
+  const bindHold = useLongPress();
   const d = data.discussions.find((x) => x.id === id);
   if (!d) return <div className="screen"><ScreenHeader title={t('disc_title')} onBack={() => nav('/app/discussions')} /></div>;
   const cInfo = CATEGORIES[d.category] || CATEGORIES.general;
 
-  const send = async () => { if (!reply.trim()) return; const body = reply.trim(); setReply(''); await actions.addReply(d.id, body); };
+  // One button, doing whichever of the two things is in front of it.
+  const send = async () => {
+    const body = reply.trim();
+    if (!body) return;
+    setReply('');
+    if (editing) {
+      const id = editing;
+      setEditing(null);
+      await actions.editMessage('reply', id, body);
+      return;
+    }
+    await actions.addReply(d.id, body);
+  };
+  const startEdit = (r) => { setEditing(r.id); setReply(r.body); };
+  const cancelEdit = () => { setEditing(null); setReply(''); };
 
   return (
     <div className="screen">
@@ -39,14 +58,19 @@ export default function DiscussionDetail() {
           {d.replies.map((r) => {
             const hearts = r.reactions || [];
             const mine = hearts.includes(currentUser.id);
+            // Only where there is something to offer — see IssueDetail.
+            const editable = r.authorId === currentUser.id && canStillEdit(r.createdAt);
             return (
               <div key={r.id} style={{ display: 'flex', gap: 11 }}>
                 <Avatar user={userById(r.authorId)} size={34} />
                 <div className="comment-col">
-                  <div className="comment-bubble">
+                  <div className={`comment-bubble${editable ? ' comment-bubble--held' : ''}`}
+                    {...bindHold((el) => setMenu({ id: r.id, anchor: el.getBoundingClientRect() }), editable)}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                       <span style={{ fontWeight: 700, fontSize: 13.5 }}>{userById(r.authorId).name}</span>
-                      <span className="faint" style={{ fontSize: 11.5 }}>{timeAgo(r.createdAt, t, lang)}</span>
+                      <span className="faint" style={{ fontSize: 11.5 }}>
+                        {timeAgo(r.createdAt, t, lang)}{r.editedAt ? ` · ${t('msg_edited')}` : ''}
+                      </span>
                     </div>
                     <div style={{ fontSize: 14, lineHeight: 1.5, color: '#3f433b' }}>{L(r, 'body')}</div>
                     <HeartButton on={mine} count={hearts.length}
@@ -61,7 +85,20 @@ export default function DiscussionDetail() {
       </div>
 
       {/* reply box */}
-      <Composer value={reply} onChange={setReply} onSend={send} placeholder={t('disc_reply_ph')} style={{ marginTop: 20 }} />
+      <Composer value={reply} onChange={setReply} onSend={send} placeholder={t('disc_reply_ph')}
+        style={{ marginTop: 20 }} editing={!!editing} onCancel={cancelEdit} />
+
+      {menu && (
+        <ActionMenu
+          anchor={menu.anchor}
+          onClose={() => setMenu(null)}
+          items={[{
+            label: t('msg_edit'),
+            icon: <PencilIcon />,
+            onSelect: () => startEdit(d.replies.find((x) => x.id === menu.id)),
+          }]}
+        />
+      )}
     </div>
   );
 }

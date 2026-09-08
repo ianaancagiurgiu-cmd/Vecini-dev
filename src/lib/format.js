@@ -69,6 +69,19 @@ export function eventWhen(ev, lang, t) {
   return `${day} · ${eventTime(ev.startsAt, lang)}`;
 }
 
+/*
+  How long you have to fix a typo in something you already sent: fifteen
+  minutes, the same as WhatsApp. Long enough to catch the mistake you notice
+  the moment it is on screen, short enough that nobody can rewrite what they
+  promised after three neighbours have replied to it.
+
+  The database enforces the same number and is the one that decides — see
+  supabase/0015_comment_edits.sql. This is only so the app does not offer
+  something that would be refused.
+*/
+export const EDIT_WINDOW_MS = 15 * 60 * 1000;
+export const canStillEdit = (createdAt) => Date.now() - createdAt < EDIT_WINDOW_MS;
+
 /** Has it already happened? All-day events count until the end of their day. */
 export function isPast(ev) {
   const end = ev.endsAt || ev.startsAt;

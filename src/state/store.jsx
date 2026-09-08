@@ -395,8 +395,8 @@ export function AppProvider({ children }) {
           allDay: !!a.all_day,
           location: a.location || '',
         })),
-        discussions: discussionsFull.map((d) => ({ ...d, authorId: d.author_id, createdAt: new Date(d.created_at).getTime(), replies: d.replies.map((r) => ({ ...r, authorId: r.author_id, createdAt: new Date(r.created_at).getTime(), reactions: heartsOnReplies.get(r.id) || [] })) })),
-        issues: issuesFull.map((i) => ({ ...i, reporterId: i.reporter_id, photo: i.photo_url, createdAt: new Date(i.created_at).getTime(), history: i.history.map((h) => ({ ...h, byId: h.by_id, at: new Date(h.at).getTime() })), comments: i.comments.map((c) => ({ ...c, authorId: c.author_id, createdAt: new Date(c.created_at).getTime(), reactions: heartsOnComments.get(c.id) || [] })) })),
+        discussions: discussionsFull.map((d) => ({ ...d, authorId: d.author_id, createdAt: new Date(d.created_at).getTime(), replies: d.replies.map((r) => ({ ...r, authorId: r.author_id, createdAt: new Date(r.created_at).getTime(), editedAt: r.edited_at ? new Date(r.edited_at).getTime() : null, reactions: heartsOnReplies.get(r.id) || [] })) })),
+        issues: issuesFull.map((i) => ({ ...i, reporterId: i.reporter_id, photo: i.photo_url, createdAt: new Date(i.created_at).getTime(), history: i.history.map((h) => ({ ...h, byId: h.by_id, at: new Date(h.at).getTime() })), comments: i.comments.map((c) => ({ ...c, authorId: c.author_id, createdAt: new Date(c.created_at).getTime(), editedAt: c.edited_at ? new Date(c.edited_at).getTime() : null, reactions: heartsOnComments.get(c.id) || [] })) })),
         polls: pollsFull.map((p) => ({ ...p, authorId: p.author_id, createdAt: new Date(p.created_at).getTime(), endsAt: new Date(p.ends_at).getTime() })),
         notifications: (notifications || []).map((n) => ({ ...n, createdAt: new Date(n.created_at).getTime() })),
         notifPrefs: notifPrefsRow || { announcements: true, replies: true, issues: true, polls: true, events: true, push: false },
@@ -815,6 +815,21 @@ export function AppProvider({ children }) {
   const staffIds = () =>
     data.members.filter((m) => m.role === 'admin' || m.role === 'moderator').map((m) => m.userId);
 
+  /*
+    Change one comment where it sits, without reloading the community around it.
+
+    'reply' means a reply in a discussion, anything else an issue comment — the
+    two live in different arrays but are the same thing to everyone reading
+    them, so hearts and edits both come through here rather than each walking
+    the tree their own way.
+  */
+  const patchMessage = (where, id, patch) => setData((d) => {
+    const swap = (rows) => rows.map((r) => (r.id === id ? { ...r, ...patch(r) } : r));
+    return where === 'reply'
+      ? { ...d, discussions: d.discussions.map((x) => ({ ...x, replies: swap(x.replies) })) }
+      : { ...d, issues: d.issues.map((x) => ({ ...x, comments: swap(x.comments) })) };
+  });
+
   const actions = useMemo(() => ({
     /*
       Putting something away, and taking it back out. This only ever touches the
@@ -984,21 +999,39 @@ export function AppProvider({ children }) {
         : data.issues.flatMap((i) => i.comments);
       const mine = (list.find((x) => x.id === id)?.reactions || []).includes(userId);
 
-      const swap = (rows) => rows.map((r) => (
-        r.id === id
-          ? { ...r, reactions: mine ? (r.reactions || []).filter((u) => u !== userId) : [...(r.reactions || []), userId] }
-          : r
-      ));
-      setData((d) => (where === 'reply'
-        ? { ...d, discussions: d.discussions.map((x) => ({ ...x, replies: swap(x.replies) })) }
-        : { ...d, issues: d.issues.map((x) => ({ ...x, comments: swap(x.comments) })) }
-      ));
+      patchMessage(where, id, (r) => ({
+        reactions: mine ? (r.reactions || []).filter((u) => u !== userId) : [...(r.reactions || []), userId],
+      }));
 
       const { error } = mine
         ? await supabase.from('reactions').delete()
             .eq(column, id).eq('user_id', userId).eq('emoji', HEART)
         : await supabase.from('reactions').insert({ [column]: id, user_id: userId, emoji: HEART });
       if (error) { await refreshAll(); throw error; }
+    },
+    /*
+      Correcting your own message, within a quarter of an hour of sending it.
+
+      Everything that makes this safe is in the database, in one function:
+      whose message it is, how long ago it was, and the fact that only the text
+      and the "edited" mark can change. There is no update policy on the comment
+      tables at all, so this is not the app being careful — it is the only door
+      that exists. See supabase/0015_comment_edits.sql.
+
+      The screen is corrected from what the database hands back rather than from
+      what we sent, so the mark beside the time is the real one.
+    */
+    editMessage: async (where, id, body) => {
+      const text = String(body || '').trim();
+      if (!text) return;
+      const { data: editedAt, error } = await supabase.rpc('edit_comment', {
+        p_kind: where === 'reply' ? 'reply' : 'comment', p_id: id, p_body: text,
+      });
+      if (error) { showToast(t('msg_edit_error')); throw error; }
+      patchMessage(where, id, () => ({
+        body: text,
+        editedAt: editedAt ? new Date(editedAt).getTime() : Date.now(),
+      }));
     },
     addIssueComment: async (issueId, body) => {
       await supabase.from('issue_comments').insert({ issue_id: issueId, author_id: userId, body });

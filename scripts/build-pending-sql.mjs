@@ -43,6 +43,8 @@ const DESCRIERI = {
     'anuntul si evenimentul devin acelasi lucru: un anunt poate avea o data, iar calendarul e felul in care te uiti la cele cu data',
   '0014_reactions.sql':
     'inimioara: poti aprecia un comentariu de la o sesizare sau un raspuns dintr-o discutie, o singura data, si o poti retrage',
+  '0015_comment_edits.sql':
+    'corectarea propriului mesaj in primele 15 minute, cu marcajul "editat" langa ora',
 };
 
 const files = readdirSync(dir)

@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { ScreenHeader, Badge, Avatar, HeartButton, Composer } from '../components/ui.jsx';
-import { timeAgo, formatDate, CATEGORIES, catLabel, STATUS } from '../lib/format.js';
+import { useLongPress, ActionMenu, PencilIcon } from '../components/MessageMenu.jsx';
+import { timeAgo, formatDate, CATEGORIES, catLabel, STATUS, canStillEdit } from '../lib/format.js';
 
 const NEXT = { new: ['progress', 'resolved'], progress: ['resolved', 'new'], resolved: ['progress'] };
 
@@ -14,6 +15,10 @@ export default function IssueDetail() {
   const [comment, setComment] = useState('');
   const [newStatus, setNewStatus] = useState('');
   const [note, setNote] = useState('');
+  // Which of your own comments you are correcting, and the menu that offered.
+  const [editing, setEditing] = useState(null);
+  const [menu, setMenu] = useState(null);
+  const bindHold = useLongPress();
 
   const i = data.issues.find((x) => x.id === numId);
   if (!i) return <div className="screen"><ScreenHeader title={t('iss_title')} onBack={() => nav('/app/issues')} /></div>;
@@ -21,7 +26,26 @@ export default function IssueDetail() {
   const cInfo = CATEGORIES[i.category] || CATEGORIES.other;
   const supported = i.supporters.includes(currentUser.id);
 
-  const sendComment = async () => { if (!comment.trim()) return; const body = comment.trim(); setComment(''); await actions.addIssueComment(i.id, body); };
+  /*
+    One button at the foot of the screen, doing whichever of the two things is
+    in front of it. Clearing the box before the write goes out either way: the
+    message is already on screen by then, and a field that empties only after
+    the round trip invites the second tap that sends it twice.
+  */
+  const sendComment = async () => {
+    const body = comment.trim();
+    if (!body) return;
+    setComment('');
+    if (editing) {
+      const id = editing;
+      setEditing(null);
+      await actions.editMessage('comment', id, body);
+      return;
+    }
+    await actions.addIssueComment(i.id, body);
+  };
+  const startEdit = (c) => { setEditing(c.id); setComment(c.body); };
+  const cancelEdit = () => { setEditing(null); setComment(''); };
   const applyStatus = async () => { if (!newStatus || !note.trim()) return; const s = newStatus, n = note.trim(); setNewStatus(''); setNote(''); await actions.updateIssueStatus(i.id, s, n); };
 
   return (
@@ -93,14 +117,25 @@ export default function IssueDetail() {
           {i.comments.map((c) => {
             const hearts = c.reactions || [];
             const mine = hearts.includes(currentUser.id);
+            /*
+              The hold is only wired where it has something to offer: your own
+              comment, inside the window. Elsewhere it is not bound at all, so
+              the browser's own text selection still works on other people's
+              words — and nobody is left holding a message down waiting for a
+              menu that was never coming.
+            */
+            const editable = c.authorId === currentUser.id && canStillEdit(c.createdAt);
             return (
               <div key={c.id} style={{ display: 'flex', gap: 10 }}>
                 <Avatar user={userById(c.authorId)} size={32} />
                 <div className="comment-col">
-                  <div className="comment-bubble">
+                  <div className={`comment-bubble${editable ? ' comment-bubble--held' : ''}`}
+                    {...bindHold((el) => setMenu({ id: c.id, anchor: el.getBoundingClientRect() }), editable)}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
                       <span style={{ fontWeight: 700, fontSize: 13 }}>{userById(c.authorId).name}</span>
-                      <span className="faint" style={{ fontSize: 11.5 }}>{timeAgo(c.createdAt, t, lang)}</span>
+                      <span className="faint" style={{ fontSize: 11.5 }}>
+                        {timeAgo(c.createdAt, t, lang)}{c.editedAt ? ` · ${t('msg_edited')}` : ''}
+                      </span>
                     </div>
                     <div style={{ fontSize: 13.5, color: '#3f433b', lineHeight: 1.45 }}>{L(c, 'body')}</div>
                     <HeartButton on={mine} count={hearts.length}
@@ -114,7 +149,20 @@ export default function IssueDetail() {
         </div>
       </div>
 
-      <Composer value={comment} onChange={setComment} onSend={sendComment} placeholder={t('iss_comment_ph')} />
+      <Composer value={comment} onChange={setComment} onSend={sendComment}
+        placeholder={t('iss_comment_ph')} editing={!!editing} onCancel={cancelEdit} />
+
+      {menu && (
+        <ActionMenu
+          anchor={menu.anchor}
+          onClose={() => setMenu(null)}
+          items={[{
+            label: t('msg_edit'),
+            icon: <PencilIcon />,
+            onSelect: () => startEdit(i.comments.find((x) => x.id === menu.id)),
+          }]}
+        />
+      )}
     </div>
   );
 }

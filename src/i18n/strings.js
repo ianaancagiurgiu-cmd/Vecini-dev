@@ -174,6 +174,10 @@ export const STRINGS = {
     /* Not "Anunțuri recente": the section holds every notice from the
        administration, dated or not, so what identifies it is who it comes
        from rather than how new it is. */
+    msg_edit: 'Editează mesajul',
+    msg_editing: 'Editezi mesajul',
+    msg_edited: 'editat',
+    msg_edit_error: 'Nu s-a putut salva modificarea.',
     react_error: 'Nu s-a putut trimite. Încearcă din nou.',
     react_add: 'Apreciază',
     react_remove: 'Retrage aprecierea',
@@ -680,6 +684,10 @@ export const STRINGS = {
 
     dash_hi: 'Hi',
     dash_welcome: 'Welcome back',
+    msg_edit: 'Edit message',
+    msg_editing: 'Editing your message',
+    msg_edited: 'edited',
+    msg_edit_error: 'That change could not be saved.',
     react_error: 'That did not go through. Try again.',
     react_add: 'Like this',
     react_remove: 'Take your like back',
@@ -1162,6 +1170,10 @@ export const STRINGS = {
     dash_welcome: 'Örülünk, hogy visszatértél',
     // "Official notices", in the app's own word for an announcement — a
     // literal "from the administration" has no settled Hungarian form here.
+    msg_edit: 'Üzenet szerkesztése',
+    msg_editing: 'Üzenet szerkesztése',
+    msg_edited: 'szerkesztve',
+    msg_edit_error: 'A módosítást nem sikerült menteni.',
     react_error: 'Nem sikerült elküldeni. Próbáld újra.',
     react_add: 'Tetszik',
     react_remove: 'Tetszés visszavonása',
