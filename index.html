@@ -2,7 +2,11 @@
 <html lang="ro">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <!-- interactive-widget=resizes-content: on a browser that honours it, the
+       keyboard resizes the viewport in place instead of panning the page
+       toward the focused field — which is the pan src/lib/viewport.js has to
+       correct for by hand on the browsers that do not. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
   <meta name="theme-color" content="#faf7f0" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <!-- iOS ignores the manifest icon; it needs its own tag, and push only works

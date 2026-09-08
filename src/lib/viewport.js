@@ -9,6 +9,35 @@ export function installViewportHeightFix() {
     const vv = window.visualViewport;
     const h = vv ? vv.height : window.innerHeight;
     document.documentElement.style.setProperty('--app-h', Math.round(h) + 'px');
+
+    /*
+      Tapping a field, iOS pans the visual viewport toward it instead of
+      resizing it — a compositor-level shift that `overflow: hidden` does
+      nothing to stop. The line above already shrinks the shell to fit
+      entirely above the keyboard, so that pan only ever works against it: it
+      slides the visible window down past the shell's own, already-correct
+      bottom edge, and what shows through there is nothing but bare page
+      background — the gap between the field and the keyboard that this
+      whole function exists to prevent.
+
+      `interactive-widget=resizes-content` on the viewport meta tag asks a
+      modern browser not to do this at all; where that lands, offsetTop stays
+      0 and the lines below are a no-op. Where it does not — older Safari,
+      chiefly — the pan still happens, so the shell is nudged back by exactly
+      as much as the viewport panned, putting the two in step again.
+
+      A plain `top`/`left` shift on a relatively positioned body, not a
+      transform: a `transform` on an ancestor becomes the containing block for
+      any `position: fixed` descendant, and the bottom nav is fixed on purpose
+      — precisely so it cannot drift if some ancestor's box ever disagrees
+      with the real viewport, which is exactly the situation being corrected
+      here. `position: relative` carries no such side effect.
+    */
+    if (vv) {
+      document.body.style.position = 'relative';
+      document.body.style.top = `${-vv.offsetTop}px`;
+      document.body.style.left = `${-vv.offsetLeft}px`;
+    }
   };
 
   set();
