@@ -59,7 +59,11 @@ export default function Members() {
                   <div style={{ fontWeight: 700, fontSize: 14.5 }}>
                     {u.name}{isMe && <span className="faint" style={{ fontWeight: 600 }}> · {t('you')}</span>}
                   </div>
-                  <div className="faint" style={{ fontSize: 12 }}>{u.apartment} · {t('admin_joined_on')} {formatDate(m.joinedAt, lang)}</div>
+                  {/* Same rule as the neighbour list: no apartment means no
+                      apartment, not a separator with nothing in front of it. */}
+                  <div className="faint" style={{ fontSize: 12 }}>
+                    {u.apartment ? `${u.apartment} · ` : ''}{t('admin_joined_on')} {formatDate(m.joinedAt, lang)}
+                  </div>
                 </div>
                 <span className="badge" style={{ background: rc.bg, color: rc.fg }}>{t('role_' + m.role)}</span>
               </div>

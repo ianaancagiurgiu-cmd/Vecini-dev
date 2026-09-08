@@ -63,6 +63,19 @@ export default function Neighbours() {
           {rows.length === 0 && <Empty icon="🏠">{t('nb_empty')}</Empty>}
           {rows.map((r) => {
             const isMe = r.userId === currentUser.id;
+            /*
+              The second line is written only when there is something to write
+              on it. An apartment nobody has filled in is not news to anyone
+              reading this list — printing "necompletat" beside half the names
+              turns a list of neighbours into a list of things left undone, and
+              says it loudest about the people who have done nothing wrong.
+              The prompt to fill it in belongs on your own account screen,
+              which is the only place you can act on it.
+            */
+            const meta = [
+              r.user.apartment,
+              r.role !== 'member' ? t('role_' + r.role) : null,
+            ].filter(Boolean).join(' · ');
             return (
               <div key={r.userId} className="card" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <Avatar user={r.user} size={42} />
@@ -70,10 +83,9 @@ export default function Neighbours() {
                   <div style={{ fontWeight: 700, fontSize: 14.5 }}>
                     {r.user.name}{isMe && <span className="faint" style={{ fontWeight: 600 }}> · {t('you')}</span>}
                   </div>
-                  <div className="faint" style={{ fontSize: 12.5, marginTop: 1 }}>
-                    {r.user.apartment || t('acc_not_set')}
-                    {r.role !== 'member' && ` · ${t('role_' + r.role)}`}
-                  </div>
+                  {meta && (
+                    <div className="faint nb-meta" style={{ fontSize: 12.5, marginTop: 1 }}>{meta}</div>
+                  )}
                 </div>
 
                 {/* A real tel: link, so the phone does the dialling. */}

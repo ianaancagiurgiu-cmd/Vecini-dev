@@ -186,10 +186,24 @@ test.describe('Editing your apartment or house number', () => {
     await expect(page.getByText('Ap. 14')).toBeVisible();
   });
 
-  test('with nothing set, the neighbour list says so rather than showing a blank', async ({ page }) => {
+  test('with nothing set the line is absent, not filled with "necompletat"', async ({ page }) => {
+    /*
+      This used to assert the opposite, on the reasoning that a visible gap
+      teaches people there is something to fill in. On a real list it read as
+      an accusation against everyone who had not got round to it — and the
+      only place it can be acted on is your own account screen, which is
+      where the prompt now lives alone.
+    */
     await asSelf(page, { apartment: '' });
     await page.goto('/#/app/neighbours');
-    await expect(page.getByText('Iana Giurgiu')).toBeVisible();
-    await expect(page.getByText('necompletat')).toBeVisible();
+
+    const row = page.locator('.card', { hasText: 'Iana Giurgiu' });
+    await expect(row).toBeVisible();
+    await expect(row).not.toContainText('necompletat');
+
+    // And the card has genuinely lost the line rather than kept an empty one:
+    // a blank strip under the name is the same visual bug by another route.
+    // (.faint alone would match the "· Tu" beside your own name.)
+    await expect(row.locator('.nb-meta')).toHaveCount(0);
   });
 });

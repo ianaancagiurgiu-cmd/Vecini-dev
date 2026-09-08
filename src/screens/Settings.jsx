@@ -29,7 +29,9 @@ export default function Settings() {
           <Avatar user={currentUser} size={54} />
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 700, fontSize: 17 }}>{currentUser.name}</div>
-            <div className="muted" style={{ fontSize: 13 }}>{currentUser.apartment} · {data.community.name}</div>
+            <div className="muted" style={{ fontSize: 13 }}>
+              {currentUser.apartment ? `${currentUser.apartment} · ` : ''}{data.community.name}
+            </div>
           </div>
           <span className="badge" style={{ background: roleBg, color: roleFg }}>{roleLabel}</span>
         </div>
