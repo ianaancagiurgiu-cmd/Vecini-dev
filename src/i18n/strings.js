@@ -171,7 +171,10 @@ export const STRINGS = {
     // Dashboard
     dash_hi: 'Salut',
     dash_welcome: 'Bine ai revenit',
-    dash_recent_ann: 'Anunțuri recente',
+    /* Not "Anunțuri recente": the section holds every notice from the
+       administration, dated or not, so what identifies it is who it comes
+       from rather than how new it is. */
+    dash_from_admin: 'De la administrație',
     dash_recent_disc: 'Discuții recente',
     dash_open_issues: 'sesizări active',
     dash_active_polls: 'voturi deschise',
@@ -675,7 +678,7 @@ export const STRINGS = {
 
     dash_hi: 'Hi',
     dash_welcome: 'Welcome back',
-    dash_recent_ann: 'Recent announcements',
+    dash_from_admin: 'From the administration',
     dash_recent_disc: 'Recent discussions',
     dash_open_issues: 'open issues',
     dash_active_polls: 'open votes',
@@ -1153,7 +1156,9 @@ export const STRINGS = {
 
     dash_hi: 'Üdv',
     dash_welcome: 'Örülünk, hogy visszatértél',
-    dash_recent_ann: 'Legutóbbi hirdetések',
+    // "Official notices", in the app's own word for an announcement — a
+    // literal "from the administration" has no settled Hungarian form here.
+    dash_from_admin: 'Hivatalos hirdetések',
     dash_recent_disc: 'Legutóbbi beszélgetések',
     dash_open_issues: 'nyitott hiba',
     dash_active_polls: 'nyitott szavazás',

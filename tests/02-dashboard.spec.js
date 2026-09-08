@@ -11,7 +11,7 @@ test.describe.skip('Epic 2 — Dashboard & Navigation', () => {
     await expect(page.getByText('Salut, Ana')).toBeVisible();
     await expect(page.getByText('sesizări active')).toBeVisible();
     await expect(page.getByText('voturi deschise')).toBeVisible();
-    await expect(page.getByText('Anunțuri recente')).toBeVisible();
+    await expect(page.getByText('De la administrație')).toBeVisible();
     await expect(page.getByText('Curățenie generală pe scara A — sâmbătă 28 iunie')).toBeVisible();
     await expect(page.getByText('Discuții recente')).toBeVisible();
   });

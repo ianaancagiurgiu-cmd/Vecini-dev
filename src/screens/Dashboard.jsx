@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { Avatar, PriorityBadge } from '../components/ui.jsx';
-import { timeAgo, isPriority, eventDay, eventTime, isPast } from '../lib/format.js';
+import { timeAgo, isPriority, eventDay, eventWhen, isPast, daysBetween } from '../lib/format.js';
 
 function TopBar() {
   const nav = useNavigate();
@@ -46,21 +46,36 @@ export default function Dashboard() {
 
   const openIssues = data.issues.filter((i) => i.status !== 'resolved').length;
   const activePolls = data.polls.filter((p) => !p.closed && p.endsAt > Date.now()).length;
-  // The announcements that carry a date, soonest first — the same list the
-  // calendar view reads, cut to what fits here.
-  const soon = data.announcements
-    .filter((a) => a.startsAt && !isPast(a))
-    .sort((a, b) => a.startsAt - b.startsAt)
-    .slice(0, 2);
   /*
-    Now that a meeting is an announcement, the same card would otherwise turn up
-    twice on this screen — once under what is coming and once under what was
-    said. Both are true of it, but a screen that shows you a thing twice reads
-    as a mistake, so the one that has already appeared above is dropped here.
+    One list of announcements, and above it a single line for anything
+    imminent.
+
+    This screen used to carry two sections of cards: what was coming, and what
+    had been said. Since a meeting became an announcement carrying a date, they
+    were the same list cut in two on a distinction — "does it have a date" —
+    that means nothing to anyone reading it. Nobody opens the app wondering
+    which notices have dates.
+
+    The cut was made by dropping the dated ones out of the list below, which
+    produced the thing that gave it away: a noticeboard with two notices on it,
+    announcing "no announcements yet". That is not a wording bug to patch. It
+    is what a false distinction does when you build on it.
+
+    So the list is whole, and a dated notice simply shows its date where the
+    others show how long ago they were posted. What is coming up is a line
+    rather than a section: it answers "anything this week?" without spending a
+    quarter of the screen, and it is absent when the answer is no. The nearest
+    thing shows up both there and in the list, which is not the duplication
+    that was worth removing — a one-line pointer into the calendar and a card
+    on the noticeboard are different shapes doing different jobs.
   */
-  const alreadyShown = new Set(soon.map((a) => a.id));
-  const anns = data.announcements
-    .filter((a) => !alreadyShown.has(a.id))
+  const nextUp = data.announcements
+    .filter((a) => a.startsAt && !isPast(a) && daysBetween(a.startsAt) <= 7)
+    .sort((a, b) => a.startsAt - b.startsAt)[0];
+
+  // Held-at-the-top first, then newest. sort() mutates, so not on the store's
+  // own array.
+  const anns = [...data.announcements]
     .sort((a, b) => (isPriority(b) - isPriority(a)) || (b.createdAt - a.createdAt))
     .slice(0, 3);
   const discs = data.discussions.filter((d) => d.status === 'approved').sort((a, b) => b.createdAt - a.createdAt).slice(0, 3);
@@ -94,51 +109,45 @@ export default function Dashboard() {
         <StatTile n={activePolls} label={t('dash_active_polls')} tint={{ bg: 'var(--status-new-bg)', fg: 'var(--status-new-fg)' }} onClick={() => nav('/app/polls')} />
       </div>
 
-      {/* what is coming up */}
+      {/*
+        The next thing coming, when there is one inside the week. Also the only
+        way into the calendar from this screen — which is why the whole line
+        goes there rather than to the notice it names: it is labelled as the
+        agenda, and the agenda is what it opens.
+      */}
+      {nextUp && (
+        <div className="pad" style={{ paddingTop: 18 }}>
+          <button onClick={() => nav('/app/announcements/calendar')}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left',
+                     background: 'var(--status-done-bg)', border: '1px solid rgba(35,38,32,.09)',
+                     borderRadius: 13, padding: '11px 13px' }}>
+            <span aria-hidden="true" style={{ fontSize: 16 }}>📅</span>
+            {/*
+              Two lines rather than one. On one line the label and the day are
+              fixed and the title is what gives way, so "Curățenie generală
+              scara A" arrived as "Curățenie generală…" — which does not say
+              which of them it is, and that is the entire content of the row.
+              Stacked, the title gets the full width and the strip still costs
+              about a quarter of what the section of cards did.
+            */}
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span className="eyebrow" style={{ display: 'block', fontSize: 11, color: 'var(--green-600)' }}>
+                {t('dash_upcoming')} · {eventDay(nextUp.startsAt, lang, t)}
+              </span>
+              <span style={{ display: 'block', fontSize: 14, fontWeight: 600, marginTop: 2,
+                             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {L(nextUp, 'title')}
+              </span>
+            </span>
+            <span aria-hidden="true" style={{ flexShrink: 0, fontSize: 16, color: 'var(--green-600)' }}>›</span>
+          </button>
+        </div>
+      )}
+
+      {/* everything the administration has said, dated or not */}
       <div className="pad" style={{ paddingTop: 22 }}>
         <div className="section-head">
-          <h2>{t('dash_upcoming')}</h2>
-          <button className="see-all" onClick={() => nav('/app/announcements/calendar')} style={{ background: 'none', border: 'none' }}>{t('dash_see_all')}</button>
-        </div>
-        {/* Shown even when empty. A section that disappears when there is
-            nothing in it never teaches anyone that it exists. */}
-        {soon.length === 0 ? (
-          <div className="muted" style={{ fontSize: 14 }}>{t('ev_empty')}</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {soon.map((e) => (
-              <button key={e.id} onClick={() => nav('/app/announcements/' + e.id)} className="card"
-                style={{ textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: 19 }}>📅</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{L(e, 'title')}</div>
-                  <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
-                    {eventDay(e.startsAt, lang, t)}{!e.allDay && ` · ${eventTime(e.startsAt, lang)}`}
-                    {e.location && ` · ${e.location}`}
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-        {/*
-          The calendar has no place in the bottom bar, so the button to put
-          something in it used to be two screens away — far enough that an admin
-          looking straight at this section could not find it. Quiet rather than
-          primary: it is what this section can do, not what the screen is for.
-        */}
-        {isStaff && (
-          <button className="btn btn--ghost" style={{ marginTop: 11 }}
-            onClick={() => nav('/app/announcements/new?date=1')}>
-            + {t('ev_new')}
-          </button>
-        )}
-      </div>
-
-      {/* recent announcements */}
-      <div className="pad">
-        <div className="section-head">
-          <h2>{t('dash_recent_ann')}</h2>
+          <h2>{t('dash_from_admin')}</h2>
           <button className="see-all" onClick={() => nav('/app/announcements')} style={{ background: 'none', border: 'none' }}>{t('dash_see_all')}</button>
         </div>
         {anns.length === 0 ? <div className="muted" style={{ fontSize: 14 }}>{t('ann_empty')}</div> : (
@@ -151,10 +160,30 @@ export default function Dashboard() {
                   {isPriority(a) && <PriorityBadge until={a.pinnedUntil} t={t} lang={lang} tone={i === 0 ? '#e8c98a' : 'var(--amber)'} />}
                 </div>
                 <div className="serif" style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.25, marginBottom: 6 }}>{L(a, 'title')}</div>
-                <div style={{ fontSize: 12.5, color: i === 0 ? '#bcd4c5' : 'var(--ink-300)' }}>{userById(a.authorId).name} · {timeAgo(a.createdAt, t, lang)}</div>
+                {/* When it happens, if it happens on a day; otherwise who said
+                    it and when. One line either way — the date is what the
+                    dated ones are for, and the author is on the notice itself. */}
+                <div style={{ fontSize: 12.5, color: i === 0 ? '#bcd4c5' : 'var(--ink-300)' }}>
+                  {a.startsAt
+                    ? `📅 ${eventWhen(a, lang, t)}${a.location ? ` · ${a.location}` : ''}`
+                    : `${userById(a.authorId).name} · ${timeAgo(a.createdAt, t, lang)}`}
+                </div>
               </button>
             ))}
           </div>
+        )}
+        {/*
+          The calendar has no place in the bottom bar, and this is the only
+          create button on the screen now that there is one kind of thing to
+          create. Quiet rather than primary: it is what this section can do,
+          not what the screen is for. Outside the empty check on purpose — an
+          empty noticeboard is exactly when an admin needs it.
+        */}
+        {isStaff && (
+          <button className="btn btn--ghost" style={{ marginTop: 12 }}
+            onClick={() => nav('/app/announcements/new')}>
+            + {t('ann_new')}
+          </button>
         )}
       </div>
 

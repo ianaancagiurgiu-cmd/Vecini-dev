@@ -328,59 +328,125 @@ test.describe('Calendar', () => {
     await expect(page.getByText('Trecute')).toHaveCount(0);
   });
 
-  test('the dashboard shows the next two and links to the rest', async ({ page }) => {
-    await asRole(page, 'member');
+  /*
+    ---------------------------------------------------------------------------
+    The dashboard.
+
+    It used to carry two sections of cards — what is coming, and what has been
+    said — which since the unification were one list cut in two on whether a
+    notice happened to carry a date. The cut was made by dropping the dated
+    ones out of the list below, and that is how a noticeboard holding two
+    notices came to announce "no announcements yet".
+
+    Now: one list, whole, and a single line above it for anything inside the
+    week. These rows give each notice its own posting time, so what the list
+    shows is decided by the code rather than by how a stable sort happens to
+    break a tie.
+  */
+  const dashRows = (me) => [
+    ann(me, {
+      id: 'e1', title: 'Adunarea generală', location: 'Holul scării A',
+      starts_at: atHour(3, 18), created_at: new Date(Date.now() - 5 * day).toISOString(),
+    }),
+    ann(me, {
+      id: 'e2', title: 'Deratizare la subsol', starts_at: noonIn(1), all_day: true,
+      created_at: new Date(Date.now() - 4 * day).toISOString(),
+    }),
+    ann(me, {
+      id: 'e3', title: 'Curățenie de primăvară', starts_at: atHour(-9, 10),
+      created_at: new Date(Date.now() - 3 * day).toISOString(),
+    }),
+    ann(me, { id: 'a1', title: 'Liftul e reparat', created_at: new Date(Date.now() - 2 * day).toISOString() }),
+  ];
+
+  test('the noticeboard shows dated notices too, rather than claiming there are none', async ({ page }) => {
+    // The regression this whole rearrangement came out of. Four notices exist,
+    // three of them dated; the screen used to hide the dated ones here and then
+    // print its empty state over the top of them.
+    await asRole(page, 'member', dashRows);
     await page.goto('/#/app/');
 
-    await expect(page.getByText('Ce urmează')).toBeVisible();
+    await expect(page.getByText('De la administrație')).toBeVisible();
+    await expect(page.getByText('Niciun anunț încă.')).toHaveCount(0);
 
-    // The cards under "Ce urmează" are the ones carrying a calendar mark.
-    const upcoming = page.getByRole('button', { name: /^📅/ });
-    await expect(upcoming).toHaveCount(2);
-    await expect(upcoming.first()).toContainText('Deratizare la subsol');
-    await expect(upcoming.nth(1)).toContainText('Adunarea generală');
-
-    /*
-      A meeting that has already happened is still an announcement, and the
-      noticeboard half of this screen may well show it. What it must not do is
-      claim it is coming up.
-    */
-    await expect(page.getByRole('button', { name: /^📅.*Curățenie de primăvară/ })).toHaveCount(0);
-
-    /*
-      And once each. A dated announcement belongs in both halves of this screen
-      by rights, but a screen that shows you the same card twice reads as a bug
-      rather than as two true statements.
-    */
-    await expect(page.getByText('Deratizare la subsol')).toHaveCount(1);
-    await expect(page.getByText('Adunarea generală')).toHaveCount(1);
-    await expect(page.getByText('Liftul e reparat')).toHaveCount(1);
+    // Newest first, three of them, dated and undated side by side.
+    await expect(page.getByText('Liftul e reparat')).toBeVisible();
+    await expect(page.getByText('Curățenie de primăvară')).toBeVisible();
+    await expect(page.getByText('Deratizare la subsol').first()).toBeVisible();
   });
 
-  test('an admin can start a dated announcement from the dashboard', async ({ page }) => {
-    await asRole(page, 'admin');
+  test('a dated notice says when it happens, an undated one says when it was posted', async ({ page }) => {
+    await asRole(page, 'member', dashRows);
     await page.goto('/#/app/');
 
-    await page.getByRole('button', { name: '+ Eveniment nou' }).click();
+    // The date replaces the "posted 2 days ago" line rather than joining it.
+    await expect(page.getByRole('button', { name: /Deratizare la subsol/ }).last()).toContainText('📅 Mâine');
+    await expect(page.getByRole('button', { name: /Liftul e reparat/ })).toContainText('acum 2 zile');
+    await expect(page.getByRole('button', { name: /Liftul e reparat/ })).not.toContainText('📅');
+  });
+
+  test('the line above names the next thing, and only something actually next', async ({ page }) => {
+    await asRole(page, 'member', dashRows);
+    await page.goto('/#/app/');
+
+    const strip = page.getByRole('button', { name: /Ce urmează/ });
+    await expect(strip).toContainText('Mâine');
+    await expect(strip).toContainText('Deratizare la subsol');
+
+    // Not the meeting three days out — that is next week's problem, and not
+    // the spring clean, which already happened.
+    await expect(strip).not.toContainText('Adunarea generală');
+    await expect(strip).not.toContainText('Curățenie de primăvară');
+
+    // It is the only way into the calendar left on this screen, so it had
+    // better lead there.
+    await strip.click();
+    await expect.poll(() => new URL(page.url()).hash).toContain('/app/announcements/calendar');
+  });
+
+  test('with nothing inside the week the line is absent, not empty', async ({ page }) => {
+    /*
+      A section that says "nothing scheduled" earns its keep by teaching people
+      it exists. A one-line pointer does not: with nothing to point at it is
+      just a line saying nothing, so it goes away — and the notice it would
+      have pointed at is still on the board below.
+    */
+    await asRole(page, 'member', (me) => [
+      ann(me, { id: 'e9', title: 'Adunarea de toamnă', starts_at: noonIn(20) }),
+    ]);
+    await page.goto('/#/app/');
+
+    await expect(page.getByText('De la administrație')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Ce urmează/ })).toHaveCount(0);
+    await expect(page.getByText('Adunarea de toamnă')).toBeVisible();
+  });
+
+  test('an admin can post from the dashboard, and the date is off unless asked for', async ({ page }) => {
+    // One button now, not one per kind: there is one kind of thing to write,
+    // and the date is a switch inside the form.
+    await asRole(page, 'admin', dashRows);
+    await page.goto('/#/app/');
+
+    await page.getByRole('button', { name: '+ Anunț nou' }).click();
     await expect.poll(() => new URL(page.url()).hash).toContain('/app/announcements/new');
-    await expect(page.locator('#ann-date')).toBeVisible();
+    await expect(page.locator('#ann-date')).toHaveCount(0);
   });
 
   test('a member is offered no such button', async ({ page }) => {
-    await asRole(page, 'member');
+    await asRole(page, 'member', dashRows);
     await page.goto('/#/app/');
 
-    await expect(page.getByText('Ce urmează')).toBeVisible();
-    await expect(page.getByRole('button', { name: '+ Eveniment nou' })).toHaveCount(0);
+    await expect(page.getByText('De la administrație')).toBeVisible();
+    await expect(page.getByRole('button', { name: '+ Anunț nou' })).toHaveCount(0);
   });
 
-  test('the button is there before there is anything in the calendar', async ({ page }) => {
+  test('the button is there before there is anything to write under', async ({ page }) => {
     // The empty state is exactly when it matters most, and exactly where a
-    // section rendered only around a list would have dropped it.
+    // button rendered inside the list would have disappeared.
     await asRole(page, 'admin', () => []);
     await page.goto('/#/app/');
 
-    await expect(page.getByText('Niciun eveniment programat.')).toBeVisible();
-    await expect(page.getByRole('button', { name: '+ Eveniment nou' })).toBeVisible();
+    await expect(page.getByText('Niciun anunț încă.')).toBeVisible();
+    await expect(page.getByRole('button', { name: '+ Anunț nou' })).toBeVisible();
   });
 });

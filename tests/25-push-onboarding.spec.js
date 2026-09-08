@@ -111,7 +111,7 @@ test.describe('Turning notifications on', () => {
     await signIn(page);
     await page.goto('/#/app/');
 
-    await expect(page.getByText('Anunțuri recente')).toBeVisible();
+    await expect(page.getByText('De la administrație')).toBeVisible();
     await page.waitForTimeout(8000);
     await expect(page.getByText('Nu rata ce se întâmplă în cartier')).toHaveCount(0);
   });
