@@ -199,17 +199,27 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/*
-        The collections. Absent when there are none, like the line above: a
-        section explaining that nobody is collecting money is a section that
-        never earns the room it takes.
-      */}
-      {funds.length > 0 && (
+      /*
+        The collections.
+
+        Absent for a neighbour when there are none — a section explaining that
+        nobody is collecting money never earns the room it takes. Present for
+        staff whether or not there is anything in it, which is not an
+        inconsistency but the same rule as the noticeboard above: the empty
+        state is exactly when somebody needs the button, and the first
+        collection of all was otherwise reachable only from the admin panel two
+        screens away. That was the calendar's mistake, reported in these words:
+        "nu vad niciun plus, nu inteleg cum adaug ceva ca admin".
+      */
+      {(funds.length > 0 || isStaff) && (
         <div className="pad" style={{ paddingTop: 22 }}>
           <div className="section-head">
             <h2>{t('fund_title')}</h2>
             <button className="see-all" onClick={() => nav('/app/funds')} style={{ background: 'none', border: 'none' }}>{t('dash_see_all')}</button>
           </div>
+          {funds.length === 0 && (
+            <div className="muted" style={{ fontSize: 14 }}>{t('fund_empty_staff')}</div>
+          )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {funds.map((f) => {
               const rest = Math.max(0, f.myDueBani - f.myPaidBani);
@@ -230,6 +240,14 @@ export default function Dashboard() {
               );
             })}
           </div>
+          {/* Outside the empty check, for the same reason as the one on the
+              noticeboard: no collection yet is exactly when it is needed. */}
+          {isStaff && (
+            <button className="btn btn--ghost" style={{ marginTop: 12 }}
+              onClick={() => nav('/app/funds/new')}>
+              + {t('fund_new')}
+            </button>
+          )}
         </div>
       )}
 

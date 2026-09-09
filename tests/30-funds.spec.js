@@ -267,6 +267,42 @@ test.describe('Fonduri', () => {
     await expect(page.getByRole('button', { name: /Reparație acoperiș/ })).toHaveCount(0);
   });
 
+  /*
+    The empty state on the dashboard, which is where the calendar went wrong
+    once: a section that vanishes when it is empty is right for a neighbour and
+    wrong for the person whose job it is to fill it, because the empty state is
+    exactly when they need the button. Reported at the time as "nu vad niciun
+    plus, nu inteleg cum adaug ceva ca admin".
+  */
+  test('an administrator with no collection still sees the section, and the way in', async ({ page }) => {
+    await withFunds(page, { role: 'admin', funds: [], summary: [] });
+    await page.goto('/#/app/');
+
+    await expect(page.getByRole('heading', { name: 'Fonduri' })).toBeVisible();
+    await expect(page.getByText('Nicio colectă deschisă acum.')).toBeVisible();
+    await page.getByRole('button', { name: '+ Fond nou' }).click();
+    await expect.poll(() => new URL(page.url()).hash).toContain('/app/funds/new');
+  });
+
+  test('a neighbour with no collection sees no section at all', async ({ page }) => {
+    // Nothing to read and nothing to do: a heading saying so is worse than
+    // the space it takes.
+    await withFunds(page, { funds: [], summary: [] });
+    await page.goto('/#/app/');
+
+    await expect(page.getByText('De la administrație')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Fonduri' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '+ Fond nou' })).toHaveCount(0);
+  });
+
+  test('and the button is there for staff even when a collection exists', async ({ page }) => {
+    await withFunds(page, { role: 'admin' });
+    await page.goto('/#/app/');
+
+    await expect(page.getByRole('button', { name: /Reparație acoperiș/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: '+ Fond nou' })).toBeVisible();
+  });
+
   test('the switch for these notifications exists and is its own', async ({ page }) => {
     // A notification type with no switch reaches everybody with no way to
     // decline, which is exactly how the calendar slipped through once.
