@@ -199,7 +199,7 @@ export default function Dashboard() {
         )}
       </div>
 
-      /*
+      {/*
         The collections.
 
         Absent for a neighbour when there are none — a section explaining that
@@ -210,7 +210,7 @@ export default function Dashboard() {
         collection of all was otherwise reachable only from the admin panel two
         screens away. That was the calendar's mistake, reported in these words:
         "nu vad niciun plus, nu inteleg cum adaug ceva ca admin".
-      */
+      */}
       {(funds.length > 0 || isStaff) && (
         <div className="pad" style={{ paddingTop: 22 }}>
           <div className="section-head">
