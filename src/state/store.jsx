@@ -1361,6 +1361,25 @@ export function AppProvider({ children }) {
       showToast(t('doc_added'));
       return row.id;
     },
+    /*
+      Renaming one, or saying what kind of paper it is.
+
+      Both after the fact rather than before it, and that is the trade: asking
+      for a title and a category in front of the file picker puts a form
+      between somebody and a task that does not need one, so the upload takes
+      the file's own name and this fixes it. The alternative — no way to fix it
+      — is what shipped first, and left every scan called scan_0042.pdf.
+    */
+    updateDocument: async (docId, patch) => {
+      const fields = {};
+      if (patch.title !== undefined) fields.title = String(patch.title).trim();
+      if (patch.kind !== undefined) fields.kind = patch.kind;
+      if (!Object.keys(fields).length || fields.title === '') return;
+      const { error } = await supabase.from('documents').update(fields).eq('id', docId);
+      if (error) { showToast(t('doc_error')); throw error; }
+      await refreshAll();
+      showToast(t('doc_saved'));
+    },
     removeDocument: async (docId) => {
       const doc = data.documents.find((d) => d.id === docId);
       const { error } = await supabase.from('documents').delete().eq('id', docId);

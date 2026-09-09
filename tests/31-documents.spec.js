@@ -95,7 +95,8 @@ test.describe('Documente', () => {
     await expect(page.getByText('Proces-verbal adunare august')).toBeVisible();
 
     await expect(page.getByRole('button', { name: /Încarcă un document/ })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Șterge documentul' })).toHaveCount(0);
+    // No way in to the actions at all, not merely no delete button.
+    await expect(page.getByRole('button', { name: 'Acțiuni pentru document' })).toHaveCount(0);
   });
 
   test('staff are offered both', async ({ page }) => {
@@ -103,7 +104,98 @@ test.describe('Documente', () => {
     await page.goto('/#/app/documents');
 
     await expect(page.getByRole('button', { name: /Încarcă un document/ })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Șterge documentul' }).first()).toBeVisible();
+    // One button per row, with the three actions named inside it — the same
+    // arrangement as an announcement, rather than a row of bare icons.
+    await page.getByRole('button', { name: 'Acțiuni pentru document' }).first().click();
+    await expect(page.getByRole('menuitem', { name: 'Redenumește' })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: 'Schimbă categoria' })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: 'Șterge documentul' })).toBeVisible();
+  });
+
+  /*
+    Naming and filing, after the upload rather than before it.
+
+    The first version had neither, and the consequence was not hypothetical:
+    the title was whatever the file was called, so a scan stayed "scan_0042"
+    for ever, and every document filed itself under "Altele" — which made the
+    filters above sort a single pile.
+  */
+  test('a document can be renamed', async ({ page }) => {
+    await withDocuments(page, { role: 'admin' });
+
+    const writes = [];
+    await page.route(/\/rest\/v1\/documents/, async (route) => {
+      const req = route.request();
+      if (req.method() === 'PATCH') {
+        writes.push({ url: req.url(), body: JSON.parse(req.postData() || '{}') });
+        return route.fulfill({
+          status: 200, contentType: 'application/json',
+          headers: { 'access-control-allow-origin': '*', 'content-range': '0-0/1' }, body: '[]',
+        });
+      }
+      return route.fallback();
+    });
+
+    await page.goto('/#/app/documents');
+    /*
+      Scoped to the row rather than taken with .first(): the list is
+      newest-first, so the first row is the invoice, and a test that assumes
+      an order is a test that renames whatever happens to be on top.
+    */
+    await page.locator('.card', { hasText: 'Proces-verbal adunare august' })
+      .getByRole('button', { name: 'Acțiuni pentru document' }).click();
+    await page.getByRole('menuitem', { name: 'Redenumește' }).click();
+
+    const field = page.getByLabel('Redenumește');
+    // Prefilled with what it is called now, not empty: renaming is usually
+    // fixing a few characters.
+    await expect(field).toHaveValue('Proces-verbal adunare august');
+    await field.fill('Proces-verbal adunarea generală, august 2026');
+    await page.getByRole('button', { name: 'Salvează' }).click();
+
+    await expect.poll(() => writes.length).toBe(1);
+    expect(writes[0].url).toContain('id=eq.d1');
+    expect(writes[0].body).toEqual({ title: 'Proces-verbal adunarea generală, august 2026' });
+  });
+
+  test('and filed under what it actually is', async ({ page }) => {
+    await withDocuments(page, { role: 'admin' });
+
+    const writes = [];
+    await page.route(/\/rest\/v1\/documents/, async (route) => {
+      const req = route.request();
+      if (req.method() === 'PATCH') {
+        writes.push({ url: req.url(), body: JSON.parse(req.postData() || '{}') });
+        return route.fulfill({
+          status: 200, contentType: 'application/json',
+          headers: { 'access-control-allow-origin': '*', 'content-range': '0-0/1' }, body: '[]',
+        });
+      }
+      return route.fallback();
+    });
+
+    await page.goto('/#/app/documents');
+    await page.locator('.card', { hasText: 'Proces-verbal adunare august' })
+      .getByRole('button', { name: 'Acțiuni pentru document' }).click();
+    await page.getByRole('menuitem', { name: 'Schimbă categoria' }).click();
+
+    // The five the app offers, inside the row rather than on a screen of
+    // their own.
+    await expect(page.getByRole('button', { name: 'Contracte', exact: true }).last()).toBeVisible();
+    await page.getByRole('button', { name: 'Contracte', exact: true }).last().click();
+
+    await expect.poll(() => writes.length).toBe(1);
+    expect(writes[0].url).toContain('id=eq.d1');
+    expect(writes[0].body).toEqual({ kind: 'contract' });
+  });
+
+  test('a neighbour is offered neither', async ({ page }) => {
+    await withDocuments(page);
+    await page.goto('/#/app/documents');
+    await expect(page.getByText('Proces-verbal adunare august')).toBeVisible();
+
+    await expect(page.getByRole('button', { name: 'Acțiuni pentru document' })).toHaveCount(0);
+    await expect(page.getByRole('menuitem')).toHaveCount(0);
   });
 
   test('opening one asks for a link that expires, not a public address', async ({ page }) => {
