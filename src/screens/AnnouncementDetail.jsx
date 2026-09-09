@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { ScreenHeader, Avatar, PriorityBadge } from '../components/ui.jsx';
+import { ActionMenu } from '../components/MessageMenu.jsx';
 import { formatDate, isPriority, eventDay, eventTime, isPast } from '../lib/format.js';
 import { useBack } from '../lib/useBack.js';
 
@@ -20,28 +21,37 @@ import { useBack } from '../lib/useBack.js';
 */
 
 /*
-  The staff controls, in the corner of the screen rather than under the notice.
+  The staff controls, behind one button in the corner.
 
   They were three buttons the width of the screen, which read as the point of
-  the screen — when the point of the screen is the announcement itself. These
-  are the same shape as the put-away control on a list card: a bare icon, quiet
-  grey, no tile and no label, out of the way until looked for. Colour is kept
-  for saying something is on, not for decoration.
+  the screen when the point of the screen is the announcement. Then they were
+  four bare icons in the corner, which was quieter but wrong in two ways.
 
-  No visible text, so the name has to be carried some other way; aria-label and
-  title do that, and are the only thing a screen reader has to go on.
+  The first is that this was the only screen in the app putting more than one
+  thing in that corner: everywhere else it holds a single "+ something", or a
+  single named action — "Închide votul", "Golește lista". Four icons there was
+  a pattern of its own, used once.
+
+  The second is that an icon with no label has to be guessed. The arrow that
+  means "let go of the top of the list" is the same arrow that means download
+  everywhere else on a phone, and nothing on screen said otherwise.
+
+  So: one button, and the actions get their names back inside the menu the
+  message actions already use. The cost is a tap on the way to editing, which
+  is the right thing to spend on a screen people read far more often than they
+  administer.
 */
-function Tool({ icon, title, onClick, disabled, on }) {
+function MoreButton({ onClick, title }) {
   return (
-    <button onClick={onClick} disabled={disabled} aria-label={title} title={title}
+    <button onClick={onClick} aria-label={title} title={title}
       style={{
-        width: 38, height: 38, borderRadius: 11, flexShrink: 0,
+        width: 38, height: 38, borderRadius: 11, flexShrink: 0, marginRight: -8,
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        background: 'none', border: 'none', padding: 0,
-        color: on ? 'var(--green-600)' : 'var(--ink-300)',
-        opacity: disabled ? .5 : 1,
+        background: 'none', border: 'none', padding: 0, color: 'var(--ink-300)',
       }}>
-      {icon}
+      <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+        <circle cx="5" cy="12" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="19" cy="12" r="1.7" />
+      </svg>
     </button>
   );
 }
@@ -93,6 +103,8 @@ export default function AnnouncementDetail() {
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  // Where the "⋯" was when it was pressed, so the menu opens beside it.
+  const [menu, setMenu] = useState(null);
 
   if (!a) return <div className="screen"><ScreenHeader title={t('ann_title')} onBack={goBack} /><div className="pad" style={{ paddingTop: 20 }}>—</div></div>;
   const author = userById(a.authorId);
@@ -130,21 +142,28 @@ export default function AnnouncementDetail() {
     finally { setBusy(false); }
   };
 
-  const tools = isStaff ? (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginRight: -8 }}>
-      <Tool icon={<PencilIcon />} title={t('ann_edit_title')}
-        onClick={() => nav(`/app/announcements/${a.id}/edit`)} />
-      {/* Green when it is already held up, grey when it is not — the same way
-          the put-away control on a list card says which state it is in. */}
-      <Tool icon={priority ? <ClockIcon /> : <RaiseIcon />} on={priority}
-        title={priority ? t('ann_priority_edit') : t('ann_priority_set')}
-        onClick={open} />
-      {priority && (
-        <Tool icon={<LowerIcon />} title={t('ann_priority_clear')} onClick={release} disabled={busy} />
-      )}
-      <Tool icon={<TrashIcon />} title={t('ann_remove')} onClick={() => { setEditing(false); setConfirming(true); }} />
-    </div>
-  ) : null;
+  /*
+    Only what applies. Letting go of the top of the list is not an action on an
+    announcement that is not up there, and a row that would do nothing is worse
+    than a row that is missing.
+  */
+  const items = [
+    { label: t('ann_edit_title'), icon: <PencilIcon />, onSelect: () => nav(`/app/announcements/${a.id}/edit`) },
+    {
+      label: priority ? t('ann_priority_edit') : t('ann_priority_set'),
+      icon: priority ? <ClockIcon /> : <RaiseIcon />,
+      onSelect: open,
+    },
+    ...(priority ? [{ label: t('ann_priority_clear'), icon: <LowerIcon />, onSelect: release }] : []),
+    {
+      label: t('ann_remove'), icon: <TrashIcon />, tone: 'danger',
+      onSelect: () => { setEditing(false); setConfirming(true); },
+    },
+  ];
+
+  const tools = isStaff
+    ? <MoreButton title={t('ann_actions')} onClick={(e) => setMenu(e.currentTarget.getBoundingClientRect())} />
+    : null;
 
   return (
     <div className="screen">
@@ -232,6 +251,8 @@ export default function AnnouncementDetail() {
 
         <div style={{ fontSize: 15.5, lineHeight: 1.6, whiteSpace: 'pre-wrap', color: '#3f433b' }}>{L(a, 'body')}</div>
       </div>
+
+      {menu && <ActionMenu anchor={menu} items={items} onClose={() => setMenu(null)} />}
     </div>
   );
 }

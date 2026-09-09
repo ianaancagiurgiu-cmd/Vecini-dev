@@ -48,6 +48,16 @@ const asStaff = async (page, role = 'admin') => {
 
 const titles = (page) => page.locator('.card .serif, .card [class*="serif"]');
 
+/*
+  The staff actions live behind one "⋯" in the corner now, in the same menu the
+  message actions use. Opening it is a step in front of every one of them, so
+  it is a helper rather than four copies of the same two lines.
+*/
+const openActions = async (page) => {
+  await page.getByRole('button', { name: 'Acțiuni pentru anunț' }).click();
+};
+const action = (page, name) => page.getByRole('menuitem', { name });
+
 test.describe('Priority announcements', () => {
   test('a live one is carried above newer ordinary ones', async ({ page }) => {
     await asStaff(page);
@@ -83,7 +93,8 @@ test.describe('Priority announcements', () => {
     await asStaff(page);
     await page.goto('/#/app/announcements/a3');
 
-    await page.getByRole('button', { name: 'Ridică anunțul sus' }).click();
+    await openActions(page);
+    await action(page, 'Ridică anunțul sus').click();
     const field = page.locator('#prio-until');
     await expect(field).toBeVisible();
 
@@ -100,7 +111,8 @@ test.describe('Priority announcements', () => {
     await asStaff(page);
     await page.goto('/#/app/announcements/a3');
 
-    await page.getByRole('button', { name: 'Ridică anunțul sus' }).click();
+    await openActions(page);
+    await action(page, 'Ridică anunțul sus').click();
     const past = new Date(Date.now() - 3 * day);
     const iso = `${past.getFullYear()}-${String(past.getMonth() + 1).padStart(2, '0')}-${String(past.getDate()).padStart(2, '0')}`;
     await page.locator('#prio-until').fill(iso);
@@ -114,45 +126,72 @@ test.describe('Priority announcements', () => {
     await page.goto('/#/app/announcements/a3');
 
     await expect(page.getByText('S-a montat iluminatul nou')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Ridică anunțul sus' })).toHaveCount(0);
+    // Not even the button that would open the menu.
+    await expect(page.getByRole('button', { name: 'Acțiuni pentru anunț' })).toHaveCount(0);
   });
 
   test('a raised one offers releasing it early', async ({ page }) => {
     await asStaff(page);
     await page.goto('/#/app/announcements/a1');
 
-    await expect(page.getByRole('button', { name: 'Deprioritizează anunț' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Schimbă data prioritate anunț' })).toBeVisible();
+    await openActions(page);
+    await expect(action(page, 'Coboară din prioritare')).toBeVisible();
+    await expect(action(page, 'Schimbă termenul')).toBeVisible();
+    // And no offer to raise something already up there.
+    await expect(action(page, 'Ridică anunțul sus')).toHaveCount(0);
   });
 
   /*
-    The staff controls are bare icons in the corner now, with no words beside
-    them. That is fine to look at and nothing at all to listen to unless each
-    one carries its own name — and an unnamed icon button is announced as
-    "button", which is no help to anybody.
+    The corner holds one thing, like the corner on every other screen in the
+    app: a back arrow and the "⋯". Four icons there was a pattern used once,
+    and three of the four were shapes nobody had named — the one that let go of
+    the top of the list was the same downward arrow that means "download"
+    everywhere else on a phone.
 
-    Written against the buttons the screen actually renders rather than a list
-    of expected names, so a tool added later is covered without anyone
-    remembering to come back here.
+    Both halves are checked. The header buttons still have to carry names,
+    because an icon button with none is announced as "button" and helps nobody.
+    And the rows inside the menu have to carry words, which is the point of
+    moving them there.
   */
-  test('every icon in the corner says what it is', async ({ page }) => {
+  test('the corner holds one button, and the words are in the menu', async ({ page }) => {
     await asStaff(page);
     await page.goto('/#/app/announcements/a1');
     await expect(page.getByText('Se înlocuiește o vană.')).toBeVisible();
 
-    const named = await page.evaluate(() => {
-      const header = document.querySelector('.screen > div');
-      return [...header.querySelectorAll('button')].map((b) => ({
+    const header = await page.evaluate(() => {
+      const bar = document.querySelector('.screen > div');
+      return [...bar.querySelectorAll('button')].map((b) => ({
         text: b.textContent.trim(),
         name: b.getAttribute('aria-label') || '',
       }));
     });
 
-    expect(named.length, 'no buttons found in the header').toBeGreaterThan(3);
-    for (const b of named) {
-      // The back arrow is in here too, and it is named the same way.
+    // The back arrow and the "⋯", and nothing else.
+    expect(header).toHaveLength(2);
+    for (const b of header) {
       expect(b.name.length, `a header button with no name, showing "${b.text}"`).toBeGreaterThan(2);
     }
+
+    await openActions(page);
+    const rows = page.getByRole('menuitem');
+    await expect(rows).not.toHaveCount(0);
+    for (const row of await rows.all()) {
+      // Words, not a shape to guess at.
+      expect((await row.textContent()).trim().length).toBeGreaterThan(3);
+    }
+  });
+
+  test('tapping away closes the menu and changes nothing', async ({ page }) => {
+    await asStaff(page);
+    await page.goto('/#/app/announcements/a1');
+    await openActions(page);
+    await expect(action(page, 'Șterge anunțul')).toBeVisible();
+
+    await page.mouse.click(20, 400);
+    await expect(page.getByRole('menuitem')).toHaveCount(0);
+    // No panel opened behind it either.
+    await expect(page.locator('#prio-until')).toHaveCount(0);
+    await expect(page.getByText('Ștergi anunțul? Vecinii nu îl vor mai vedea.')).toHaveCount(0);
   });
 });
 

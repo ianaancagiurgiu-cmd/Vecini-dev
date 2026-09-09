@@ -262,8 +262,9 @@ test.describe('Calendar', () => {
     await asRole(page, 'member');
     await page.goto('/#/app/announcements/e1');
     await expect(page.getByText('Pe ordinea de zi: bugetul.')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Modifică anunțul' })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Șterge anunțul' })).toHaveCount(0);
+    // The actions live behind one "⋯" now, and a member is not offered it.
+    await expect(page.getByRole('button', { name: 'Acțiuni pentru anunț' })).toHaveCount(0);
+    await expect(page.getByRole('menuitem')).toHaveCount(0);
   });
 
   /*
@@ -276,8 +277,9 @@ test.describe('Calendar', () => {
     await asRole(page, 'admin');
     await page.goto('/#/app/announcements/e1');
 
-    await expect(page.getByRole('button', { name: 'Modifică anunțul' })).toBeVisible();
-    await page.getByRole('button', { name: 'Șterge anunțul' }).click();
+    await page.getByRole('button', { name: 'Acțiuni pentru anunț' }).click();
+    await expect(page.getByRole('menuitem', { name: 'Modifică anunțul' })).toBeVisible();
+    await page.getByRole('menuitem', { name: 'Șterge anunțul' }).click();
     await expect(page.getByText('Ștergi anunțul? Vecinii nu îl vor mai vedea.')).toBeVisible();
   });
 

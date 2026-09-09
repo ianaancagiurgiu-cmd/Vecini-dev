@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useLayoutEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 /*
@@ -82,7 +82,34 @@ const ROW_H = 46;
 */
 export function ActionMenu({ anchor, items, onClose }) {
   const [host, setHost] = useState(null);
+  const card = useRef(null);
+  const [pos, setPos] = useState(null);
   useEffect(() => { setHost(document.querySelector('.phone')); }, []);
+
+  /*
+    Measured, not calculated.
+
+    The height used to be rows times a row height, which is only true while
+    every label fits on one line. "Schimbă termenul priorității" does not, and
+    a menu two lines taller than the arithmetic said was a menu placed two
+    lines too low — invisible on a menu that opens downwards from a header,
+    and wrong on one that opens upwards from a message. Labels also arrive
+    translated, so nothing here can know how tall they will be.
+
+    Placed on the frame it is drawn in rather than in the layout: it prefers
+    above, because the finger that opened it is resting below.
+  */
+  useLayoutEffect(() => {
+    if (!host || !anchor || !card.current) return;
+    const frame = host.getBoundingClientRect();
+    const { width, height } = card.current.getBoundingClientRect();
+    const gap = 8;
+    const above = anchor.top - frame.top - height - gap;
+    setPos({
+      top: above >= 10 ? above : (anchor.bottom - frame.top + gap),
+      left: Math.max(12, Math.min(anchor.left - frame.left, frame.width - width - 12)),
+    });
+  }, [host, anchor, items.length]);
 
   useEffect(() => {
     const bye = () => onClose();
@@ -100,25 +127,21 @@ export function ActionMenu({ anchor, items, onClose }) {
 
   if (!host || !anchor) return null;
 
-  const frame = host.getBoundingClientRect();
-  const width = 208;
-  const height = items.length * ROW_H + 10;
-  const gap = 8;
-
-  const above = anchor.top - frame.top - height - gap;
-  const top = above >= 10 ? above : (anchor.bottom - frame.top + gap);
-  const left = Math.max(12, Math.min(anchor.left - frame.left, frame.width - width - 12));
-
   const menu = (
     <div
       onClick={onClose}
       style={{ position: 'absolute', inset: 0, zIndex: 160, background: 'rgba(20,28,23,.22)' }}
     >
       <div
+        ref={card}
         role="menu"
         onClick={(e) => e.stopPropagation()}
         style={{
-          position: 'absolute', top, left, width,
+          position: 'absolute',
+          // Off-screen for the one frame it takes to measure, rather than in
+          // the wrong place for it.
+          top: pos ? pos.top : -9999, left: pos ? pos.left : -9999,
+          width: 232, opacity: pos ? 1 : 0,
           background: '#fff', borderRadius: 14, padding: '5px 0',
           border: '1px solid var(--border)',
           boxShadow: '0 10px 30px rgba(20,28,23,.18)',
@@ -132,11 +155,16 @@ export function ActionMenu({ anchor, items, onClose }) {
             onClick={() => { onClose(); it.onSelect(); }}
             style={{
               display: 'flex', alignItems: 'center', gap: 11, width: '100%',
-              height: ROW_H, padding: '0 15px', background: 'none', border: 'none',
-              textAlign: 'left', fontSize: 14.5, fontWeight: 600, color: 'var(--ink-900)',
+              // A minimum rather than a height: a label that needs two lines
+              // has to make the row taller, not spill out of it.
+              minHeight: ROW_H, padding: '9px 15px', background: 'none', border: 'none',
+              textAlign: 'left', fontSize: 14.5, fontWeight: 600, lineHeight: 1.3,
+              // Deleting is the one row you can reach by mistake and not undo,
+              // so it does not look like the others.
+              color: it.tone === 'danger' ? 'var(--terracotta)' : 'var(--ink-900)',
             }}
           >
-            <span aria-hidden="true" style={{ color: 'var(--green-600)', display: 'inline-flex' }}>{it.icon}</span>
+            <span aria-hidden="true" style={{ color: it.tone === 'danger' ? 'var(--terracotta)' : 'var(--green-600)', display: 'inline-flex' }}>{it.icon}</span>
             {it.label}
           </button>
         ))}
