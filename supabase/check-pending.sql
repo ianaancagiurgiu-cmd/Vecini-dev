@@ -29,7 +29,12 @@ with expected(fisier, obiect, tip, la_ce_e) as (values
   ('0014_reactions',        'public.can_react',          'function', 'cine are voie să aprecieze un comentariu'),
   ('0015_comment_edits',    'issue_comments.edited_at',   'column',  'marcajul „editat” pe comentarii'),
   ('0015_comment_edits',    'discussion_replies.edited_at', 'column', 'marcajul „editat” pe răspunsuri'),
-  ('0015_comment_edits',    'public.edit_comment',       'function', 'corectarea unui mesaj, în 15 minute')
+  ('0015_comment_edits',    'public.edit_comment',       'function', 'corectarea unui mesaj, în 15 minute'),
+  ('0016_funds',            'public.funds',              'table',   'fondurile: colectele asociației'),
+  ('0016_funds',            'public.fund_payments',      'table',   'cine a plătit, cât și când'),
+  ('0016_funds',            'public.fund_quotas',        'table',   'excepțiile la suma pe apartament'),
+  ('0016_funds',            'public.fund_summary',       'function', 'totalurile, pentru cine nu vede rândurile'),
+  ('0016_funds',            'notification_prefs.funds',  'column',  'comutatorul pentru notificările de fonduri')
 )
 select
   e.fisier,
@@ -47,6 +52,7 @@ select
          else to_regprocedure(e.obiect || '(' ||
                 case e.obiect
                   when 'public.can_react'        then 'uuid,uuid'
+                  when 'public.fund_summary'    then 'uuid'
                   when 'public.edit_comment'    then 'text,uuid,text'
                   when 'public.shares_community' then 'uuid'
                   when 'public.set_member_role'  then 'uuid,uuid,text'
@@ -76,6 +82,14 @@ select '0010_admin_handover' as fisier,
          select 1 from pg_trigger
           where tgname = 'trg_keep_one_admin' and not tgisinternal
        ) as exista
+union all
+select '0016_funds',
+       'pref_allows(''fund'')',
+       'notificările de fonduri chiar pot fi oprite',
+       exists (
+         select 1 from pg_proc
+          where proname = 'pref_allows' and prosrc like '%when ''fund''%'
+       )
 union all
 select '0012_events',
        'pref_allows(''event'')',

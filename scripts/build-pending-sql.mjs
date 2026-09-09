@@ -45,6 +45,8 @@ const DESCRIERI = {
     'inimioara: poti aprecia un comentariu de la o sesizare sau un raspuns dintr-o discutie, o singura data, si o poti retrage',
   '0015_comment_edits.sql':
     'corectarea propriului mesaj in primele 15 minute, cu marcajul "editat" langa ora',
+  '0016_funds.sql':
+    'fondurile asociatiei: colecte punctuale, cine a platit cat si cat mai are, cu totalul vizibil tuturor si numele doar la administratie',
 };
 
 const files = readdirSync(dir)

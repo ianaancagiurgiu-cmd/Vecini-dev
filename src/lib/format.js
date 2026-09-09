@@ -70,6 +70,39 @@ export function eventWhen(ev, lang, t) {
 }
 
 /*
+  Money.
+
+  Amounts travel and are stored as whole bani, because a sum of floating-point
+  lei eventually disagrees with its own parts by a ban and then nobody trusts
+  the total again. These two are the only places the app converts between the
+  integer it keeps and the words a person reads or types.
+
+  The decimals appear only when there are any: "250 lei", not "250,00 lei",
+  and "250,50 lei" when it really is fifty bani.
+*/
+export function lei(bani, lang) {
+  const v = (bani || 0) / 100;
+  const digits = Number.isInteger(v) ? 0 : 2;
+  return `${v.toLocaleString(LOCALES[lang] || LOCALES.ro, {
+    minimumFractionDigits: digits, maximumFractionDigits: 2,
+  })} lei`;
+}
+
+/*
+  What somebody typed, in bani. Accepts the comma Romanian keyboards produce as
+  readily as the full stop, ignores spaces used as thousands separators, and
+  answers null for anything that is not a number — so a caller can tell "they
+  have not finished typing" apart from "they typed nought".
+*/
+export function baniFromInput(text) {
+  const cleaned = String(text ?? '').trim().replace(/\s/g, '').replace(',', '.');
+  if (!cleaned || !/^\d*\.?\d*$/.test(cleaned)) return null;
+  const v = Number(cleaned);
+  if (!Number.isFinite(v)) return null;
+  return Math.round(v * 100);
+}
+
+/*
   How long you have to fix a typo in something you already sent: fifteen
   minutes, the same as WhatsApp. Long enough to catch the mistake you notice
   the moment it is on screen, short enough that nobody can rewrite what they

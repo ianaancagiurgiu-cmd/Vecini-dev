@@ -58,8 +58,9 @@ const emptyData = () => ({
   discussions: [],
   issues: [],
   polls: [],
+  funds: [],
   notifications: [],
-  notifPrefs: { announcements: true, replies: true, issues: true, polls: true, events: true, push: false },
+  notifPrefs: { announcements: true, replies: true, issues: true, polls: true, events: true, funds: true, push: false },
   deletedAccounts: 0,
   // What this person has put away, per kind. Nobody else's list is affected.
   archived: { announcement: [], discussion: [], issue: [] },
@@ -235,7 +236,7 @@ export function AppProvider({ children }) {
 
       const memberIds = (members || []).map((m) => m.user_id);
 
-      const [{ data: announcements }, { data: discussions }, { data: issues }, { data: polls }, { data: notifications }, { data: notifPrefsRow }, { data: archivedRows }, { data: phoneRows }, { data: reactionRows }] = await Promise.all([
+      const [{ data: announcements }, { data: discussions }, { data: issues }, { data: polls }, { data: notifications }, { data: notifPrefsRow }, { data: archivedRows }, { data: phoneRows }, { data: reactionRows }, { data: fundRows }, { data: fundTotals }, { data: paymentRows }, { data: quotaRows }] = await Promise.all([
         supabase.from('announcements').select('*').eq('community_id', cid).order('created_at', { ascending: false }),
         supabase.from('discussions').select('*').eq('community_id', cid).neq('status', 'hidden').order('created_at', { ascending: false }),
         supabase.from('issues').select('*').eq('community_id', cid).order('created_at', { ascending: false }),
@@ -256,6 +257,23 @@ export function AppProvider({ children }) {
           second round trip for something this small.
         */
         supabase.from('reactions').select('issue_comment_id,reply_id,user_id,emoji'),
+        /*
+          The collections, and what they add up to.
+
+          The totals come from a function rather than from the rows, because
+          the rows are deliberately unreadable: a neighbour may know that
+          twelve of twenty homes have paid and must not know which twelve, so
+          row-level security hides the payments and makes the sum impossible
+          to compute here. fund_summary does the arithmetic behind that wall.
+
+          The payment and quota reads are unfiltered for the usual reason: the
+          policy already answers with your own rows, or with all of them if
+          you are the one keeping the record.
+        */
+        supabase.from('funds').select('*').eq('community_id', cid).order('created_at', { ascending: false }),
+        supabase.rpc('fund_summary', { p_community: cid }),
+        supabase.from('fund_payments').select('*').order('paid_on', { ascending: false }),
+        supabase.from('fund_quotas').select('*'),
       ]);
 
       const discIds = (discussions || []).map((d) => d.id);
@@ -375,6 +393,42 @@ export function AppProvider({ children }) {
       const heartsOnComments = heartsBy('issue_comment_id');
       const heartsOnReplies = heartsBy('reply_id');
 
+      /*
+        One object per collection, carrying its own totals and whatever slice
+        of the payments this person is allowed to see.
+      */
+      const totalsById = new Map((fundTotals || []).map((r) => [r.fund_id, r]));
+      const funds = (fundRows || []).map((f) => {
+        const sum = totalsById.get(f.id) || {};
+        return {
+          id: f.id,
+          title: f.title,
+          description: f.description || '',
+          amountBani: Number(f.amount_bani),
+          dueOn: f.due_on ? new Date(f.due_on + 'T12:00:00').getTime() : null,
+          closedAt: f.closed_at ? new Date(f.closed_at).getTime() : null,
+          createdBy: f.created_by,
+          createdAt: new Date(f.created_at).getTime(),
+          targetBani: Number(sum.target_bani || 0),
+          collectedBani: Number(sum.collected_bani || 0),
+          homes: Number(sum.homes || 0),
+          homesPaid: Number(sum.homes_paid || 0),
+          myDueBani: Number(sum.my_due_bani || 0),
+          myPaidBani: Number(sum.my_paid_bani || 0),
+          payments: (paymentRows || []).filter((p) => p.fund_id === f.id).map((p) => ({
+            id: p.id,
+            userId: p.user_id,
+            amountBani: Number(p.amount_bani),
+            paidOn: new Date(p.paid_on + 'T12:00:00').getTime(),
+            note: p.note || '',
+            recordedBy: p.recorded_by,
+          })),
+          quotas: Object.fromEntries((quotaRows || [])
+            .filter((q) => q.fund_id === f.id)
+            .map((q) => [q.user_id, Number(q.amount_bani)])),
+        };
+      });
+
       if (!mounted.current) return;
       setData({
         users,
@@ -398,8 +452,9 @@ export function AppProvider({ children }) {
         discussions: discussionsFull.map((d) => ({ ...d, authorId: d.author_id, createdAt: new Date(d.created_at).getTime(), replies: d.replies.map((r) => ({ ...r, authorId: r.author_id, createdAt: new Date(r.created_at).getTime(), editedAt: r.edited_at ? new Date(r.edited_at).getTime() : null, reactions: heartsOnReplies.get(r.id) || [] })) })),
         issues: issuesFull.map((i) => ({ ...i, reporterId: i.reporter_id, photo: i.photo_url, createdAt: new Date(i.created_at).getTime(), history: i.history.map((h) => ({ ...h, byId: h.by_id, at: new Date(h.at).getTime() })), comments: i.comments.map((c) => ({ ...c, authorId: c.author_id, createdAt: new Date(c.created_at).getTime(), editedAt: c.edited_at ? new Date(c.edited_at).getTime() : null, reactions: heartsOnComments.get(c.id) || [] })) })),
         polls: pollsFull.map((p) => ({ ...p, authorId: p.author_id, createdAt: new Date(p.created_at).getTime(), endsAt: new Date(p.ends_at).getTime() })),
+        funds,
         notifications: (notifications || []).map((n) => ({ ...n, createdAt: new Date(n.created_at).getTime() })),
-        notifPrefs: notifPrefsRow || { announcements: true, replies: true, issues: true, polls: true, events: true, push: false },
+        notifPrefs: notifPrefsRow || { announcements: true, replies: true, issues: true, polls: true, events: true, funds: true, push: false },
         archived,
         myContact: phones[userId] || { phone: '', visible: false },
         deletedAccounts: deletedAccounts || 0,
@@ -1139,6 +1194,100 @@ export function AppProvider({ children }) {
       await refreshAll();
     },
 
+    /*
+      ---------------------------------------------------------------------
+      Fonduri — the collections, and the record of who has paid into them.
+
+      A ledger, not a payment processor. Nobody pays through the app; this is
+      the notebook the administrator keeps, with the difference that each
+      neighbour can see their own line without having to ask for it.
+
+      Everything that writes here is staff-only, enforced by the database
+      rather than by these functions: only the person who took the money can
+      say it arrived, and a ledger anybody can write to is not worth keeping.
+    */
+    addFund: async ({ title, description, amountBani, dueOn }) => {
+      const { data: row, error } = await supabase.from('funds').insert({
+        community_id: cid,
+        title,
+        description: description || '',
+        amount_bani: amountBani,
+        due_on: dueOn || null,
+        created_by: userId,
+      }).select('*').single();
+      if (error) { showToast(t('fund_error')); throw error; }
+      // Everyone hears about a new collection: being asked for money is not
+      // something to find out about by chance three weeks later.
+      await notifyMembers(userId, 'fund', STRINGS[lang].notif_fund_new, title, '/app/funds/' + row.id);
+      await refreshAll();
+      showToast(t('fund_created'));
+      return row.id;
+    },
+    setFundClosed: async (fundId, closed) => {
+      const { error } = await supabase.from('funds')
+        .update({ closed_at: closed ? new Date().toISOString() : null }).eq('id', fundId);
+      if (error) { showToast(t('fund_error')); throw error; }
+      await refreshAll();
+      showToast(t(closed ? 'fund_closed_done' : 'fund_reopened'));
+    },
+    removeFund: async (fundId) => {
+      const { error } = await supabase.from('funds').delete().eq('id', fundId);
+      if (error) { showToast(t('fund_error')); throw error; }
+      await refreshAll();
+      showToast(t('fund_removed'));
+    },
+    /*
+      One row per payment, never a running total overwritten: "cât a plătit,
+      cât mai are" only has an answer if two instalments are two rows.
+
+      The receipt matters as much as the row. Somebody who handed over cash in
+      a stairwell has nothing to show for it until the app says the
+      administration wrote it down, and that notification is the whole reason
+      to trust the ledger at all.
+    */
+    recordPayment: async (fundId, forUserId, amountBani, paidOn, note) => {
+      const { error } = await supabase.from('fund_payments').insert({
+        fund_id: fundId,
+        user_id: forUserId,
+        amount_bani: amountBani,
+        paid_on: paidOn || undefined,
+        note: note || '',
+        recorded_by: userId,
+      });
+      if (error) { showToast(t('fund_error')); throw error; }
+      const fund = data.funds.find((f) => f.id === fundId);
+      await notifyUser(
+        forUserId, 'fund',
+        STRINGS[lang].notif_fund_paid,
+        `${fund ? fund.title + ' · ' : ''}${(amountBani / 100).toLocaleString('ro-RO')} lei`,
+        '/app/funds/' + fundId,
+      );
+      await refreshAll();
+      showToast(t('fund_payment_saved'));
+    },
+    removePayment: async (paymentId) => {
+      const { error } = await supabase.from('fund_payments').delete().eq('id', paymentId);
+      if (error) { showToast(t('fund_error')); throw error; }
+      await refreshAll();
+      showToast(t('fund_payment_removed'));
+    },
+    /*
+      An exception to the amount everyone else owes. null removes the exception
+      rather than storing a zero, because zero means something here — "this
+      home owes nothing towards this one" — and the two must not be the same
+      row.
+    */
+    setQuota: async (fundId, forUserId, amountBani) => {
+      const { error } = amountBani === null
+        ? await supabase.from('fund_quotas').delete().eq('fund_id', fundId).eq('user_id', forUserId)
+        : await supabase.from('fund_quotas').upsert(
+          { fund_id: fundId, user_id: forUserId, amount_bani: amountBani },
+          { onConflict: 'fund_id,user_id' },
+        );
+      if (error) { showToast(t('fund_error')); throw error; }
+      await refreshAll();
+      showToast(t('fund_quota_saved'));
+    },
     markAllRead: async () => { await supabase.from('notifications').update({ read: true }).eq('user_id', userId).eq('community_id', cid).eq('read', false); await refreshAll(); },
     markRead: async (id) => { await supabase.from('notifications').update({ read: true }).eq('id', id); await refreshAll(); },
     setNotifPref: async (key, val) => {

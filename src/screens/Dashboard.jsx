@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { Avatar, PriorityBadge } from '../components/ui.jsx';
-import { timeAgo, isPriority, eventDay, eventWhen, isPast, daysBetween } from '../lib/format.js';
+import { timeAgo, isPriority, eventDay, eventWhen, isPast, daysBetween, lei } from '../lib/format.js';
+import { Progress } from '../components/FundBits.jsx';
 
 function TopBar() {
   const nav = useNavigate();
@@ -79,6 +80,17 @@ export default function Dashboard() {
     .sort((a, b) => (isPriority(b) - isPriority(a)) || (b.createdAt - a.createdAt))
     .slice(0, 3);
   const discs = data.discussions.filter((d) => d.status === 'approved').sort((a, b) => b.createdAt - a.createdAt).slice(0, 3);
+  /*
+    Collections still running, yours first.
+
+    Ordered by whether you owe anything rather than by date: money you have
+    not handed over is the reason to look at this screen at all, and a
+    collection you have already settled is somebody else's problem now.
+  */
+  const funds = data.funds
+    .filter((f) => !f.closedAt)
+    .sort((a, b) => (Math.max(0, b.myDueBani - b.myPaidBani) > 0) - (Math.max(0, a.myDueBani - a.myPaidBani) > 0))
+    .slice(0, 2);
 
   return (
     <div className="screen screen-anim">
@@ -186,6 +198,40 @@ export default function Dashboard() {
           </button>
         )}
       </div>
+
+      {/*
+        The collections. Absent when there are none, like the line above: a
+        section explaining that nobody is collecting money is a section that
+        never earns the room it takes.
+      */}
+      {funds.length > 0 && (
+        <div className="pad" style={{ paddingTop: 22 }}>
+          <div className="section-head">
+            <h2>{t('fund_title')}</h2>
+            <button className="see-all" onClick={() => nav('/app/funds')} style={{ background: 'none', border: 'none' }}>{t('dash_see_all')}</button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {funds.map((f) => {
+              const rest = Math.max(0, f.myDueBani - f.myPaidBani);
+              return (
+                <button key={f.id} onClick={() => nav('/app/funds/' + f.id)} className="card"
+                  style={{ textAlign: 'left', display: 'block', width: '100%' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
+                    <span style={{ fontWeight: 700, fontSize: 14.5 }}>{f.title}</span>
+                    <span style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 700, color: rest > 0 ? 'var(--terracotta)' : 'var(--green-600)' }}>
+                      {f.myDueBani === 0 ? '—' : (rest > 0 ? lei(rest, lang) : '✓')}
+                    </span>
+                  </div>
+                  <Progress collected={f.collectedBani} target={f.targetBani} />
+                  <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
+                    {lei(f.collectedBani, lang)} {t('fund_of')} {lei(f.targetBani, lang)}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* recent discussions */}
       <div className="pad">

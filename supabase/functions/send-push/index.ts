@@ -36,6 +36,7 @@ const PREF_COLUMN: Record<string, string> = {
   issue: 'issues',
   poll: 'polls',
   event: 'events',
+  fund: 'funds',
 };
 
 const CORS = {
@@ -109,7 +110,7 @@ Deno.serve(async (req) => {
   // Opted in to push at all, and to this category?
   const { data: prefRows } = await admin
     .from('notification_prefs')
-    .select('user_id, push, announcements, replies, issues, polls, events')
+    .select('user_id, push, announcements, replies, issues, polls, events, funds')
     .in('user_id', allowedIds);
   const prefsById = new Map((prefRows || []).map((p) => [p.user_id as string, p]));
   const prefCol = PREF_COLUMN[type];

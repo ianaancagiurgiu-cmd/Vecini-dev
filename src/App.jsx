@@ -30,6 +30,9 @@ import IssueDetail from './screens/IssueDetail.jsx';
 import IssueNew from './screens/IssueNew.jsx';
 import Polls from './screens/Polls.jsx';
 import PollDetail from './screens/PollDetail.jsx';
+import Funds from './screens/Funds.jsx';
+import FundNew from './screens/FundNew.jsx';
+import FundDetail from './screens/FundDetail.jsx';
 import PollNew from './screens/PollNew.jsx';
 import Search from './screens/Search.jsx';
 import Notifications from './screens/Notifications.jsx';
@@ -133,6 +136,9 @@ export default function App() {
           <Route path="polls" element={<Polls />} />
           <Route path="polls/new" element={<PollNew />} />
           <Route path="polls/:id" element={<PollDetail />} />
+          <Route path="funds" element={<Funds />} />
+          <Route path="funds/new" element={<FundNew />} />
+          <Route path="funds/:id" element={<FundDetail />} />
           {/*
             Where the calendar used to live. Notifications sent before the two
             were folded together still carry these addresses, and an event kept

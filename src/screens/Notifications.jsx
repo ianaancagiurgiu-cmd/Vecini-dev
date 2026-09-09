@@ -5,7 +5,7 @@ import { useBack } from '../lib/useBack.js';
 import { ScreenHeader, Empty } from '../components/ui.jsx';
 import { timeAgo } from '../lib/format.js';
 
-const ICON = { announcement: '📢', issue: '🛠️', reply: '💬', poll: '🗳️' };
+const ICON = { announcement: '📢', issue: '🛠️', reply: '💬', poll: '🗳️', event: '📅', fund: '💶' };
 
 function Toggle({ on, onChange }) {
   return (
@@ -48,6 +48,7 @@ export default function Notifications() {
     { key: 'issues', label: t('notif_p_issues') },
     { key: 'polls', label: t('notif_p_polls') },
     { key: 'events', label: t('notif_p_events') },
+    { key: 'funds', label: t('notif_p_funds') },
   ];
 
   // Push needs a browser permission prompt, so it can fail in ways a plain
