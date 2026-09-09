@@ -20,8 +20,27 @@ export default function Notifications() {
   const back = useBack('/app');
   const { data, t, lang, actions, showToast } = useApp();
   const [tab, setTab] = useState('list');
-  const list = [...data.notifications].sort((a, b) => b.createdAt - a.createdAt);
+  /*
+    Only what you have not seen yet.
+
+    This used to be every notification ever sent, read ones greyed out among
+    the unread, which after a fortnight is a screen you scroll past rather than
+    read — and the thing it exists to tell you, that something is new, is the
+    thing it buries. A notification is a pointer, not the content: once you
+    have followed it, the announcement or the issue is still in its own list,
+    and the pointer has done its job.
+
+    Nothing is deleted. Read notifications are marked, not removed, so the
+    unread count and this list are two views of the same column rather than
+    two sources that could disagree.
+  */
+  const list = data.notifications.filter((n) => !n.read).sort((a, b) => b.createdAt - a.createdAt);
   const prefs = data.notifPrefs;
+
+  const clearList = async () => {
+    await actions.markAllRead();
+    showToast(t('notif_cleared'));
+  };
 
   const prefRows = [
     { key: 'announcements', label: t('notif_p_ann') },
@@ -67,7 +86,7 @@ export default function Notifications() {
   return (
     <div className="screen">
       <ScreenHeader title={t('notif_title')} onBack={back}
-        right={tab === 'list' && list.some((n) => !n.read) ? <button onClick={actions.markAllRead} style={{ background: 'none', border: 'none', color: 'var(--green-600)', fontSize: 12.5, fontWeight: 700 }}>{t('notif_mark_all')}</button> : null} />
+        right={tab === 'list' && list.length > 0 ? <button onClick={clearList} style={{ background: 'none', border: 'none', color: 'var(--green-600)', fontSize: 12.5, fontWeight: 700 }}>{t('notif_clear')}</button> : null} />
       <div className="pad" style={{ paddingTop: 14, display: 'flex', gap: 8 }}>
         <button onClick={() => setTab('list')} className={'pill' + (tab === 'list' ? ' pill--active' : '')}>{t('notif_title')}</button>
         <button onClick={() => setTab('prefs')} className={'pill' + (tab === 'prefs' ? ' pill--active' : '')}>⚙︎ {t('notif_prefs')}</button>
@@ -78,11 +97,12 @@ export default function Notifications() {
           {list.length === 0 && <Empty icon="🔔">{t('notif_empty')}</Empty>}
           {list.map((n) => (
             <button key={n.id} onClick={() => { actions.markRead(n.id); nav(n.link); }}
-              className="card" style={{ textAlign: 'left', display: 'flex', gap: 12, alignItems: 'flex-start', background: n.read ? '#fff' : 'var(--status-done-bg)', borderColor: n.read ? 'var(--border)' : 'transparent' }}>
+              className="card" style={{ textAlign: 'left', display: 'flex', gap: 12, alignItems: 'flex-start', background: 'var(--status-done-bg)', borderColor: 'transparent' }}>
               <span style={{ fontSize: 20 }}>{ICON[n.type] || '🔔'}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {!n.read && <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--terracotta)' }} />}
+                {/* No unread dot any more: every row here is unread, and a mark
+                    every row carries marks nothing. */}
+                <div style={{ fontWeight: 700, fontSize: 14 }}>
                   {(lang === 'en' && n.titleEn) ? n.titleEn : n.title}
                 </div>
                 <div className="muted" style={{ fontSize: 13, marginTop: 2, lineHeight: 1.4 }}>{(lang === 'en' && n.bodyEn) ? n.bodyEn : n.body}</div>

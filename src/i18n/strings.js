@@ -408,7 +408,8 @@ export const STRINGS = {
     // Notifications
     notif_title: 'Notificări',
     notif_empty: 'Nicio notificare nouă.',
-    notif_mark_all: 'Marchează toate ca citite',
+    notif_clear: 'Golește lista',
+    notif_cleared: 'Lista e goală.',
     notif_prefs: 'Preferințe notificări',
     notif_p_ann: 'Toate anunțurile',
     notif_p_replies: 'Răspunsuri la postările mele',
@@ -903,7 +904,8 @@ export const STRINGS = {
 
     notif_title: 'Notifications',
     notif_empty: 'No new notifications.',
-    notif_mark_all: 'Mark all as read',
+    notif_clear: 'Clear the list',
+    notif_cleared: 'The list is empty now.',
     notif_prefs: 'Notification preferences',
     notif_p_ann: 'All announcements',
     notif_p_replies: 'Replies to my posts',
@@ -1389,7 +1391,8 @@ export const STRINGS = {
 
     notif_title: 'Értesítések',
     notif_empty: 'Nincs új értesítés.',
-    notif_mark_all: 'Összes megjelölése olvasottként',
+    notif_clear: 'Lista törlése',
+    notif_cleared: 'A lista üres.',
     notif_prefs: 'Értesítési beállítások',
     notif_p_ann: 'Minden hirdetés',
     notif_p_replies: 'Válaszok a bejegyzéseimre',
