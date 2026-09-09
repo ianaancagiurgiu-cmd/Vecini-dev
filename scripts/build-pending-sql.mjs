@@ -47,6 +47,8 @@ const DESCRIERI = {
     'corectarea propriului mesaj in primele 15 minute, cu marcajul "editat" langa ora',
   '0016_funds.sql':
     'fondurile asociatiei: colecte punctuale, cine a platit cat si cat mai are, cu totalul vizibil tuturor si numele doar la administratie',
+  '0017_documents.sql':
+    'documentele asociatiei: procese-verbale, hotarari, contracte, facturi — intr-un bucket privat, cu link care expira, si cu posibilitatea de a lega un document de o colecta',
 };
 
 const files = readdirSync(dir)

@@ -25,6 +25,16 @@ export const useApp = () => useContext(AppCtx);
 export const HEART = '❤️';
 
 /*
+  The biggest file the app will take. Scanned minutes are a few hundred
+  kilobytes; a photograph of an invoice taken with a phone is three to five
+  megabytes, and a bucket fills up faster than anyone expects — an association
+  with fifteen buildings and a year of monthly papers is thousands of files.
+  Ten megabytes is generous for anything that is genuinely a document and
+  refuses the video somebody will eventually try to attach.
+*/
+const MAX_DOC_BYTES = 10 * 1024 * 1024;
+
+/*
   The four columns that turn an announcement into something happening.
 
   Written as one piece because they only make sense together: the database
@@ -59,6 +69,7 @@ const emptyData = () => ({
   issues: [],
   polls: [],
   funds: [],
+  documents: [],
   notifications: [],
   notifPrefs: { announcements: true, replies: true, issues: true, polls: true, events: true, funds: true, push: false },
   deletedAccounts: 0,
@@ -236,7 +247,7 @@ export function AppProvider({ children }) {
 
       const memberIds = (members || []).map((m) => m.user_id);
 
-      const [{ data: announcements }, { data: discussions }, { data: issues }, { data: polls }, { data: notifications }, { data: notifPrefsRow }, { data: archivedRows }, { data: phoneRows }, { data: reactionRows }, { data: fundRows }, { data: fundTotals }, { data: paymentRows }, { data: quotaRows }] = await Promise.all([
+      const [{ data: announcements }, { data: discussions }, { data: issues }, { data: polls }, { data: notifications }, { data: notifPrefsRow }, { data: archivedRows }, { data: phoneRows }, { data: reactionRows }, { data: fundRows }, { data: fundTotals }, { data: paymentRows }, { data: quotaRows }, { data: docRows }] = await Promise.all([
         supabase.from('announcements').select('*').eq('community_id', cid).order('created_at', { ascending: false }),
         supabase.from('discussions').select('*').eq('community_id', cid).neq('status', 'hidden').order('created_at', { ascending: false }),
         supabase.from('issues').select('*').eq('community_id', cid).order('created_at', { ascending: false }),
@@ -274,6 +285,7 @@ export function AppProvider({ children }) {
         supabase.rpc('fund_summary', { p_community: cid }),
         supabase.from('fund_payments').select('*').order('paid_on', { ascending: false }),
         supabase.from('fund_quotas').select('*'),
+        supabase.from('documents').select('*').eq('community_id', cid).order('created_at', { ascending: false }),
       ]);
 
       const discIds = (discussions || []).map((d) => d.id);
@@ -453,6 +465,17 @@ export function AppProvider({ children }) {
         issues: issuesFull.map((i) => ({ ...i, reporterId: i.reporter_id, photo: i.photo_url, createdAt: new Date(i.created_at).getTime(), history: i.history.map((h) => ({ ...h, byId: h.by_id, at: new Date(h.at).getTime() })), comments: i.comments.map((c) => ({ ...c, authorId: c.author_id, createdAt: new Date(c.created_at).getTime(), editedAt: c.edited_at ? new Date(c.edited_at).getTime() : null, reactions: heartsOnComments.get(c.id) || [] })) })),
         polls: pollsFull.map((p) => ({ ...p, authorId: p.author_id, createdAt: new Date(p.created_at).getTime(), endsAt: new Date(p.ends_at).getTime() })),
         funds,
+        documents: (docRows || []).map((d) => ({
+          id: d.id,
+          title: d.title,
+          kind: d.kind || 'other',
+          path: d.path,
+          mime: d.mime || '',
+          sizeBytes: Number(d.size_bytes || 0),
+          fundId: d.fund_id || null,
+          uploadedBy: d.uploaded_by,
+          createdAt: new Date(d.created_at).getTime(),
+        })),
         notifications: (notifications || []).map((n) => ({ ...n, createdAt: new Date(n.created_at).getTime() })),
         notifPrefs: notifPrefsRow || { announcements: true, replies: true, issues: true, polls: true, events: true, funds: true, push: false },
         archived,
@@ -1287,6 +1310,81 @@ export function AppProvider({ children }) {
       if (error) { showToast(t('fund_error')); throw error; }
       await refreshAll();
       showToast(t('fund_quota_saved'));
+    },
+    /*
+      ---------------------------------------------------------------------
+      Documentele asociației.
+
+      The file goes into a private bucket and the row beside it into the
+      table; both are staff-only to write and readable by every member, which
+      is the point — an association owes its members sight of its own records.
+
+      Two steps, in this order, and the order matters: the file first, then
+      the row. A row pointing at a file that failed to upload is a document
+      that exists in every list and opens for nobody. The other way round
+      leaves an orphan file, which is invisible and costs a few kilobytes.
+
+      The path starts with the community's id because the storage policies
+      have no other way to know which community a file belongs to — they see
+      the object, not our tables. See supabase/0017_documents.sql.
+    */
+    addDocument: async ({ file, title, kind, fundId }) => {
+      if (!file) return null;
+      if (file.size > MAX_DOC_BYTES) { showToast(t('doc_too_big')); return null; }
+
+      const dot = file.name.lastIndexOf('.');
+      const ext = dot > 0 ? file.name.slice(dot + 1).toLowerCase().replace(/[^a-z0-9]/g, '') : 'bin';
+      const path = `${cid}/${crypto.randomUUID()}.${ext}`;
+
+      const up = await supabase.storage.from('documents').upload(path, file, {
+        contentType: file.type || 'application/octet-stream',
+      });
+      if (up.error) { showToast(t('doc_error')); throw up.error; }
+
+      const { data: row, error } = await supabase.from('documents').insert({
+        community_id: cid,
+        title: title || file.name,
+        kind: kind || 'other',
+        path,
+        mime: file.type || '',
+        size_bytes: file.size,
+        fund_id: fundId || null,
+        uploaded_by: userId,
+      }).select('*').single();
+      if (error) {
+        // Take the file back out rather than leaving something nothing points at.
+        await supabase.storage.from('documents').remove([path]);
+        showToast(t('doc_error'));
+        throw error;
+      }
+      await refreshAll();
+      showToast(t('doc_added'));
+      return row.id;
+    },
+    removeDocument: async (docId) => {
+      const doc = data.documents.find((d) => d.id === docId);
+      const { error } = await supabase.from('documents').delete().eq('id', docId);
+      if (error) { showToast(t('doc_error')); throw error; }
+      // The row is what the app reads, so it goes first; the file after, and a
+      // failure there leaves an orphan rather than a broken listing.
+      if (doc) await supabase.storage.from('documents').remove([doc.path]);
+      await refreshAll();
+      showToast(t('doc_removed'));
+    },
+    /*
+      A link that works for a while and then does not.
+
+      The bucket is private, so there is no permanent address to hand out —
+      which is the whole reason it is private: a public URL for a contract is
+      forwardable to anybody, for ever, with no membership check in the way.
+      An hour is long enough to read a document and short enough that a link
+      pasted somewhere stops working.
+    */
+    documentUrl: async (path) => {
+      const { data: signed, error } = await supabase.storage
+        .from('documents').createSignedUrl(path, 3600);
+      if (error || !signed?.signedUrl) { showToast(t('doc_open_error')); return null; }
+      return signed.signedUrl;
     },
     markAllRead: async () => { await supabase.from('notifications').update({ read: true }).eq('user_id', userId).eq('community_id', cid).eq('read', false); await refreshAll(); },
     markRead: async (id) => { await supabase.from('notifications').update({ read: true }).eq('id', id); await refreshAll(); },

@@ -41,6 +41,11 @@ export default function FundDetail() {
   if (!f) return <div className="screen"><ScreenHeader title={t('fund_title')} onBack={back} /></div>;
 
   const mine = f.payments.filter((p) => p.userId === currentUser.id);
+  const docs = data.documents.filter((d) => d.fundId === f.id);
+  const openDoc = async (d) => {
+    const url = await actions.documentUrl(d.path);
+    if (url) window.open(url, '_blank', 'noopener');
+  };
   const closed = !!f.closedAt;
 
   const dueFor = (userId) => (userId in f.quotas ? f.quotas[userId] : f.amountBani);
@@ -144,6 +149,39 @@ export default function FundDetail() {
           <div style={{ fontSize: 15, lineHeight: 1.6, color: '#3f433b', whiteSpace: 'pre-wrap', marginBottom: 18 }}>
             {f.description}
           </div>
+        )}
+
+        {/*
+          The papers behind the money.
+
+          Visible to everyone, unlike the register below it: a neighbour who
+          has been asked for 250 lei is entitled to see the invoice, and this
+          is the difference between a collection that asks for trust and one
+          that earns it. The documents themselves say nothing about who is
+          behind on paying, so nothing here crosses the wall the register
+          stands behind.
+        */}
+        {(docs.length > 0 || isStaff) && (
+          <>
+            <div className="eyebrow" style={{ margin: '4px 0 10px' }}>{t('doc_fund_head')}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
+              {docs.map((d) => (
+                <button key={d.id} className="card" onClick={() => openDoc(d)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 11, textAlign: 'left', padding: 12 }}>
+                  <span style={{ fontSize: 18 }}>📎</span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.title}</span>
+                    <span className="muted" style={{ display: 'block', fontSize: 12.5, marginTop: 1 }}>{formatDate(d.createdAt, lang)}</span>
+                  </span>
+                </button>
+              ))}
+              {isStaff && (
+                <button className="btn btn--ghost" onClick={() => nav('/app/documents?fund=' + f.id)}>
+                  + {t('doc_fund_add')}
+                </button>
+              )}
+            </div>
+          </>
         )}
 
         {/*

@@ -34,7 +34,9 @@ with expected(fisier, obiect, tip, la_ce_e) as (values
   ('0016_funds',            'public.fund_payments',      'table',   'cine a plătit, cât și când'),
   ('0016_funds',            'public.fund_quotas',        'table',   'excepțiile la suma pe apartament'),
   ('0016_funds',            'public.fund_summary',       'function', 'totalurile, pentru cine nu vede rândurile'),
-  ('0016_funds',            'notification_prefs.funds',  'column',  'comutatorul pentru notificările de fonduri')
+  ('0016_funds',            'notification_prefs.funds',  'column',  'comutatorul pentru notificările de fonduri'),
+  ('0017_documents',        'public.documents',          'table',   'documentele asociației'),
+  ('0017_documents',        'public.doc_community',      'function', 'din ce comunitate e un fișier, după calea lui')
 )
 select
   e.fisier,
@@ -53,6 +55,7 @@ select
                 case e.obiect
                   when 'public.can_react'        then 'uuid,uuid'
                   when 'public.fund_summary'    then 'uuid'
+                  when 'public.doc_community'   then 'text'
                   when 'public.edit_comment'    then 'text,uuid,text'
                   when 'public.shares_community' then 'uuid'
                   when 'public.set_member_role'  then 'uuid,uuid,text'
@@ -107,6 +110,15 @@ select '0013_announcement_dates',
        exists (
          select 1 from pg_policy
           where polrelid = 'public.announcements'::regclass and polname = 'announcements_delete'
+       )
+union all
+-- Un bucket public ar face inutile toate politicile de mai sus: oricine are
+-- linkul citește fișierul, fără verificare.
+select '0017_documents',
+       'bucket-ul documents',
+       'e privat — se ajunge la fișiere doar prin linkuri care expiră',
+       exists (
+         select 1 from storage.buckets where id = 'documents' and public = false
        )
 union all
 -- Singurul rând care e adevărat prin absență: dacă tabelul vechi mai există,
