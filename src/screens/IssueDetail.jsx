@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { ScreenHeader, Badge, Avatar, HeartButton, Composer } from '../components/ui.jsx';
@@ -18,9 +18,20 @@ export default function IssueDetail() {
   // Which of your own comments you are correcting, and the menu that offered.
   const [editing, setEditing] = useState(null);
   const [menu, setMenu] = useState(null);
+  const [photoUrl, setPhotoUrl] = useState(null);
   const bindHold = useLongPress();
 
   const i = data.issues.find((x) => x.id === numId);
+
+  // The bucket is private: what's stored is a path, not an address an <img>
+  // can use directly, so it has to be exchanged for a link first.
+  useEffect(() => {
+    let cancelled = false;
+    setPhotoUrl(null);
+    if (i?.photo) actions.issuePhotoUrl(i.photo).then((url) => { if (!cancelled) setPhotoUrl(url); });
+    return () => { cancelled = true; };
+  }, [i?.photo]);
+
   if (!i) return <div className="screen"><ScreenHeader title={t('iss_title')} onBack={() => nav('/app/issues')} /></div>;
   const st = STATUS[i.status];
   const cInfo = CATEGORIES[i.category] || CATEGORIES.other;
@@ -59,7 +70,7 @@ export default function IssueDetail() {
         <h1 className="serif" style={{ fontSize: 22, fontWeight: 600, lineHeight: 1.25, margin: '0 0 10px' }}>{L(i, 'title')}</h1>
         <div className="faint" style={{ fontSize: 13, marginBottom: 14 }}>📍 {i.location} · {t('iss_reported_by')} {userById(i.reporterId).name} · {formatDate(i.createdAt, lang)}</div>
         <div style={{ fontSize: 15, lineHeight: 1.6, color: '#3f433b', whiteSpace: 'pre-wrap', marginBottom: 16 }}>{L(i, 'description')}</div>
-        {i.photo && <img src={i.photo} alt="" style={{ width: '100%', borderRadius: 14, marginBottom: 16 }} />}
+        {photoUrl && <img src={photoUrl} alt="" style={{ width: '100%', borderRadius: 14, marginBottom: 16 }} />}
 
         {/* support */}
         <button onClick={() => actions.toggleSupport(i.id)} className="btn" style={{ background: supported ? 'var(--green-600)' : '#fff', color: supported ? '#fff' : 'var(--green-600)', border: supported ? 'none' : '1px solid var(--input-border)', fontWeight: 700 }}>

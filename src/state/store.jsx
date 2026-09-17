@@ -462,7 +462,7 @@ export function AppProvider({ children }) {
           location: a.location || '',
         })),
         discussions: discussionsFull.map((d) => ({ ...d, authorId: d.author_id, createdAt: new Date(d.created_at).getTime(), replies: d.replies.map((r) => ({ ...r, authorId: r.author_id, createdAt: new Date(r.created_at).getTime(), editedAt: r.edited_at ? new Date(r.edited_at).getTime() : null, reactions: heartsOnReplies.get(r.id) || [] })) })),
-        issues: issuesFull.map((i) => ({ ...i, reporterId: i.reporter_id, photo: i.photo_url, createdAt: new Date(i.created_at).getTime(), history: i.history.map((h) => ({ ...h, byId: h.by_id, at: new Date(h.at).getTime() })), comments: i.comments.map((c) => ({ ...c, authorId: c.author_id, createdAt: new Date(c.created_at).getTime(), editedAt: c.edited_at ? new Date(c.edited_at).getTime() : null, reactions: heartsOnComments.get(c.id) || [] })) })),
+        issues: issuesFull.map((i) => ({ ...i, reporterId: i.reporter_id, photo: i.photo_path, createdAt: new Date(i.created_at).getTime(), history: i.history.map((h) => ({ ...h, byId: h.by_id, at: new Date(h.at).getTime() })), comments: i.comments.map((c) => ({ ...c, authorId: c.author_id, createdAt: new Date(c.created_at).getTime(), editedAt: c.edited_at ? new Date(c.edited_at).getTime() : null, reactions: heartsOnComments.get(c.id) || [] })) })),
         polls: pollsFull.map((p) => ({ ...p, authorId: p.author_id, createdAt: new Date(p.created_at).getTime(), endsAt: new Date(p.ends_at).getTime() })),
         funds,
         documents: (docRows || []).map((d) => ({
@@ -1027,9 +1027,9 @@ export function AppProvider({ children }) {
     },
 
     addIssue: async ({ title, category, location, description, photo }) => {
-      let photoUrl = null;
-      if (photo) photoUrl = await uploadIssuePhoto(photo, userId);
-      const { data: row, error } = await supabase.from('issues').insert({ community_id: cid, reporter_id: userId, title, category, location, description, photo_url: photoUrl, status: 'new' }).select('*').single();
+      let photoPath = null;
+      if (photo) photoPath = await uploadIssuePhoto(photo, cid, userId);
+      const { data: row, error } = await supabase.from('issues').insert({ community_id: cid, reporter_id: userId, title, category, location, description, photo_path: photoPath, status: 'new' }).select('*').single();
       if (error) throw error;
       // Not fatal: the issue itself is saved, and a missing history line must
       // not present itself to the reporter as a failed report. Logged rather
@@ -1405,6 +1405,14 @@ export function AppProvider({ children }) {
       if (error || !signed?.signedUrl) { showToast(t('doc_open_error')); return null; }
       return signed.signedUrl;
     },
+    // Same reasoning as documentUrl, for the other private bucket: a photo on
+    // an issue has no permanent address either.
+    issuePhotoUrl: async (path) => {
+      const { data: signed, error } = await supabase.storage
+        .from('issue-photos').createSignedUrl(path, 3600);
+      if (error || !signed?.signedUrl) { showToast(t('iss_photo_error')); return null; }
+      return signed.signedUrl;
+    },
     markAllRead: async () => { await supabase.from('notifications').update({ read: true }).eq('user_id', userId).eq('community_id', cid).eq('read', false); await refreshAll(); },
     markRead: async (id) => { await supabase.from('notifications').update({ read: true }).eq('id', id); await refreshAll(); },
     setNotifPref: async (key, val) => {
@@ -1453,12 +1461,17 @@ export function AppProvider({ children }) {
 
 function title_or(t) { return t || ''; }
 
-async function uploadIssuePhoto(dataUrl, userId) {
+/*
+  The bucket is private, so the address that gets a policy to agree to is the
+  community's id, not the uploader's — same convention as documents: the
+  first folder in the path is what a storage policy can actually check
+  membership against. Returns the path, not a URL: there is no permanent one.
+*/
+async function uploadIssuePhoto(dataUrl, cid, userId) {
   const res = await fetch(dataUrl);
   const blob = await res.blob();
-  const path = `${userId}/${Date.now()}.jpg`;
+  const path = `${cid}/${userId}-${Date.now()}.jpg`;
   const { error } = await supabase.storage.from('issue-photos').upload(path, blob, { contentType: 'image/jpeg' });
   if (error) throw error;
-  const { data } = supabase.storage.from('issue-photos').getPublicUrl(path);
-  return data.publicUrl;
+  return path;
 }

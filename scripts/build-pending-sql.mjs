@@ -49,6 +49,8 @@ const DESCRIERI = {
     'fondurile asociatiei: colecte punctuale, cine a platit cat si cat mai are, cu totalul vizibil tuturor si numele doar la administratie',
   '0017_documents.sql':
     'documentele asociatiei: procese-verbale, hotarari, contracte, facturi — intr-un bucket privat, cu link care expira, si cu posibilitatea de a lega un document de o colecta',
+  '0018_private_issue_photos.sql':
+    'pozele de la sesizari trec si ele intr-un bucket privat, cu link care expira, la fel ca documentele',
 };
 
 const files = readdirSync(dir)

@@ -36,7 +36,8 @@ with expected(fisier, obiect, tip, la_ce_e) as (values
   ('0016_funds',            'public.fund_summary',       'function', 'totalurile, pentru cine nu vede rândurile'),
   ('0016_funds',            'notification_prefs.funds',  'column',  'comutatorul pentru notificările de fonduri'),
   ('0017_documents',        'public.documents',          'table',   'documentele asociației'),
-  ('0017_documents',        'public.doc_community',      'function', 'din ce comunitate e un fișier, după calea lui')
+  ('0017_documents',        'public.doc_community',      'function', 'din ce comunitate e un fișier, după calea lui'),
+  ('0018_private_issue_photos', 'issues.photo_path',     'column',  'calea pozei, nu mai un link permanent')
 )
 select
   e.fisier,
@@ -119,6 +120,13 @@ select '0017_documents',
        'e privat — se ajunge la fișiere doar prin linkuri care expiră',
        exists (
          select 1 from storage.buckets where id = 'documents' and public = false
+       )
+union all
+select '0018_private_issue_photos',
+       'bucket-ul issue-photos',
+       'e privat — pozele de la sesizări nu mai au adresă permanentă',
+       exists (
+         select 1 from storage.buckets where id = 'issue-photos' and public = false
        )
 union all
 -- Singurul rând care e adevărat prin absență: dacă tabelul vechi mai există,
