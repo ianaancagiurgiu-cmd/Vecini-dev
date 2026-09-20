@@ -83,4 +83,61 @@ test.describe('Pozele de la sesizări', () => {
     expect(signed.length).toBe(0);
     await expect(page.locator('img')).toHaveCount(0);
   });
+
+  /*
+    A regression guard for a real report: the photo used to pop into being out
+    of nowhere once the signed link and the file behind it both arrived,
+    shoving the support button and everything under it down a beat after the
+    screen had already settled — which read as something being broken, not
+    as a photo merely taking a moment to load. A placeholder has to hold the
+    photo's place from the very first paint.
+  */
+  test('while the photo is still loading, its place is already held', async ({ page }) => {
+    const me = fakeUser();
+    const photoPath = 'c1/mihai-1.jpg';
+    await signedInAs(page, {
+      user: me,
+      tables: {
+        communities: [community],
+        memberships: [{ id: 'm0', user_id: me.id, community_id: 'c1', role: 'member', joined_at: new Date().toISOString() }],
+        issues: [{
+          id: 'i1', community_id: 'c1', reporter_id: me.id, title: 'Liftul se oprește',
+          description: 'Între etajul 3 și 4.', category: 'other', status: 'new', location: 'Scara A',
+          photo_path: photoPath, created_at: new Date(Date.now() - 86400000).toISOString(),
+        }],
+      },
+    });
+
+    // The file itself does not arrive until the test releases it.
+    let releaseFile;
+    const fileRequested = new Promise((resolve) => { releaseFile = resolve; });
+    await page.route(/\/storage\/v1\/object\/sign\//, async (route) => {
+      const req = route.request();
+      if (req.method() === 'OPTIONS') {
+        return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*' }, body: '' });
+      }
+      if (req.method() === 'POST') {
+        return route.fulfill({
+          status: 200, contentType: 'application/json',
+          headers: { 'access-control-allow-origin': '*' },
+          body: JSON.stringify({ signedURL: `/storage/v1/object/sign/issue-photos/${photoPath}?token=stub` }),
+        });
+      }
+      await fileRequested;
+      return route.fulfill({ status: 200, contentType: 'image/png', headers: { 'access-control-allow-origin': '*' }, body: TINY_PNG });
+    });
+
+    await page.goto('/#/app/issues/i1');
+    // Wait the screen itself in, so a slow initial render under load is not
+    // mistaken for the skeleton never having appeared.
+    await expect(page.getByRole('heading', { name: 'Liftul se oprește' })).toBeVisible();
+
+    // Its place is held before the picture exists to fill it.
+    await expect(page.locator('.iss-photo-skeleton')).toBeVisible();
+    await expect(page.locator('img')).toHaveCount(0);
+
+    releaseFile();
+    await expect(page.locator('img[src*="/storage/v1/object/sign/issue-photos/"]')).toBeVisible();
+    await expect(page.locator('.iss-photo-skeleton')).toHaveCount(0);
+  });
 });

@@ -23,12 +23,32 @@ export default function IssueDetail() {
 
   const i = data.issues.find((x) => x.id === numId);
 
-  // The bucket is private: what's stored is a path, not an address an <img>
-  // can use directly, so it has to be exchanged for a link first.
+  /*
+    The bucket is private: what's stored is a path, not an address an <img>
+    can use directly, so it has to be exchanged for a link first — which
+    used to mean the photo popped into existence out of nowhere once that
+    round trip finished, shoving everything below it down a beat after the
+    screen had already settled. The wait itself is unavoidable; being
+    surprised by it is not. A placeholder holds the photo's place from the
+    first paint, and the image is only swapped in once the browser has
+    actually finished loading it — so what replaces the placeholder is the
+    picture at its real size, not a blank rectangle that then redraws itself
+    a second time while the file streams in.
+  */
   useEffect(() => {
     let cancelled = false;
     setPhotoUrl(null);
-    if (i?.photo) actions.issuePhotoUrl(i.photo).then((url) => { if (!cancelled) setPhotoUrl(url); });
+    if (i?.photo) {
+      actions.issuePhotoUrl(i.photo).then((url) => {
+        if (cancelled || !url) return;
+        const img = new Image();
+        img.onload = () => { if (!cancelled) setPhotoUrl(url); };
+        // A broken link is still worth showing over nothing — the alt text
+        // and the browser's own broken-image mark say more than a blank spot.
+        img.onerror = () => { if (!cancelled) setPhotoUrl(url); };
+        img.src = url;
+      });
+    }
     return () => { cancelled = true; };
   }, [i?.photo]);
 
@@ -70,7 +90,21 @@ export default function IssueDetail() {
         <h1 className="serif" style={{ fontSize: 22, fontWeight: 600, lineHeight: 1.25, margin: '0 0 10px' }}>{L(i, 'title')}</h1>
         <div className="faint" style={{ fontSize: 13, marginBottom: 14 }}>📍 {i.location} · {t('iss_reported_by')} {userById(i.reporterId).name} · {formatDate(i.createdAt, lang)}</div>
         <div style={{ fontSize: 15, lineHeight: 1.6, color: '#3f433b', whiteSpace: 'pre-wrap', marginBottom: 16 }}>{L(i, 'description')}</div>
-        {photoUrl && <img src={photoUrl} alt="" style={{ width: '100%', borderRadius: 14, marginBottom: 16 }} />}
+        {i.photo && (
+          photoUrl ? (
+            <img src={photoUrl} alt="" className="iss-photo-in"
+              style={{ width: '100%', borderRadius: 14, marginBottom: 16, display: 'block' }} />
+          ) : (
+            <div aria-hidden="true" className="iss-photo-skeleton"
+              style={{ width: '100%', height: 200, borderRadius: 14, marginBottom: 16 }} />
+          )
+        )}
+        <style>{`
+          @keyframes issPhotoPulse { 0%, 100% { opacity: .55; } 50% { opacity: .85; } }
+          .iss-photo-skeleton { background: var(--border); animation: issPhotoPulse 1.4s ease-in-out infinite; }
+          @keyframes issPhotoIn { from { opacity: 0; } to { opacity: 1; } }
+          .iss-photo-in { animation: issPhotoIn .25s ease; }
+        `}</style>
 
         {/* support */}
         <button onClick={() => actions.toggleSupport(i.id)} className="btn" style={{ background: supported ? 'var(--green-600)' : '#fff', color: supported ? '#fff' : 'var(--green-600)', border: supported ? 'none' : '1px solid var(--input-border)', fontWeight: 700 }}>
