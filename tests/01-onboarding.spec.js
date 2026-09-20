@@ -173,17 +173,64 @@ test.describe('Epic 1 — Sign up with an address that is already taken', () => 
     expect(page.url()).toContain('#/signup');
   });
 
-  test('a genuinely new address is still allowed through', async ({ page }) => {
+  test('a genuinely new address is still allowed through, and told plainly what to do next', async ({ page }) => {
     await attemptSignUp(page, {
       ...OBFUSCATED_USER,
       email: 'nou@exemplu.ro',
       identities: [{ identity_id: 'i1', provider: 'email' }],
     });
 
-    // Confirmation pending, so it hands over to the login screen. The point is
-    // that the guard above does not swallow a legitimate sign-up.
+    // Confirmation pending. The point is that the guard above does not
+    // swallow a legitimate sign-up — and that what follows says what to do,
+    // and keeps saying it rather than a toast that is gone before anyone
+    // looks up from the keyboard.
     await expect(page.getByText(/Există deja un cont/)).toHaveCount(0);
+    await expect(page.getByText('Ți-am trimis un email de confirmare')).toBeVisible();
+    // The address as typed into the form, not the one the stub's fixture
+    // happens to carry — attemptSignUp always types existent@exemplu.ro.
+    await expect(page.getByText('existent@exemplu.ro')).toBeVisible();
+    expect(page.url()).toContain('#/signup');
+
+    await page.getByRole('button', { name: 'Am confirmat, intră în cont' }).click();
     await page.waitForURL(/#\/login/, { timeout: 5000 });
+  });
+});
+
+/*
+  Signing in before the confirmation link has been opened. Supabase answers
+  this with the same shape of error as a wrong password — told apart here,
+  or someone who typed everything right the first time hears they got their
+  own new password wrong, which is a worse dead end than the one this whole
+  file exists to fix.
+*/
+test.describe('Epic 1 — Signing in before confirming email', () => {
+  test('the message says what is actually wrong, not "wrong password"', async ({ page }) => {
+    await page.route('**/auth/v1/token*', (r) => r.fulfill({
+      status: 400, contentType: 'application/json',
+      body: JSON.stringify({ code: 400, error_code: 'email_not_confirmed', msg: 'Email not confirmed' }),
+    }));
+    await page.goto('/#/login');
+    await page.locator('input[type=email]').fill('nou@exemplu.ro');
+    await page.locator('input[type=password]').fill('parola123');
+    await page.getByRole('button', { name: 'Intră în cont', exact: true }).click();
+
+    await expect(page.getByText(/emailul nu a fost încă confirmat/)).toBeVisible();
+    await expect(page.getByText('Email sau parolă greșite')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Trimite din nou emailul' })).toBeVisible();
+  });
+
+  test('a genuine wrong password still gets the ordinary message', async ({ page }) => {
+    await page.route('**/auth/v1/token*', (r) => r.fulfill({
+      status: 400, contentType: 'application/json',
+      body: JSON.stringify({ code: 400, error_code: 'invalid_credentials', msg: 'Invalid login credentials' }),
+    }));
+    await page.goto('/#/login');
+    await page.locator('input[type=email]').fill('cineva@exemplu.ro');
+    await page.locator('input[type=password]').fill('gresit');
+    await page.getByRole('button', { name: 'Intră în cont', exact: true }).click();
+
+    await expect(page.getByText('Email sau parolă greșite. Mai încearcă o dată.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Trimite din nou emailul' })).toHaveCount(0);
   });
 });
 

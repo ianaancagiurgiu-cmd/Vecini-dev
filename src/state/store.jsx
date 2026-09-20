@@ -589,6 +589,21 @@ export function AppProvider({ children }) {
   };
   const signInEmail = async (email, password) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      // Supabase answers an unconfirmed address with the same shape as a
+      // wrong password. Told apart here, or "wrong password" is what a
+      // brand new account hears the first time it tries to sign in.
+      if (error.code === 'email_not_confirmed' || /email not confirmed/i.test(error.message || '')) {
+        throw taggedError('email_not_confirmed');
+      }
+      throw error;
+    }
+  };
+  // A second copy of the confirmation link, for when the first is slow to
+  // arrive or never does. Supabase rate-limits this on its own; a refusal
+  // here just means "wait a bit", not that anything went wrong.
+  const resendSignupEmail = async (email) => {
+    const { error } = await supabase.auth.resend({ type: 'signup', email });
     if (error) throw error;
   };
   const signInGoogle = async () => {
@@ -1448,7 +1463,7 @@ export function AppProvider({ children }) {
     authed, session, hasCommunity: !!activeCommunityId,
     authLoading: session === undefined, dataLoading, membershipResolved,
     userById, actions, toast, showToast,
-    signUpEmail, signInEmail, signInGoogle, sendPasswordReset, signOut,
+    signUpEmail, signInEmail, resendSignupEmail, signInGoogle, sendPasswordReset, signOut,
     setNewPassword, changePassword, changeEmail, pendingEmail, recoveryMode,
     setName, setApartment, setContact, deleteAccount, profile, recheckEmail,
     // Google-only accounts have no password to change; offer "set one" instead.

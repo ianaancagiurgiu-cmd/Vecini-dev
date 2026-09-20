@@ -6,13 +6,17 @@ import { PasswordInput } from '../components/ui.jsx';
 
 export default function SignUp() {
   const nav = useNavigate();
-  const { t, signUpEmail, signInGoogle, showToast } = useApp();
+  const { t, signUpEmail, resendSignupEmail, signInGoogle, showToast } = useApp();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [pw, setPw] = useState('');
   const [pw2, setPw2] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  // Set once the account is created and waiting on a confirmation email —
+  // the address it went to, so the screen after can still say it.
+  const [sentTo, setSentTo] = useState('');
+  const [resending, setResending] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -26,12 +30,8 @@ export default function SignUp() {
     setBusy(true);
     try {
       const { needsConfirmation } = await signUpEmail(name.trim(), email, pw);
-      if (needsConfirmation) {
-        showToast(t('auth_confirm_sent'));
-        nav('/login');
-      } else {
-        nav('/join');
-      }
+      if (needsConfirmation) setSentTo(email);
+      else nav('/join');
     } catch (e2) {
       // The store tags this one, rather than us matching on an English sentence
       // that the auth service is free to reword.
@@ -41,6 +41,46 @@ export default function SignUp() {
     }
   };
   const google = async () => { setErr(''); try { await signInGoogle(); } catch (e2) { setErr(e2.message); } };
+  const resend = async () => {
+    setResending(true);
+    try { await resendSignupEmail(sentTo); showToast(t('auth_confirm_resent')); }
+    catch (e2) { showToast(t('auth_confirm_resent')); } // rate-limited or not, nothing more to tell them
+    finally { setResending(false); }
+  };
+
+  /*
+    A toast that vanishes in three seconds was the whole message a new
+    account got, immediately followed by a plain login form with no memory
+    of why it was there. Whoever missed the toast — looking at the keyboard,
+    not the screen — landed with an account that existed and no idea of it.
+    This stays up until they leave, the way Forgot's own "sent" screen does.
+  */
+  if (sentTo) {
+    return (
+      <AuthShell title={t('auth_signup_title')} sub={t('auth_signup_sub')}>
+        <div className="card" style={{ background: 'var(--status-done-bg)', border: 'none', marginBottom: 14 }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 22 }}>✅</span>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--green-500)', marginBottom: 6 }}>
+                {t('auth_confirm_sent')}
+              </div>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--green-500)', marginBottom: 6 }}>{sentTo}</div>
+              <p style={{ margin: '0 0 10px', fontSize: 13.5, lineHeight: 1.5, color: 'var(--green-500)' }}>
+                {t('auth_confirm_browser')}
+              </p>
+            </div>
+          </div>
+        </div>
+        <button className="btn btn--primary" style={{ marginBottom: 10 }} onClick={() => nav('/login')}>
+          {t('auth_confirm_cta')}
+        </button>
+        <button className="btn btn--ghost" disabled={resending} onClick={resend}>
+          {resending ? t('auth_confirm_resending') : t('auth_confirm_resend')}
+        </button>
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell title={t('auth_signup_title')} sub={t('auth_signup_sub')}
