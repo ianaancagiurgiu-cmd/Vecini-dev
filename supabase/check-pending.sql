@@ -37,7 +37,8 @@ with expected(fisier, obiect, tip, la_ce_e) as (values
   ('0016_funds',            'notification_prefs.funds',  'column',  'comutatorul pentru notificările de fonduri'),
   ('0017_documents',        'public.documents',          'table',   'documentele asociației'),
   ('0017_documents',        'public.doc_community',      'function', 'din ce comunitate e un fișier, după calea lui'),
-  ('0018_private_issue_photos', 'issues.photo_path',     'column',  'calea pozei, nu mai un link permanent')
+  ('0018_private_issue_photos', 'issues.photo_path',     'column',  'calea pozei, nu mai un link permanent'),
+  ('0019_legacy_issue_photo_paths', 'public.legacy_issue_photos', 'table', 'pozele vechi, corectate — vezi mai jos dacă e completă')
 )
 select
   e.fisier,

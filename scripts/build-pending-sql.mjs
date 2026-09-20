@@ -51,6 +51,8 @@ const DESCRIERI = {
     'documentele asociatiei: procese-verbale, hotarari, contracte, facturi — intr-un bucket privat, cu link care expira, si cu posibilitatea de a lega un document de o colecta',
   '0018_private_issue_photos.sql':
     'pozele de la sesizari trec si ele intr-un bucket privat, cu link care expira, la fel ca documentele',
+  '0019_legacy_issue_photo_paths.sql':
+    'corectie: pozele vechi de dinainte de 0018 sunt readuse la calea lor reala, ca sa se mai vada',
 };
 
 const files = readdirSync(dir)
