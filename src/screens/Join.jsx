@@ -9,6 +9,10 @@ import { savePendingInvite, readPendingInvite, clearPendingInvite } from '../lib
 
     code -> confirm which community -> account -> inside
 
+  or, where the community asks for it, one stop short of inside: the request
+  waits for its administrator, and this screen says so plainly instead of
+  leaving somebody at a door that will not open and does not say why.
+
   This screen deliberately works while signed out. Someone holding a code has
   no account yet, so requiring one first sent them to the login screen and threw
   the code away. The code is checked first — cheap, and it catches a typo before
@@ -20,13 +24,16 @@ import { savePendingInvite, readPendingInvite, clearPendingInvite } from '../lib
 export default function Join() {
   const nav = useNavigate();
   const { code: codeFromLink } = useParams();
-  const { t, joinByCode, findCommunityByCode, authed, authLoading } = useApp();
+  const { t, joinByCode, findCommunityByCode, withdrawJoinRequest, authed, authLoading } = useApp();
 
   const [code, setCode] = useState(codeFromLink || '');
   const [community, setCommunity] = useState(null);
   const [err, setErr] = useState('');
   const [checking, setChecking] = useState(false);
   const [joining, setJoining] = useState(false);
+  // { id, name } of the community whose administrator has yet to say yes.
+  const [waiting, setWaiting] = useState(null);
+  const [stillWaiting, setStillWaiting] = useState(false);
 
   const check = useCallback(async (raw) => {
     const clean = (raw || '').trim();
@@ -53,14 +60,34 @@ export default function Join() {
   const join = useCallback(async (raw) => {
     setJoining(true);
     try {
-      await joinByCode(raw);
+      const res = await joinByCode(raw);
+      if (res.status === 'pending') {
+        /*
+          The code stays parked. Coming back later runs this same call, which
+          answers "member" once the administrator has agreed — so being let in
+          needs nothing from the person waiting except opening the app again.
+        */
+        savePendingInvite(raw);
+        setStillWaiting(!!waiting);
+        setWaiting({ id: res.id, name: res.name });
+        setJoining(false);
+        return;
+      }
       clearPendingInvite();
       nav('/app');
     } catch (e) {
+      setWaiting(null);
       setErr(t('join_bad_code'));
       setJoining(false);
     }
-  }, [joinByCode, nav, t]);
+  }, [joinByCode, nav, t, waiting]);
+
+  const withdraw = async () => {
+    try { await withdrawJoinRequest(waiting.id); } catch (e) { /* nothing left to withdraw is the same outcome */ }
+    clearPendingInvite();
+    setWaiting(null); setStillWaiting(false); setCommunity(null); setCode('');
+    nav('/join', { replace: true });
+  };
 
   // Opened from a shared link: check the code straight away, no typing.
   useEffect(() => {
@@ -75,7 +102,10 @@ export default function Join() {
     if (authLoading || !authed) return;
     const pending = codeFromLink || readPendingInvite();
     if (pending) join(pending);
-  }, [authed, authLoading, codeFromLink, join]);
+    // Once per arrival, not once per render: `join` is deliberately left out
+    // of the list below. It changes identity when the waiting state does, and
+    // re-running on that would ask the same question in a loop.
+  }, [authed, authLoading, codeFromLink]);
 
   if (authLoading) return null;
 
@@ -86,6 +116,26 @@ export default function Join() {
         <div className="serif" style={{ fontSize: 20, color: 'var(--green-ink)' }}>{t('join_prepare')}</div>
         <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
       </div>
+    );
+  }
+
+  // Asked, and not yet answered.
+  if (waiting) {
+    return (
+      <AuthShell title={t('join_pending_title')} sub={t('join_pending_sub')}>
+        <div className="card" style={{ textAlign: 'center', padding: '22px 16px', marginBottom: 14 }}>
+          <div style={{ fontSize: 30, marginBottom: 8 }}>⏳</div>
+          <div className="serif" style={{ fontSize: 21, color: 'var(--green-ink)', lineHeight: 1.3 }}>{waiting.name}</div>
+        </div>
+        <p className="muted" style={{ fontSize: 14, lineHeight: 1.5, margin: '0 0 16px', textAlign: 'center' }}>{t('join_pending_body')}</p>
+        {stillWaiting && (
+          <div style={{ color: 'var(--terracotta)', fontSize: 13.5, fontWeight: 600, marginBottom: 12, textAlign: 'center' }}>{t('join_pending_still')}</div>
+        )}
+        <button className="btn btn--primary" style={{ marginBottom: 10 }} onClick={() => join(readPendingInvite() || code || codeFromLink)}>
+          {t('join_pending_check')}
+        </button>
+        <button className="btn btn--ghost" onClick={withdraw}>{t('join_pending_withdraw')}</button>
+      </AuthShell>
     );
   }
 

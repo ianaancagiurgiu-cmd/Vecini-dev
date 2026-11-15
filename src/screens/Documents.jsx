@@ -5,6 +5,7 @@ import { useBack } from '../lib/useBack.js';
 import { ScreenHeader, Empty } from '../components/ui.jsx';
 import { ActionMenu } from '../components/MessageMenu.jsx';
 import { formatDate } from '../lib/format.js';
+import { LIMITS } from '../lib/limits.js';
 
 /*
   Documentele asociației.
@@ -187,7 +188,7 @@ export default function Documents() {
               <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
                 <div className="eyebrow" style={{ marginBottom: 6 }}>{t('doc_rename')}</div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <input className="input" value={draft} aria-label={t('doc_rename')}
+                  <input maxLength={LIMITS.title} className="input" value={draft} aria-label={t('doc_rename')}
                     onChange={(e) => setDraft(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && saveTitle(d)} style={{ flex: 1 }} />
                   <button className="btn btn--primary" style={{ width: 'auto', padding: '0 16px' }}

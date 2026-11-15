@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { AuthShell, GoogleButton, Divider } from './AuthShell.jsx';
 import { PasswordInput } from '../components/ui.jsx';
+import { LIMITS } from '../lib/limits.js';
 
 export default function SignUp() {
   const nav = useNavigate();
@@ -89,7 +90,7 @@ export default function SignUp() {
       <Divider label={t('auth_or')} />
       <form onSubmit={submit}>
         <label className="field-label">{t('auth_name')}</label>
-        <input className="input" value={name} onChange={(e) => { setName(e.target.value); setErr(''); }} style={{ marginBottom: 14 }} />
+        <input maxLength={LIMITS.personName} className="input" value={name} onChange={(e) => { setName(e.target.value); setErr(''); }} style={{ marginBottom: 14 }} />
         <label className="field-label">{t('auth_email')}</label>
         <input className="input" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErr(''); }} style={{ marginBottom: 14 }} />
         <label className="field-label">{t('auth_password')}</label>

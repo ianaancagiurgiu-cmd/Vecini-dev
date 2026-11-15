@@ -107,12 +107,18 @@ scenario('FON-09', 'Un moderator își trece singur plata ca făcută',
   }, { decide: 'Regula din documentație e că „cine a dat banii nu e niciodată cel care a scris plata”. Pentru un vecin simplu, baza de date o impune. Pentru un moderator sau administrator care își plătește propria cotă, nu — își poate confirma singur plata. Variante: cere ca plata proprie să fie înregistrată de alt membru al administrației, sau acceptă situația ca firească în asociațiile mici.' });
 
 scenario('FON-10', 'O sumă absurd de mare la un fond',
-  'Fondul greșit poate arăta ce vrea; celelalte fonduri ale comunității trebuie să rămână vizibile.',
+  'Refuzată: e o greșeală de tastare, nu o colectă. Totalurile celorlalte fonduri rămân vizibile.',
   async ({ as }) => {
-    expectOk(await as(U.ana).run(`insert into public.funds (community_id, title, amount_bani, created_by) values ($1, 'Greșeală de tastare', 9000000000000000000, $2)`, [C.A, U.ana]), 1);
+    const a = as(U.ana);
+    expectError(await a.run(`insert into public.funds (community_id, title, amount_bani, created_by) values ($1, 'Greșeală de tastare', 9000000000000000000, $2)`, [C.A, U.ana]), /funds_amount_sane/);
+    expectError(await a.run(`insert into public.fund_payments (fund_id, user_id, amount_bani, recorded_by) values ($1, $2, 9000000000000000000, $3)`, [A.fund, U.ioana, U.ana]), /fund_payments_amount_sane/);
+    expectError(await a.run(`insert into public.fund_quotas (fund_id, user_id, amount_bani) values ($1, $2, 9000000000000000000)`, [A.fund, U.ioana]), /fund_quotas_amount_sane/);
+    // The largest amount that is allowed, for every home, still adds up.
+    expectOk(await a.run(`insert into public.funds (community_id, title, amount_bani, created_by) values ($1, 'La limită', 10000000000, $2)`, [C.A, U.ana]), 1);
     const r = await as(U.ioana).run(`select * from public.fund_summary($1)`, [C.A]);
-    assert.ok(!r.error, `un singur fond cu sumă uriașă strică totalurile tuturor fondurilor: ${r.error?.message}`);
-  }, { doc: 'Migrarea 0016: totalul e o sumă; nimic nu îi limitează mărimea.' });
+    assert.ok(!r.error, `totalurile dau eroare: ${r.error?.message}`);
+    assert.equal(r.rowCount, 3);
+  }, { doc: 'Migrarea 0023: „refusing it keeps the arithmetic far from the edge”.' });
 
 scenario('FON-11', 'Un fond încheiat',
   'Rămâne vizibil tuturor membrilor, cu tot cu totaluri.',
@@ -497,8 +503,11 @@ scenario('DAT-04', 'Valori lipsă acolo unde sunt obligatorii, și valori din af
     expectError(await a.run(`insert into public.funds (community_id, title, amount_bani, created_by) values ($1, null, 100, $2)`, [C.A, U.ana]), /null value/);
     expectError(await a.run(`update public.communities set kind = 'castel' where id = $1`, [C.A]), /check constraint/);
     expectError(await a.run(`update public.communities set join_mode = 'oricine' where id = $1`, [C.A]), /check constraint/);
-    expectError(await as(U.dan).run(`insert into public.discussions (community_id, author_id, title, body, status) values ($1, $2, 'x', 'y', 'fixat')`, [C.A, U.dan]), /check constraint/);
-    expectError(await as(U.dan).run(`insert into public.issues (community_id, reporter_id, title, description, status) values ($1, $2, 'x', 'y', 'urgent')`, [C.A, U.dan]), /check constraint/);
+    // A neighbour does not choose a starting status at all; staff choose from the list.
+    expectBlocked(await as(U.dan).run(`insert into public.discussions (community_id, author_id, title, body, status) values ($1, $2, 'x', 'y', 'fixat')`, [C.A, U.dan]));
+    expectBlocked(await as(U.dan).run(`insert into public.issues (community_id, reporter_id, title, description, status) values ($1, $2, 'x', 'y', 'urgent')`, [C.A, U.dan]));
+    expectError(await as(U.mihai).run(`insert into public.discussions (community_id, author_id, title, body, status) values ($1, $2, 'x', 'y', 'fixat')`, [C.A, U.mihai]), /check constraint/);
+    expectError(await as(U.mihai).run(`update public.issues set status = 'urgent' where id = $1`, [A.issue]), /check constraint/);
     expectError(await as(U.dan).run(`insert into public.issue_comments (issue_id, author_id, body) values ($1, $2, 'x')`, ['00000000-0000-4000-8000-000000000000', U.dan]), /row-level security/);
   }, { doc: 'Migrările 0001, 0006, 0016.' });
 

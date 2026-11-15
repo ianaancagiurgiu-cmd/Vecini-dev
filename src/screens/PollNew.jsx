@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { ScreenHeader } from '../components/ui.jsx';
+import { LIMITS } from '../lib/limits.js';
 
 export default function PollNew() {
   const nav = useNavigate();
@@ -34,13 +35,13 @@ export default function PollNew() {
       <ScreenHeader title={t('poll_create_title')} onBack={() => nav('/app/polls')} />
       <div className="pad" style={{ paddingTop: 20 }}>
         <label className="field-label">{t('poll_f_q')} <span className="faint">· {t('required')}</span></label>
-        <input className="input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ex: Schimbăm firma de curățenie?" style={{ marginBottom: 18 }} />
+        <input maxLength={LIMITS.question} className="input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ex: Schimbăm firma de curățenie?" style={{ marginBottom: 18 }} />
 
         <label className="field-label">{t('poll_f_opt')} <span className="faint">· min. 2</span></label>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 10 }}>
           {opts.map((o, i) => (
             <div key={i} style={{ display: 'flex', gap: 8 }}>
-              <input className="input" value={o} onChange={(e) => setOpt(i, e.target.value)} placeholder={`Opțiunea ${i + 1}`} style={{ flex: 1 }} />
+              <input maxLength={LIMITS.option} className="input" value={o} onChange={(e) => setOpt(i, e.target.value)} placeholder={`Opțiunea ${i + 1}`} style={{ flex: 1 }} />
               {opts.length > 2 && <button onClick={() => removeOpt(i)} style={{ border: '1px solid var(--input-border)', background: '#fff', borderRadius: 11, width: 46, color: 'var(--ink-300)', fontSize: 18 }}>×</button>}
             </div>
           ))}

@@ -4,6 +4,7 @@ import { useApp } from '../state/store.jsx';
 import { ScreenHeader, Badge, Avatar, HeartButton, Composer } from '../components/ui.jsx';
 import { useLongPress, ActionMenu, PencilIcon } from '../components/MessageMenu.jsx';
 import { timeAgo, formatDate, CATEGORIES, catLabel, STATUS, canStillEdit } from '../lib/format.js';
+import { LIMITS } from '../lib/limits.js';
 
 const NEXT = { new: ['progress', 'resolved'], progress: ['resolved', 'new'], resolved: ['progress'] };
 
@@ -124,7 +125,7 @@ export default function IssueDetail() {
             </div>
             {newStatus && (
               <>
-                <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder={t('iss_status_note')} style={{ width: '100%', borderRadius: 11, border: 'none', padding: 12, fontSize: 14, resize: 'vertical', marginBottom: 10, fontFamily: 'var(--font-ui)' }} />
+                <textarea maxLength={LIMITS.note} value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder={t('iss_status_note')} style={{ width: '100%', borderRadius: 11, border: 'none', padding: 12, fontSize: 14, resize: 'vertical', marginBottom: 10, fontFamily: 'var(--font-ui)' }} />
                 <button className="btn btn--primary" onClick={applyStatus} disabled={!note.trim()}>{t('iss_update_cta')}</button>
               </>
             )}

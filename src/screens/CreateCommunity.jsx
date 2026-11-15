@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link, Navigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { AuthShell } from './AuthShell.jsx';
+import { LIMITS } from '../lib/limits.js';
 
 export default function CreateCommunity() {
   const nav = useNavigate();
@@ -32,9 +33,9 @@ export default function CreateCommunity() {
       footer={<Link to="/join" style={{ color: 'var(--green-600)', fontWeight: 700, fontSize: 14 }}>{t('back')}</Link>}>
       <form onSubmit={submit}>
         <label className="field-label">{t('create_name')}</label>
-        <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Aleea Castanilor 12" style={{ marginBottom: 14 }} />
+        <input maxLength={LIMITS.communityName} className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Aleea Castanilor 12" style={{ marginBottom: 14 }} />
         <label className="field-label">{t('create_addr')}</label>
-        <input className="input" value={addr} onChange={(e) => setAddr(e.target.value)} placeholder="Str. …" style={{ marginBottom: 18 }} />
+        <input maxLength={LIMITS.communityAddress} className="input" value={addr} onChange={(e) => setAddr(e.target.value)} placeholder="Str. …" style={{ marginBottom: 18 }} />
         {err && <div style={{ color: 'var(--terracotta)', fontSize: 13.5, fontWeight: 600, marginBottom: 12 }}>{err}</div>}
         <button className="btn btn--primary" type="submit" disabled={!name.trim() || busy}>{t('create_cta')}</button>
       </form>

@@ -166,6 +166,24 @@ function applyQuery(rows, params) {
   return out;
 }
 
+/*
+  Functions whose answer is a fact about other fixtures rather than a fixture
+  of its own. Poll counts come from poll_results since the ballot became
+  secret; a spec that seeds options and votes should get the totals those
+  imply without having to write them out a second time, and a spec that
+  wants something else can still name 'rpc/poll_results' in its tables.
+*/
+function derived(table, fixtures) {
+  if (table === 'rpc/poll_results') {
+    return (fixtures.poll_options || []).map((o) => ({
+      poll_id: o.poll_id,
+      option_id: o.id,
+      votes: (fixtures.poll_votes || []).filter((v) => v.poll_id === o.poll_id && v.option_id === o.id).length,
+    }));
+  }
+  return [];
+}
+
 /**
  * Signs the browser in as `user` and answers every REST read from `tables`.
  * Anything not listed answers with an empty list, which is what most of the
@@ -218,7 +236,7 @@ export async function signedInAs(page, { user = fakeUser(), tables = {}, onboard
 
     const url = new URL(req.url());
     const table = url.pathname.split('/rest/v1/')[1].split('?')[0];
-    const rows = applyQuery(fixtures[table] || [], url.searchParams);
+    const rows = applyQuery(fixtures[table] || derived(table, fixtures), url.searchParams);
     // PostgREST answers a single object, not a list, when the caller asked for
     // one — which is how .single() / .maybeSingle() are sent over the wire.
     const wantsOne = (req.headers()['accept'] || '').includes('pgrst.object');

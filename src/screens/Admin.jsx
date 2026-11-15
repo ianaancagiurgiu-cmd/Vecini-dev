@@ -66,7 +66,7 @@ export default function Admin() {
           <Item icon="💶" label={t('fund_title')} sub={t('admin_funds_sub')} onClick={() => nav('/app/funds')} />
           <Item icon="📄" label={t('doc_title')} sub={t('admin_docs_sub')} onClick={() => nav('/app/documents')} />
           <Item icon="🛡️" label={t('admin_moderation')} sub={t('admin_mod_queue')} onClick={() => nav('/app/admin/moderation')} badge={pending} />
-          <Item icon="👥" label={t('admin_members_title')} sub={counted('admin_members', data.members.length)} onClick={() => nav('/app/admin/members')} adminOnly />
+          <Item icon="👥" label={t('admin_members_title')} sub={counted('admin_members', data.members.length) + (data.joinRequests.length ? ` · ${t('admin_requests_title')}: ${data.joinRequests.length}` : '')} onClick={() => nav('/app/admin/members')} adminOnly />
           <Item icon="⚙︎" label={t('admin_settings')} sub={data.community.code} onClick={() => nav('/app/admin/settings')} adminOnly />
         </div>
       </div>

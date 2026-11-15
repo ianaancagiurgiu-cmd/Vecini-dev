@@ -211,8 +211,20 @@ export async function setup() {
   await c.query(readFileSync(here('./shim.sql'), 'utf8'));
   const dir = here('../supabase/');
   const files = readdirSync(dir).filter((f) => /^\d{4}_.*\.sql$/.test(f)).sort();
-  for (const f of files) {
-    try { await c.query(readFileSync(dir + f, 'utf8')); } catch (e) { throw new Error(`${f}: ${e.message}`); }
+  /*
+    VECINI_TEST_PASSES=2 applies the whole sequence twice before anything is
+    seeded. Every migration says "safe to run more than once", and the bundle
+    Iana pastes is all of them in order — so the claim worth checking is not
+    that one file survives itself, but that running everything again leaves
+    the rules exactly where a single run does. Some early files recreate a
+    policy a later one tightened; in order, the later one always has the last
+    word, and this is what proves it.
+  */
+  const passes = Number(process.env.VECINI_TEST_PASSES || 1);
+  for (let pass = 0; pass < passes; pass++) {
+    for (const f of files) {
+      try { await c.query(readFileSync(dir + f, 'utf8')); } catch (e) { throw new Error(`${f} (trecerea ${pass + 1}): ${e.message}`); }
+    }
   }
   /*
     For checking the checker: a file of SQL applied on top of the migrations,

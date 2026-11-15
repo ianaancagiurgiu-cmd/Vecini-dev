@@ -73,3 +73,12 @@ grant usage on schema public, auth, storage to anon, authenticated, service_role
 grant all on all tables in schema storage to anon, authenticated, service_role;
 alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
 alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
+/*
+  And every function. This one is easy to get wrong in the comfortable
+  direction: "revoke all on function … from public" reads as though it shuts
+  visitors out, and on a plain PostgreSQL it does. On Supabase it does not —
+  anon holds its own grant, made by these default privileges, and revoking
+  from PUBLIC leaves it standing. A shim without this line makes the suite
+  stricter than production, which is the one way a test suite must not lie.
+*/
+alter default privileges in schema public grant all on functions to anon, authenticated, service_role;

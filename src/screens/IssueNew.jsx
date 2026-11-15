@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { ScreenHeader } from '../components/ui.jsx';
 import { CATEGORIES, catLabel, ISSUE_CATS } from '../lib/format.js';
+import { LIMITS } from '../lib/limits.js';
 
 export default function IssueNew() {
   const nav = useNavigate();
@@ -55,7 +56,7 @@ export default function IssueNew() {
       <ScreenHeader title={t('iss_report_title')} onBack={() => nav('/app/issues')} />
       <div className="pad" style={{ paddingTop: 20 }}>
         <label className="field-label">{t('iss_f_title')} <span className="faint">· {t('required')}</span></label>
-        <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Bec ars pe scara A" style={{ marginBottom: 16 }} />
+        <input maxLength={LIMITS.title} className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Bec ars pe scara A" style={{ marginBottom: 16 }} />
 
         <label className="field-label">{t('iss_f_type')} <span className="faint">· {t('required')}</span></label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
@@ -65,10 +66,10 @@ export default function IssueNew() {
         </div>
 
         <label className="field-label">{t('iss_f_loc')} <span className="faint">· {t('optional')}</span></label>
-        <input className="input" value={loc} onChange={(e) => setLoc(e.target.value)} placeholder="Ex: Scara A, parter" style={{ marginBottom: 16 }} />
+        <input maxLength={LIMITS.location} className="input" value={loc} onChange={(e) => setLoc(e.target.value)} placeholder="Ex: Scara A, parter" style={{ marginBottom: 16 }} />
 
         <label className="field-label">{t('iss_f_desc')} <span className="faint">· {t('required')}</span></label>
-        <textarea className="input" value={desc} onChange={(e) => setDesc(e.target.value)} rows={5} placeholder="Descrie problema…" style={{ marginBottom: 16 }} />
+        <textarea maxLength={LIMITS.body} className="input" value={desc} onChange={(e) => setDesc(e.target.value)} rows={5} placeholder="Descrie problema…" style={{ marginBottom: 16 }} />
 
         <label className="field-label">{t('iss_f_photo')} <span className="faint">· {t('optional')}</span></label>
         <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, border: '1.5px dashed var(--input-border)', borderRadius: 13, padding: photo ? 8 : 22, marginBottom: 20, cursor: 'pointer', background: 'var(--app-bg)' }}>

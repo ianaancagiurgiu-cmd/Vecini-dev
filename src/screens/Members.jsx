@@ -45,6 +45,33 @@ export default function Members() {
     <div className="screen">
       <ScreenHeader title={t('admin_members_title')} onBack={() => nav('/app/admin')} kicker={counted('admin_members', data.members.length)} />
       <div className="pad" style={{ paddingTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {/* People waiting at the door come first: they are the only thing on
+            this screen that somebody else is waiting on. */}
+        {data.joinRequests.length > 0 && (
+          <>
+            <div className="eyebrow">{t('admin_requests_title')}</div>
+            {data.joinRequests.map((r) => {
+              const u = userById(r.userId);
+              return (
+                <div key={r.userId} className="card" style={{ background: 'var(--status-new-bg)', border: 'none' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <Avatar user={u} size={42} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14.5 }}>{u.name}</div>
+                      <div className="faint" style={{ fontSize: 12 }}>{t('admin_request_since')} {formatDate(r.createdAt, lang)}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                    <button className="btn btn--primary" disabled={busy} style={{ flex: 1, padding: '9px', fontSize: 13 }}
+                      onClick={() => run(() => actions.decideJoinRequest(r.userId, true))}>{t('admin_request_approve')}</button>
+                    <SmallBtn tone="danger" onClick={() => run(() => actions.decideJoinRequest(r.userId, false))}>{t('admin_request_reject')}</SmallBtn>
+                  </div>
+                </div>
+              );
+            })}
+            <div className="eyebrow" style={{ marginTop: 8 }}>{t('admin_members_title')}</div>
+          </>
+        )}
         {data.members.map((m) => {
           const u = userById(m.userId);
           const rc = roleColors[m.role];

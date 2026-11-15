@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { ScreenHeader, Avatar } from '../components/ui.jsx';
 import PendingEmail from '../components/PendingEmail.jsx';
+import { LIMITS } from '../lib/limits.js';
 
 /*
   Everything the app knows about you as an account holder, in one place, plus
@@ -176,7 +177,7 @@ export default function Account() {
             name every byline in the community carries. */}
         <div className="eyebrow" style={{ margin: '14px 0 2px' }}>{t('acc_name')}</div>
         <div className="card">
-          <input className="input" type="text" autoComplete="name" value={name}
+          <input maxLength={LIMITS.personName} className="input" type="text" autoComplete="name" value={name}
             onChange={(e) => { setNameField(e.target.value); setNameErr(''); }} />
           <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45, marginTop: 8 }}>{t('acc_name_hint')}</div>
           {nameErr && <div style={{ color: 'var(--terracotta)', fontSize: 13, fontWeight: 600, marginTop: 8 }}>{nameErr}</div>}
@@ -192,7 +193,7 @@ export default function Account() {
             way to see it was also the only place it could never be set. */}
         <div className="eyebrow" style={{ margin: '18px 0 2px' }}>{t(`acc_apartment_${kind}`)}</div>
         <div className="card">
-          <input id="acc-apartment" className="input" type="text" value={apartment}
+          <input maxLength={LIMITS.apartment} id="acc-apartment" className="input" type="text" value={apartment}
             placeholder={t(`acc_apartment_ph_${kind}`)}
             onChange={(e) => setApartmentField(e.target.value)} />
           <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45, marginTop: 8 }}>{t(`acc_apartment_hint_${kind}`)}</div>
@@ -215,7 +216,7 @@ export default function Account() {
             optional line, and burying it would guarantee nobody fills it in. */}
         <div className="eyebrow" style={{ margin: '18px 0 2px' }}>{t('acc_phone')}</div>
         <div className="card">
-          <input className="input" type="tel" autoComplete="tel" inputMode="tel"
+          <input maxLength={LIMITS.phone} className="input" type="tel" autoComplete="tel" inputMode="tel"
             value={phone} onChange={(e) => { setPhoneField(e.target.value); setPhoneErr(''); }} />
           <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45, marginTop: 8 }}>{t('acc_phone_hint')}</div>
           {phoneErr && <div style={{ color: 'var(--terracotta)', fontSize: 13, fontWeight: 600, marginTop: 8 }}>{phoneErr}</div>}

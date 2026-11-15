@@ -239,8 +239,11 @@ scenario('SON-01', 'Un vecin votează de două ori aceeași variantă',
   'Al doilea vot e refuzat.',
   async ({ as, sql }) => {
     expectOk(await as(U.dan).run(`insert into public.poll_votes (poll_id, option_id, user_id) values ($1, $2, $3)`, [A.poll, A.opt2, U.dan]), 1);
-    expectError(await as(U.dan).run(`insert into public.poll_votes (poll_id, option_id, user_id) values ($1, $2, $3)`, [A.poll, A.opt2, U.dan]), /duplicate key/);
+    expectError(await as(U.dan).run(`insert into public.poll_votes (poll_id, option_id, user_id) values ($1, $2, $3)`, [A.poll, A.opt2, U.dan]), /already_voted|duplicate key/);
     assert.equal((await sql(`select count(*)::int n from public.poll_votes where poll_id = $1 and user_id = $2`, [A.poll, U.dan]))[0].n, 1);
+    // The same in a poll that takes several answers: the same answer twice is still once.
+    await as(U.dan).run(`insert into public.poll_votes (poll_id, option_id, user_id) values ($1, $2, $3)`, [A.pollMulti, A.optM1, U.dan]);
+    expectError(await as(U.dan).run(`insert into public.poll_votes (poll_id, option_id, user_id) values ($1, $2, $3)`, [A.pollMulti, A.optM1, U.dan]), /duplicate key/);
   }, { doc: 'Migrarea 0001: cheia primară a votului.' });
 
 scenario('SON-02', 'Într-un sondaj cu o singură variantă de ales, un vecin votează și „Da”, și „Nu”',
@@ -250,6 +253,9 @@ scenario('SON-02', 'Într-un sondaj cu o singură variantă de ales, un vecin vo
     await as(U.ioana).run(`insert into public.poll_votes (poll_id, option_id, user_id) values ($1, $2, $3)`, [A.poll, A.opt2, U.ioana]);
     assert.equal((await sql(`select count(*)::int n from public.poll_votes where poll_id = $1 and user_id = $2`, [A.poll, U.ioana]))[0].n, 1,
       'același om are două voturi într-un sondaj cu alegere unică');
+    // Both answers sent together, by somebody who has not voted yet.
+    expectError(await as(U.dan).run(`insert into public.poll_votes (poll_id, option_id, user_id) values ($1, $2, $3), ($1, $4, $3)`, [A.poll, A.opt1, U.dan, A.opt2]), /already_voted/);
+    assert.equal((await sql(`select count(*)::int n from public.poll_votes where poll_id = $1 and user_id = $2`, [A.poll, U.dan]))[0].n, 0);
   }, { doc: 'Studiu de caz: deciziile au „a record of who agreed to what”; coloana polls.multi deosebește cele două feluri de sondaj.' });
 
 scenario('SON-03', 'Într-un sondaj cu mai multe variante, un vecin alege două',
@@ -261,7 +267,7 @@ scenario('SON-03', 'Într-un sondaj cu mai multe variante, un vecin alege două'
 scenario('SON-04', 'Un vecin votează într-un sondaj închis de administrație',
   'Refuzat.',
   async ({ as }) => {
-    expectError(await as(U.dan).run(`insert into public.poll_votes (poll_id, option_id, user_id) values ($1, $2, $3)`, [A.pollClosed, A.optClosed, U.dan]), /row-level security/);
+    expectError(await as(U.dan).run(`insert into public.poll_votes (poll_id, option_id, user_id) values ($1, $2, $3)`, [A.pollClosed, A.optClosed, U.dan]), /poll_closed|row-level security/);
   }, { doc: 'Migrarea 0001: „p.closed = false”.' });
 
 scenario('SON-05', 'Un vecin votează după ce termenul sondajului a trecut, dar nimeni nu l-a închis manual',
@@ -296,6 +302,24 @@ scenario('SON-08', 'Nici administratorul nu vede cine cu ce a votat',
     const seen = await as(U.ana).rows(`select user_id from public.poll_votes where poll_id = $1`, [A.poll]);
     assert.ok(seen.every((v) => v.user_id === U.ana), 'administratorul vede votul fiecărui vecin');
   }, { doc: 'Studiu de caz: „the ballot is anonymous”.' });
+
+scenario('SON-12', 'Rezultatul unui sondaj, cerut de un vecin, de un om din altă comunitate și de un vizitator',
+  'Vecinul primește numărul de voturi pentru fiecare variantă — inclusiv zero — fără niciun nume. Ceilalți nu primesc nimic.',
+  async ({ as, anon }) => {
+    await as(U.dan).run(`insert into public.poll_votes (poll_id, option_id, user_id) values ($1, $2, $3)`, [A.poll, A.opt1, U.dan]);
+    const rows = await as(U.mihai).rows(`select * from public.poll_results($1)`, [C.A]);
+    const count = (opt) => rows.find((r) => r.option_id === opt)?.votes;
+    assert.equal(count(A.opt1), 2);
+    assert.equal(count(A.opt2), 0);
+    assert.deepEqual(Object.keys(rows[0]).sort(), ['option_id', 'poll_id', 'votes']);
+    assert.equal(rows.length, 6, 'toate variantele tuturor sondajelor comunității');
+    assert.equal(await as(U.carmen).count(`select * from public.poll_results($1)`, [C.A]), 0);
+    assert.equal(await as(U.radu).count(`select * from public.poll_results($1)`, [C.A]), 0);
+    const r = await anon().run(`select * from public.poll_results($1)`, [C.A]);
+    assert.ok(r.error || r.rowCount === 0);
+    // Somebody in both communities gets each one's own.
+    assert.equal(await as(U.maria).count(`select * from public.poll_results($1)`, [C.B]), 2);
+  }, { doc: 'Studiu de caz: „The count is public and the ballot is anonymous.” Migrarea 0021.' });
 
 scenario('SON-09', 'Un vot dat nu mai poate fi schimbat sau retras',
   'Nici de cel care a votat, nici de administrație.',

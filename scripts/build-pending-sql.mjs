@@ -53,6 +53,14 @@ const DESCRIERI = {
     'pozele de la sesizari trec si ele intr-un bucket privat, cu link care expira, la fel ca documentele',
   '0019_legacy_issue_photo_paths.sql':
     'corectie: pozele vechi de dinainte de 0018 sunt readuse la calea lor reala, ca sa se mai vada',
+  '0020_entering_a_community.sql':
+    'intrarea in comunitate: doar cu codul de invitatie, codurile nu mai sunt vizibile altora, modul „cu aprobare” chiar functioneaza, profilurile nu mai pot fi citite fara cont',
+  '0021_secret_ballot.sql':
+    'votul devine secret si fata de vecini si fata de administratie; un singur vot in sondajele cu o varianta; dupa termen nu se mai voteaza',
+  '0022_what_may_change.sql':
+    'moderarea schimba statusul, nu textul; data mesajelor o pune serverul; notificarile se trimit doar prin functii; limite de lungime pentru texte',
+  '0023_fund_totals.sql':
+    'totalul strans la un fond nu mai scade cand pleaca cineva care a platit; platile doar pe numele membrilor; sume absurde refuzate',
 };
 
 const files = readdirSync(dir)

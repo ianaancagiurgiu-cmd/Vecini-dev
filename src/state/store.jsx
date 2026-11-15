@@ -63,6 +63,7 @@ function loadPrefs() {
 const emptyData = () => ({
   users: {},
   members: [],
+  joinRequests: [],
   community: null,
   announcements: [],
   discussions: [],
@@ -247,7 +248,7 @@ export function AppProvider({ children }) {
 
       const memberIds = (members || []).map((m) => m.user_id);
 
-      const [{ data: announcements }, { data: discussions }, { data: issues }, { data: polls }, { data: notifications }, { data: notifPrefsRow }, { data: archivedRows }, { data: phoneRows }, { data: reactionRows }, { data: fundRows }, { data: fundTotals }, { data: paymentRows }, { data: quotaRows }, { data: docRows }] = await Promise.all([
+      const [{ data: announcements }, { data: discussions }, { data: issues }, { data: polls }, { data: notifications }, { data: notifPrefsRow }, { data: archivedRows }, { data: phoneRows }, { data: reactionRows }, { data: fundRows }, { data: fundTotals }, { data: paymentRows }, { data: quotaRows }, { data: docRows }, { data: requestRows }] = await Promise.all([
         supabase.from('announcements').select('*').eq('community_id', cid).order('created_at', { ascending: false }),
         supabase.from('discussions').select('*').eq('community_id', cid).neq('status', 'hidden').order('created_at', { ascending: false }),
         supabase.from('issues').select('*').eq('community_id', cid).order('created_at', { ascending: false }),
@@ -286,6 +287,9 @@ export function AppProvider({ children }) {
         supabase.from('fund_payments').select('*').order('paid_on', { ascending: false }),
         supabase.from('fund_quotas').select('*'),
         supabase.from('documents').select('*').eq('community_id', cid).order('created_at', { ascending: false }),
+        // People waiting to be let in. The policy answers an administrator
+        // with the community's requests and everybody else with nothing.
+        supabase.from('join_requests').select('user_id,created_at').eq('community_id', cid).order('created_at', { ascending: true }),
       ]);
 
       const discIds = (discussions || []).map((d) => d.id);
@@ -310,16 +314,25 @@ export function AppProvider({ children }) {
       }));
 
       const pollIds = (polls || []).map((p) => p.id);
-      const [{ data: options }, { data: votes }] = pollIds.length
+      /*
+        The ballot is secret, so two different things are asked for. The
+        counts come from poll_results, which says how many and never who. The
+        rows of poll_votes come back holding this person's own votes only —
+        that is the policy, not a filter here — and are what "have I voted?"
+        is read from. Adding the rows up, as this used to, would now count one.
+      */
+      const [{ data: options }, { data: votes }, { data: tallies }] = pollIds.length
         ? await Promise.all([
             supabase.from('poll_options').select('*').in('poll_id', pollIds),
             supabase.from('poll_votes').select('*').in('poll_id', pollIds),
+            supabase.rpc('poll_results', { p_community: cid }),
           ])
-        : [{ data: [] }, { data: [] }];
+        : [{ data: [] }, { data: [] }, { data: [] }];
+      const tally = new Map((tallies || []).map((r) => [r.option_id, Number(r.votes) || 0]));
       const pollsFull = (polls || []).map((p) => {
         const opts = (options || []).filter((o) => o.poll_id === p.id).map((o) => ({
           ...o,
-          votes: (votes || []).filter((v) => v.poll_id === p.id && v.option_id === o.id).length,
+          votes: tally.get(o.id) || 0,
         }));
         const voters = {};
         (votes || []).filter((v) => v.poll_id === p.id).forEach((v) => {
@@ -345,7 +358,8 @@ export function AppProvider({ children }) {
         i.history.forEach((h) => note(h.by_id));
         i.comments.forEach((c) => note(c.author_id));
       });
-      pollsFull.forEach((p) => { note(p.author_id); Object.keys(p.voters).forEach(note); });
+      pollsFull.forEach((p) => note(p.author_id));
+      (requestRows || []).forEach((r) => note(r.user_id));
 
       const peopleIds = [...needed];
       const { data: profilesRows } = peopleIds.length
@@ -445,6 +459,7 @@ export function AppProvider({ children }) {
       setData({
         users,
         members: (members || []).map((m) => ({ userId: m.user_id, role: m.role, joinedAt: new Date(m.joined_at).getTime() })),
+        joinRequests: (requestRows || []).map((r) => ({ userId: r.user_id, createdAt: new Date(r.created_at).getTime() })),
         community: { id: community.id, name: community.name, address: community.address, description: community.description, code: community.code, joinMode: community.join_mode, kind: community.kind || 'bloc', memberCount: (members || []).length, staircases: 1 },
         /*
           One list. An announcement carrying a date is what used to be an event,
@@ -791,25 +806,45 @@ export function AppProvider({ children }) {
     return row?.id ? row : null;
   };
 
+  /*
+    Joining is asked of the database with the code itself, never with the
+    community's id: join_community is the only way a membership is written,
+    and it is what checks the code and reads the community's joining mode.
+
+    status is 'member' when the person is inside by the time this returns, and
+    'pending' when the community asks for approval and the request is now
+    waiting on its administrator — in which case there is no community to
+    switch to yet.
+  */
   const joinByCode = async (code) => {
-    const found = await findCommunityByCode(code);
-    if (!found) throw new Error('bad_code');
-    const { error: joinErr } = await supabase.from('memberships').insert({ user_id: userId, community_id: found.id });
-    if (joinErr && joinErr.code !== '23505') throw joinErr; // 23505 = already a member, fine
-    setActiveCommunityId(found.id);
-    return found;
+    const { data: rows, error } = await supabase.rpc('join_community', { p_code: (code || '').trim() });
+    if (error) throw error;
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    if (!row?.community_id) throw new Error('bad_code');
+    if (row.status === 'member') setActiveCommunityId(row.community_id);
+    return { id: row.community_id, name: row.name, status: row.status };
   };
+  // Giving up on a request that is still waiting.
+  const withdrawJoinRequest = async (communityId) => {
+    const { error } = await supabase.from('join_requests').delete().eq('community_id', communityId).eq('user_id', userId);
+    if (error) throw error;
+  };
+  /*
+    One call makes the community and its founder's membership together. Done
+    as two requests, there was a moment in which the community existed with
+    nobody in it, and whoever wrote the first membership became its admin.
+  */
   const createCommunity = async (name, address) => {
     let code = genCode(name);
     let community;
     for (let attempt = 0; attempt < 4 && !community; attempt++) {
-      const { data: created, error } = await supabase.from('communities').insert({ name, address, code }).select('*').maybeSingle();
-      if (created) community = created;
+      const { data: created, error } = await supabase.rpc('create_community', { p_name: name, p_address: address || '', p_code: code });
+      const row = Array.isArray(created) ? created[0] : created;
+      if (row?.id) community = row;
       else if (error?.code === '23505') code = genCode(name);
       else if (error) throw error;
     }
     if (!community) throw new Error('could_not_create');
-    await supabase.from('memberships').insert({ user_id: userId, community_id: community.id });
     setActiveCommunityId(community.id);
     return community;
   };
@@ -1210,6 +1245,13 @@ export function AppProvider({ children }) {
       await refreshAll();
       showToast(t('admin_handed_over'));
     },
+    // Letting somebody in, or not. Only an administrator's call is accepted.
+    decideJoinRequest: async (targetUserId, approve) => {
+      const { error } = await supabase.rpc('decide_join_request', { p_community: cid, p_user: targetUserId, p_approve: !!approve });
+      if (error) { showToast(t('admin_request_error')); throw error; }
+      await refreshAll();
+      showToast(t(approve ? 'admin_request_approved' : 'admin_request_rejected'));
+    },
     removeMember: async (targetUserId) => {
       await supabase.from('memberships').delete().eq('community_id', cid).eq('user_id', targetUserId);
       await refreshAll();
@@ -1468,7 +1510,7 @@ export function AppProvider({ children }) {
     setName, setApartment, setContact, deleteAccount, profile, recheckEmail,
     // Google-only accounts have no password to change; offer "set one" instead.
     hasPasswordLogin: !!session?.user?.identities?.some((i) => i.provider === 'email'),
-    joinByCode, createCommunity, findCommunityByCode,
+    joinByCode, createCommunity, findCommunityByCode, withdrawJoinRequest,
   };
 
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;

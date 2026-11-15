@@ -4,6 +4,7 @@ import { useApp } from '../state/store.jsx';
 import { useBack } from '../lib/useBack.js';
 import { ScreenHeader } from '../components/ui.jsx';
 import { lei, baniFromInput } from '../lib/format.js';
+import { LIMITS } from '../lib/limits.js';
 
 /*
   Opening a collection.
@@ -49,7 +50,7 @@ export default function FundNew() {
       <ScreenHeader title={t('fund_new')} onBack={back} />
       <div className="pad" style={{ paddingTop: 18 }}>
         <div className="eyebrow" style={{ marginBottom: 6 }}>{t('fund_f_title')}</div>
-        <input id="fund-title" className="input" value={title} onChange={(e) => setTitle(e.target.value)}
+        <input maxLength={LIMITS.title} id="fund-title" className="input" value={title} onChange={(e) => setTitle(e.target.value)}
           placeholder={t('fund_f_title_ph')} />
 
         <div className="eyebrow" style={{ margin: '18px 0 6px' }}>{t('fund_f_amount')}</div>
@@ -75,7 +76,7 @@ export default function FundNew() {
         <div className="muted" style={{ fontSize: 12.5, marginTop: 8 }}>{t('fund_f_due_hint')}</div>
 
         <div className="eyebrow" style={{ margin: '18px 0 6px' }}>{t('fund_f_desc')}</div>
-        <textarea id="fund-desc" className="input" rows={4} value={description}
+        <textarea maxLength={LIMITS.body} id="fund-desc" className="input" rows={4} value={description}
           onChange={(e) => setDescription(e.target.value)} placeholder={t('fund_f_desc_ph')} />
 
         <button className="btn btn--primary" style={{ marginTop: 20 }} disabled={!ready || busy} onClick={submit}>

@@ -38,7 +38,14 @@ with expected(fisier, obiect, tip, la_ce_e) as (values
   ('0017_documents',        'public.documents',          'table',   'documentele asociației'),
   ('0017_documents',        'public.doc_community',      'function', 'din ce comunitate e un fișier, după calea lui'),
   ('0018_private_issue_photos', 'issues.photo_path',     'column',  'calea pozei, nu mai un link permanent'),
-  ('0019_legacy_issue_photo_paths', 'public.legacy_issue_photos', 'table', 'pozele vechi, corectate — vezi mai jos dacă e completă')
+  ('0019_legacy_issue_photo_paths', 'public.legacy_issue_photos', 'table', 'pozele vechi, corectate — vezi mai jos dacă e completă'),
+  ('0020_entering_a_community', 'public.join_requests',   'table',   'cererile de intrare, pentru modul „cu aprobare”'),
+  ('0020_entering_a_community', 'public.join_community',  'function', 'intrarea cu cod — singura cale'),
+  ('0020_entering_a_community', 'public.create_community', 'function', 'crearea comunității, cu fondatorul în același pas'),
+  ('0020_entering_a_community', 'public.decide_join_request', 'function', 'aprobarea sau respingerea unei cereri'),
+  ('0021_secret_ballot',     'public.poll_results',        'function', 'rezultatele sondajelor, fără nume'),
+  ('0022_what_may_change',   'public.issue_has_history',   'function', 'prima linie din istoricul sesizării, o singură dată'),
+  ('0023_fund_totals',       'public.lives_where_fund_is', 'function', 'plățile doar pe numele membrilor')
 )
 select
   e.fisier,
@@ -58,6 +65,12 @@ select
                   when 'public.can_react'        then 'uuid,uuid'
                   when 'public.fund_summary'    then 'uuid'
                   when 'public.doc_community'   then 'text'
+                  when 'public.join_community'  then 'text'
+                  when 'public.create_community' then 'text,text,text'
+                  when 'public.decide_join_request' then 'uuid,uuid,boolean'
+                  when 'public.poll_results'    then 'uuid'
+                  when 'public.issue_has_history' then 'uuid'
+                  when 'public.lives_where_fund_is' then 'uuid,uuid'
                   when 'public.edit_comment'    then 'text,uuid,text'
                   when 'public.shares_community' then 'uuid'
                   when 'public.set_member_role'  then 'uuid,uuid,text'
@@ -128,6 +141,25 @@ select '0018_private_issue_photos',
        'e privat — pozele de la sesizări nu mai au adresă permanentă',
        exists (
          select 1 from storage.buckets where id = 'issue-photos' and public = false
+       )
+union all
+-- Ușa din față: dacă politica veche de înscriere mai există, oricine intră
+-- în orice comunitate fără cod, oricât de bine ar fi restul.
+select '0020_entering_a_community',
+       'memberships_insert_self (politica veche)',
+       'a dispărut — nu se mai intră fără cod',
+       not exists (
+         select 1 from pg_policy
+          where polrelid = 'public.memberships'::regclass and polname = 'memberships_insert_self'
+       )
+union all
+select '0021_secret_ballot',
+       'poll_votes_select',
+       'fiecare își vede doar votul lui',
+       exists (
+         select 1 from pg_policy
+          where polrelid = 'public.poll_votes'::regclass and polname = 'poll_votes_select'
+            and pg_get_expr(polqual, polrelid) not like '%is_member%'
        )
 union all
 -- Singurul rând care e adevărat prin absență: dacă tabelul vechi mai există,

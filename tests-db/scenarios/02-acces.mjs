@@ -91,6 +91,21 @@ scenario('ANO-06', 'Un vizitator fără cont apelează funcțiile cu drepturi ri
     assert.equal((await a.rows(`select public.is_member($1) as m, public.shares_community($2) as s, public.can_react($3, null) as r`, [C.A, U.ioana, A.comment]))[0].m, false);
   }, { doc: 'Migrările 0002, 0004, 0007, 0010, 0015, 0016: fiecare funcție e dată doar rolului „authenticated”.' });
 
+scenario('ANO-07', 'Funcțiile rezervate oamenilor cu cont, văzute dinspre un vizitator',
+  'Nu le poate nici măcar apela — nu doar că nu fac nimic pentru el.',
+  async ({ sql }) => {
+    const reserved = await sql(
+      `select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public' and p.prokind = 'f'
+          and p.proname in ('notify_members', 'notify_user', 'claim_push_subscription', 'release_push_subscription',
+                            'delete_my_account', 'set_member_role', 'transfer_admin', 'edit_comment', 'fund_summary',
+                            'create_community', 'join_community', 'decide_join_request', 'my_join_requests', 'poll_results')
+          and has_function_privilege('anon', p.oid, 'execute')`);
+    assert.deepEqual(reserved.map((r) => r.proname), [], 'apelabile fără cont');
+    // The one that is for visitors still is.
+    assert.equal((await sql(`select has_function_privilege('anon', 'public.community_by_code(text)', 'execute') as ok`))[0].ok, true);
+  }, { doc: 'Migrarea 0020: pe Supabase, „revoke … from public” nu îl atinge pe vizitator; trebuie numit.' });
+
 // ===========================================================================
 area('INT', 'Intrarea într-o comunitate',
   'Radu are cont, dar nu e în nicio comunitate. Singurul lucru care ar trebui să-i deschidă ușa e codul de invitație primit de la un vecin.');
@@ -104,10 +119,13 @@ scenario('INT-01', 'Un om cu cont, fără comunitate, cere lista comunităților
 
 scenario('INT-02', 'Un om cu cont intră într-o comunitate fără cod, scriindu-și singur apartenența',
   'Refuzat. Fără cod nu se intră.',
-  async ({ as }) => {
+  async ({ as, sql }) => {
     const r = await as(U.radu).run(`insert into public.memberships (user_id, community_id) values ($1, $2)`, [U.radu, C.A]);
     expectBlocked(r, 'intrarea fără cod');
-  }, { doc: 'Migrarea 0005: „this grants no new ability to get inside a community”.' });
+    // Nor with the community's id handed to the function that wants a code.
+    expectError(await as(U.radu).run(`select * from public.join_community($1)`, [C.A]), /bad_code/);
+    assert.equal((await sql(`select count(*)::int n from public.memberships where user_id = $1`, [U.radu]))[0].n, 0);
+  }, { doc: 'Migrarea 0020: „takes a code, not an id”.' });
 
 scenario('INT-03', 'Odată intrat astfel, ce poate citi',
   'Nimic din comunitatea în care nu a fost invitat: nici anunțuri, nici plăți, nici telefoane.',
@@ -142,34 +160,42 @@ scenario('INT-05', 'Cineva înscrie pe altcineva într-o comunitate, în numele 
   }, { doc: 'Migrarea 0001: „Anyone signed in can insert themselves”.' });
 
 scenario('INT-06', 'Același om intră de două ori în aceeași comunitate',
-  'A doua încercare e refuzată; rămâne un singur rând.',
+  'A doua încercare nu strică nimic și nu îl dublează: rămâne un singur rând, cu același rol.',
   async ({ as, sql }) => {
-    expectError(await as(U.ioana).run(`insert into public.memberships (user_id, community_id) values ($1, $2)`, [U.ioana, C.A]), /duplicate key/);
+    const [again] = await as(U.ioana).rows(`select * from public.join_community('TEILOR-15')`);
+    assert.equal(again.status, 'member');
+    // An administrator re-entering their own code does not lose the role.
+    await as(U.ana).rows(`select * from public.join_community('teilor-15')`);
     assert.equal((await sql(`select count(*)::int n from public.memberships where user_id = $1 and community_id = $2`, [U.ioana, C.A]))[0].n, 1);
-  }, { doc: 'Migrarea 0001: unique (user_id, community_id).' });
+    assert.equal((await sql(`select role from public.memberships where user_id = $1 and community_id = $2`, [U.ana, C.A]))[0].role, 'admin');
+  }, { doc: 'Migrarea 0001: unique (user_id, community_id). Migrarea 0020.' });
 
-scenario('INT-07', 'Cineva creează o comunitate nouă și intră în ea',
-  'Devine administratorul ei; următorul care intră e vecin simplu.',
+scenario('INT-07', 'Cineva creează o comunitate nouă',
+  'Devine administratorul ei din aceeași clipă; următorul care intră cu codul e vecin simplu. O comunitate nu poate fi creată pe altă cale.',
   async ({ as, sql }) => {
-    const [{ id }] = await as(U.radu).rows(`insert into public.communities (name, code) values ('Strada Nouă', 'NOUA-1') returning id`);
-    expectOk(await as(U.radu).run(`insert into public.memberships (user_id, community_id) values ($1, $2)`, [U.radu, id]), 1);
-    await sql(`insert into public.memberships (user_id, community_id) values ($1, $2)`, [U.carmen, id]);
-    const roles = await sql(`select user_id, role from public.memberships where community_id = $1`, [id]);
-    assert.equal(roles.find((r) => r.user_id === U.radu).role, 'admin');
-    assert.equal(roles.find((r) => r.user_id === U.carmen).role, 'member');
-  }, { doc: 'Migrarea 0001: „the first member of a community becomes its admin automatically”.' });
+    const [made] = await as(U.radu).rows(`select * from public.create_community('Strada Nouă', 'Str. Nouă 1', 'NOUA-1')`);
+    assert.equal(made.name, 'Strada Nouă');
+    const [joined] = await as(U.carmen).rows(`select * from public.join_community('noua-1')`);
+    assert.equal(joined.status, 'member');
+    const roles = Object.fromEntries((await sql(`select user_id, role from public.memberships where community_id = $1`, [made.id])).map((r) => [r.user_id, r.role]));
+    assert.equal(roles[U.radu], 'admin');
+    assert.equal(roles[U.carmen], 'member');
+    // The founder can read it straight away; a table insert is not a way in.
+    assert.equal(await as(U.radu).count(`select id from public.communities where id = $1`, [made.id]), 1);
+    expectBlocked(await as(U.radu).run(`insert into public.communities (name, code) values ('Pe ocolite', 'OCOL-1')`));
+    expectError(await as(U.radu).run(`select * from public.create_community('', '', 'X-1')`), /name_and_code_required/);
+    expectError(await as(U.radu).run(`select * from public.create_community('Alta', '', 'teilor-15')`), /duplicate key/);
+  }, { doc: 'Migrarea 0001: „the first member of a community becomes its admin automatically”. Migrarea 0020.' });
 
 scenario('INT-08', 'Între crearea unei comunități și intrarea fondatorului, altcineva se înscrie primul',
-  'Refuzat: fondatorul e administratorul, nu cine ajunge primul la rând.',
+  'Nu există un „între”: comunitatea și administratorul ei apar în același pas, iar un străin nu se poate înscrie singur.',
   async ({ as, sql }) => {
-    // The app makes two requests: create the community, then join it. Anyone
-    // who can list communities can land between the two.
-    const [{ id }] = await as(U.radu).rows(`insert into public.communities (name, code) values ('Strada Nouă', 'NOUA-1') returning id`);
-    await as(U.carmen).run(`insert into public.memberships (user_id, community_id) values ($1, $2)`, [U.carmen, id]);
-    await as(U.radu).run(`insert into public.memberships (user_id, community_id) values ($1, $2)`, [U.radu, id]);
-    const roles = await sql(`select user_id, role from public.memberships where community_id = $1`, [id]);
-    assert.notEqual(roles.find((r) => r.user_id === U.carmen)?.role, 'admin', 'un străin a devenit administratorul unei comunități create de altcineva');
-  }, { doc: 'Migrarea 0001.' });
+    const [made] = await as(U.radu).rows(`select * from public.create_community('Strada Nouă', '', 'NOUA-1')`);
+    expectBlocked(await as(U.carmen).run(`insert into public.memberships (user_id, community_id) values ($1, $2)`, [U.carmen, made.id]));
+    expectBlocked(await as(U.carmen).run(`insert into public.memberships (user_id, community_id, role) values ($1, $2, 'admin')`, [U.carmen, made.id]));
+    const roles = await sql(`select user_id, role from public.memberships where community_id = $1`, [made.id]);
+    assert.deepEqual(roles, [{ user_id: U.radu, role: 'admin' }], 'un străin a ajuns în comunitatea abia creată');
+  }, { doc: 'Migrarea 0020: „makes the community and its founder\'s membership in one statement, so there is no gap to stand in”.' });
 
 scenario('INT-09', 'Un vecin iese din comunitate',
   'Nu mai vede nimic din ea, dar ce a scris rămâne la locul lui.',
@@ -197,10 +223,10 @@ scenario('INT-11', 'Un vecin scos de administrator se întoarce cu același cod 
   'Astăzi reușește: codul rămâne valabil până când administratorul îl schimbă.',
   async ({ as, sql }) => {
     await as(U.ana).run(`delete from public.memberships where user_id = $1 and community_id = $2`, [U.dan, C.A]);
-    const [found] = await as(U.dan).rows(`select id from public.community_by_code('TEILOR-15')`);
-    expectOk(await as(U.dan).run(`insert into public.memberships (user_id, community_id) values ($1, $2)`, [U.dan, found.id]), 1);
+    const [back] = await as(U.dan).rows(`select * from public.join_community('TEILOR-15')`);
+    assert.equal(back.status, 'member');
     assert.equal((await sql(`select role from public.memberships where user_id = $1 and community_id = $2`, [U.dan, C.A]))[0].role, 'member');
-  }, { decide: 'Scoaterea unui vecin nu îl împiedică să revină. Dacă scoaterea trebuie să fie definitivă, e nevoie fie de o listă de persoane blocate, fie de schimbarea automată a codului la fiecare excludere.' });
+  }, { decide: 'Scoaterea unui vecin nu îl împiedică să revină. Dacă scoaterea trebuie să fie definitivă, e nevoie fie de o listă de persoane blocate, fie de schimbarea automată a codului la fiecare excludere. (Punând comunitatea pe „intrare cu aprobare”, revenirea ar trece prin administrator.)' });
 
 scenario('INT-12', 'Doar administratorul schimbă codul de invitație și setările comunității',
   'Vecinul și moderatorul sunt refuzați. După schimbare, codul vechi nu mai deschide nimic.',
@@ -224,14 +250,81 @@ scenario('INT-13', 'Un administrator își pune drept cod codul altei comunită�
   }, { doc: 'Migrarea 0001 (code unique) + 0005 (căutarea ignoră majusculele).' });
 
 scenario('INT-14', 'Comunitatea e pusă pe „intrare cu aprobare”, iar cineva cu codul se înscrie',
-  'Nu devine membru până nu îl aprobă cineva din administrație.',
+  'Nu devine membru până nu îl aprobă administratorul: cererea lui așteaptă, iar el nu vede nimic din comunitate.',
   async ({ as, sql }) => {
     expectOk(await as(U.ana).run(`update public.communities set join_mode = 'approval' where id = $1`, [C.A]), 1);
-    await as(U.radu).run(`insert into public.memberships (user_id, community_id) values ($1, $2)`, [U.radu, C.A]);
+    const [r] = await as(U.radu).rows(`select * from public.join_community('TEILOR-15')`);
+    assert.equal(r.status, 'pending');
+    assert.equal(r.name, 'Aleea Teilor 15-20');
     assert.equal(await as(U.radu).count(`select id from public.announcements where community_id = $1`, [C.A]), 0,
       'a intrat și citește anunțurile fără să-l fi aprobat nimeni');
-    assert.ok((await sql(`select 1 from public.communities where id = $1 and join_mode = 'approval'`, [C.A])).length === 1);
-  }, { doc: 'Ecranul „Setări comunitate” oferă trei moduri de intrare, între care „cu aprobare”.' });
+    assert.equal((await sql(`select count(*)::int n from public.memberships where user_id = $1`, [U.radu]))[0].n, 0);
+    // Asking twice is still one request.
+    await as(U.radu).rows(`select * from public.join_community('TEILOR-15')`);
+    assert.equal((await sql(`select count(*)::int n from public.join_requests where user_id = $1`, [U.radu]))[0].n, 1);
+    // He can see what he is waiting on — its name, and nothing else of it.
+    const mine = await as(U.radu).rows(`select * from public.my_join_requests()`);
+    assert.deepEqual(mine.map((m) => m.name), ['Aleea Teilor 15-20']);
+    assert.equal(await as(U.radu).count(`select id from public.communities`), 0);
+  }, { doc: 'Ecranul „Setări comunitate” oferă trei moduri de intrare, între care „cu aprobare”. Migrarea 0020.' });
+
+scenario('INT-16', 'Administratorul aprobă o cerere de intrare',
+  'Omul devine vecin simplu și vede comunitatea; cererea dispare. Doar administratorul poate aproba — nu moderatorul, nu un vecin, nu cel care a cerut.',
+  async ({ as, sql }) => {
+    await as(U.ana).run(`update public.communities set join_mode = 'approval' where id = $1`, [C.A]);
+    await as(U.radu).rows(`select * from public.join_community('TEILOR-15')`);
+    for (const who of [U.mihai, U.ioana, U.radu, U.bogdan]) {
+      expectError(await as(who).run(`select public.decide_join_request($1, $2, true)`, [C.A, U.radu]), /not_admin/);
+    }
+    // Nor by writing the membership himself, now that he is "almost in".
+    expectBlocked(await as(U.radu).run(`insert into public.memberships (user_id, community_id) values ($1, $2)`, [U.radu, C.A]));
+    assert.equal(await as(U.ana).count(`select user_id from public.join_requests where community_id = $1`, [C.A]), 1);
+    assert.equal(await as(U.mihai).count(`select user_id from public.join_requests`), 0, 'moderatorul vede cererile');
+    assert.equal(await as(U.ioana).count(`select user_id from public.join_requests`), 0, 'un vecin vede cererile');
+    expectOk(await as(U.ana).run(`select public.decide_join_request($1, $2, true)`, [C.A, U.radu]));
+    assert.equal((await sql(`select role from public.memberships where user_id = $1 and community_id = $2`, [U.radu, C.A]))[0].role, 'member');
+    assert.equal((await sql(`select count(*)::int n from public.join_requests`))[0].n, 0);
+    assert.equal(await as(U.radu).count(`select id from public.announcements where community_id = $1`, [C.A]), 1);
+    // Deciding twice is refused rather than repeated.
+    expectError(await as(U.ana).run(`select public.decide_join_request($1, $2, true)`, [C.A, U.radu]), /no_request/);
+  }, { doc: 'Migrarea 0020.' });
+
+scenario('INT-17', 'Administratorul respinge o cerere, sau omul și-o retrage singur',
+  'În ambele cazuri cererea dispare și nu rămâne nicio apartenență. Nimeni nu poate retrage cererea altcuiva.',
+  async ({ as, sql }) => {
+    await as(U.ana).run(`update public.communities set join_mode = 'approval' where id = $1`, [C.A]);
+    await as(U.radu).rows(`select * from public.join_community('TEILOR-15')`);
+    await as(U.carmen).rows(`select * from public.join_community('TEILOR-15')`);
+    expectBlocked(await as(U.carmen).run(`delete from public.join_requests where user_id = $1`, [U.radu]));
+    assert.equal(await as(U.carmen).count(`select user_id from public.join_requests`), 1, 'vede și cererea altcuiva');
+    expectOk(await as(U.ana).run(`select public.decide_join_request($1, $2, false)`, [C.A, U.radu]));
+    expectOk(await as(U.carmen).run(`delete from public.join_requests where user_id = $1 and community_id = $2`, [U.carmen, C.A]), 1);
+    assert.equal((await sql(`select count(*)::int n from public.join_requests`))[0].n, 0);
+    assert.equal((await sql(`select count(*)::int n from public.memberships where community_id = $1 and user_id in ($2, $3)`, [C.A, U.radu, U.carmen]))[0].n, 0);
+    // A request cannot be written by hand, for oneself or anyone else.
+    expectBlocked(await as(U.radu).run(`insert into public.join_requests (community_id, user_id) values ($1, $2)`, [C.B, U.radu]));
+    expectBlocked(await as(U.ana).run(`insert into public.join_requests (community_id, user_id) values ($1, $2)`, [C.A, U.radu]));
+  }, { doc: 'Migrarea 0020.' });
+
+scenario('INT-18', 'Cineva cere să intre, apoi își șterge contul înainte să fie aprobat',
+  'Cererea dispare odată cu contul: administratorul nu poate aproba un cont în spatele căruia nu mai e nimeni.',
+  async ({ as, sql }) => {
+    await as(U.ana).run(`update public.communities set join_mode = 'approval' where id = $1`, [C.A]);
+    await as(U.radu).rows(`select * from public.join_community('TEILOR-15')`);
+    expectOk(await as(U.radu).run(`select public.delete_my_account()`));
+    assert.equal((await sql(`select count(*)::int n from public.join_requests where user_id = $1`, [U.radu]))[0].n, 0);
+    expectError(await as(U.ana).run(`select public.decide_join_request($1, $2, true)`, [C.A, U.radu]), /no_request/);
+  }, { doc: 'Migrarea 0020: „An account that has been given up is not waiting for anything.”' });
+
+scenario('INT-19', 'O comunitate „cu aprobare” în care nu mai e nimeni',
+  'Următorul om cu codul intră direct: nu mai e nimeni care să-l aprobe.',
+  async ({ as, sql }) => {
+    await sql(`update public.communities set join_mode = 'approval' where id = $1`, [C.B]);
+    await sql(`delete from public.memberships where community_id = $1 and user_id <> $2`, [C.B, U.bogdan]);
+    await as(U.bogdan).run(`delete from public.memberships where user_id = $1 and community_id = $2`, [U.bogdan, C.B]);
+    const [r] = await as(U.radu).rows(`select * from public.join_community('POPESTI-8')`);
+    assert.equal(r.status, 'member');
+  }, { doc: 'Migrarea 0020.' });
 
 scenario('INT-15', 'Toți membrii pleacă dintr-o comunitate, apoi cineva intră cu vechiul cod',
   'Astăzi, primul venit devine administrator și moștenește toată arhiva: registrul de plăți, documentele, discuțiile.',
@@ -241,8 +334,7 @@ scenario('INT-15', 'Toți membrii pleacă dintr-o comunitate, apoi cineva intră
     }
     // The last admin of a community that is empty but for them may leave.
     expectOk(await as(U.bogdan).run(`delete from public.memberships where user_id = $1 and community_id = $2`, [U.bogdan, C.B]), 1);
-    const [found] = await as(U.radu).rows(`select id from public.community_by_code('POPESTI-8')`);
-    await as(U.radu).run(`insert into public.memberships (user_id, community_id) values ($1, $2)`, [U.radu, found.id]);
+    await as(U.radu).rows(`select * from public.join_community('POPESTI-8')`);
     assert.equal((await sql(`select role from public.memberships where user_id = $1 and community_id = $2`, [U.radu, C.B]))[0].role, 'admin');
     assert.equal(await as(U.radu).count(`select id from public.fund_payments where fund_id = $1`, [B.fund]), 1);
   }, { decide: 'O comunitate rămasă fără niciun membru își păstrează conținutul și codul. Primul care intră ulterior îi devine administrator și vede tot ce a fost acolo, inclusiv cine cât a plătit. Variante: comunitatea goală se arhivează, sau codul ei se dezactivează când pleacă ultimul om.' });
@@ -353,8 +445,8 @@ scenario('ROL-07', 'Singurul administrator încearcă să plece sau să se retro
   async ({ as, sql }) => {
     const a = as(U.ana);
     expectError(await a.run(`delete from public.memberships where user_id = $1 and community_id = $2`, [U.ana, C.A]), /last_admin/);
-    expectError(await a.run(`update public.memberships set role = 'member' where user_id = $1 and community_id = $2`, [U.ana, C.A]), /last_admin/);
-    expectError(await a.run(`update public.memberships set role = 'moderator' where user_id = $1 and community_id = $2`, [U.ana, C.A]), /last_admin/);
+    expectBlocked(await a.run(`update public.memberships set role = 'member' where user_id = $1 and community_id = $2`, [U.ana, C.A]));
+    expectBlocked(await a.run(`update public.memberships set role = 'moderator' where user_id = $1 and community_id = $2`, [U.ana, C.A]));
     expectError(await a.run(`select public.set_member_role($1, $2, 'member')`, [C.A, U.ana]), /not_yourself/);
     assert.equal((await sql(`select role from public.memberships where user_id = $1 and community_id = $2`, [U.ana, C.A]))[0].role, 'admin');
   }, { doc: 'Migrarea 0010: „nothing, by any route, may leave a community with members but no admin”.' });
@@ -394,7 +486,8 @@ scenario('ROL-10', 'Schimbări de rol cu valori greșite',
     expectError(await a.run(`select public.set_member_role($1, $2, '')`, [C.A, U.ioana]), /bad_role/);
     expectError(await a.run(`select public.set_member_role($1, $2, null)`, [C.A, U.ioana]), /bad_role|null/);
     expectError(await a.run(`select public.set_member_role($1, $2, 'moderator')`, [C.A, U.carmen]), /not_a_member/);
-    expectError(await a.run(`update public.memberships set role = 'superadmin' where community_id = $1 and user_id = $2`, [C.A, U.ioana]), /check constraint/);
+    expectBlocked(await a.run(`update public.memberships set role = 'superadmin' where community_id = $1 and user_id = $2`, [C.A, U.ioana]));
+    expectBlocked(await a.run(`update public.memberships set role = 'moderator' where community_id = $1 and user_id = $2`, [C.A, U.ioana]), 'rolul se schimbă doar prin funcție');
   }, { doc: 'Migrarea 0010.' });
 
 scenario('ROL-11', 'Un moderator e retrogradat în timp ce lucrează',

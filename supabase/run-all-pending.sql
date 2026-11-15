@@ -21,6 +21,10 @@
 --   0017 — documentele asociatiei: procese-verbale, hotarari, contracte, facturi — intr-un bucket privat, cu link care expira, si cu posibilitatea de a lega un document de o colecta
 --   0018 — pozele de la sesizari trec si ele intr-un bucket privat, cu link care expira, la fel ca documentele
 --   0019 — corectie: pozele vechi de dinainte de 0018 sunt readuse la calea lor reala, ca sa se mai vada
+--   0020 — intrarea in comunitate: doar cu codul de invitatie, codurile nu mai sunt vizibile altora, modul „cu aprobare” chiar functioneaza, profilurile nu mai pot fi citite fara cont
+--   0021 — votul devine secret si fata de vecini si fata de administratie; un singur vot in sondajele cu o varianta; dupa termen nu se mai voteaza
+--   0022 — moderarea schimba statusul, nu textul; data mesajelor o pune serverul; notificarile se trimit doar prin functii; limite de lungime pentru texte
+--   0023 — totalul strans la un fond nu mai scade cand pleaca cineva care a platit; platile doar pe numele membrilor; sume absurde refuzate
 --
 -- Unde se ruleaza: Supabase -> SQL Editor -> New query -> lipesti tot -> Run.
 --
@@ -1428,5 +1432,849 @@ create policy issue_photos_read on storage.objects for select using (
     or public.is_member((select l.community_id from public.legacy_issue_photos l where l.name = storage.objects.name))
   )
 );
+
+
+-- =============================================================
+-- 0020_entering_a_community.sql
+-- intrarea in comunitate: doar cu codul de invitatie, codurile nu mai sunt vizibile altora, modul „cu aprobare” chiar functioneaza, profilurile nu mai pot fi citite fara cont
+-- =============================================================
+
+/*
+  The front door.
+
+  Everything inside a community has been guarded by "are you a member?" since
+  the first migration, and that question is answered correctly. What was never
+  guarded is how somebody becomes one. Three things were true at once:
+
+    * any signed-in account could read every community, invitation code and
+      all (communities_select: auth.uid() is not null)
+    * any signed-in account could write itself a membership row in any
+      community, by id, with no code asked for (memberships_insert_self:
+      user_id = auth.uid())
+    * the first membership row in a community is made its administrator
+
+  So the invitation code — the only key there is — was readable by everyone
+  and required of no one. Found by tests-db, scenarios INT-01, INT-02, INT-03
+  and INT-08, not by anybody having used it.
+
+  The shape of the fix is the one 0015 already argued for comments: not a
+  cleverer policy, a function, and no other door. Becoming a member now
+  happens in exactly three places, each of which checks what it should:
+
+    create_community   — makes the community and its founder's membership in
+                         one statement, so there is no gap to stand in
+    join_community     — takes a code, not an id
+    decide_join_request — an administrator letting somebody in
+
+  and the tables themselves accept no membership or community written
+  directly by a client.
+
+  Safe to run more than once.
+*/
+
+-- ---------- one code, however it is typed ----------
+/*
+  community_by_code has always ignored case, and the unique constraint never
+  did. "TEILOR-15" and "teilor-15" could both exist, and somebody typing the
+  first could be shown the second.
+*/
+create unique index if not exists communities_code_lower_idx
+  on public.communities (lower(code));
+
+-- ---------- who may read a community ----------
+-- Its members. Somebody holding a code still learns its name, through
+-- community_by_code, and nothing more.
+drop policy if exists communities_select on public.communities;
+create policy communities_select on public.communities
+  for select using (public.is_member(id));
+
+-- Created through create_community only: a community inserted on its own is
+-- one with no administrator, waiting for whoever writes the first membership.
+drop policy if exists communities_insert on public.communities;
+
+-- ---------- who may write a membership ----------
+/*
+  Nobody, directly.
+
+  Inserting is join_community, create_community and decide_join_request.
+  Updating is set_member_role and transfer_admin, which have existed since
+  0010 "so the rules live in one place and cannot be reached around" — and
+  could be reached around, because the update policy stayed. An administrator
+  could rewrite user_id on a row and enrol somebody who never asked.
+
+  Leaving, and an administrator removing someone, are still plain deletes.
+*/
+drop policy if exists memberships_insert_self on public.memberships;
+drop policy if exists memberships_update_admin on public.memberships;
+
+-- ---------- waiting to be let in ----------
+/*
+  "Cu aprobare" has been on the settings screen since the beginning and has
+  never done anything: the mode was saved and nothing read it. This is the
+  thing it was promising. A request is a row here rather than a membership
+  with a status column, because every policy in the schema asks is_member()
+  and none of them should have to learn that some members are not members yet.
+*/
+create table if not exists public.join_requests (
+  community_id uuid not null references public.communities(id) on delete cascade,
+  user_id      uuid not null references auth.users(id) on delete cascade,
+  created_at   timestamptz not null default now(),
+  primary key (community_id, user_id)
+);
+
+alter table public.join_requests enable row level security;
+
+-- Yours, or — if you are the one deciding — your community's.
+drop policy if exists join_requests_select on public.join_requests;
+create policy join_requests_select on public.join_requests
+  for select using (user_id = auth.uid() or public.is_admin(community_id));
+
+-- Changing your mind is yours to do. Refusing is decide_join_request.
+drop policy if exists join_requests_withdraw on public.join_requests;
+create policy join_requests_withdraw on public.join_requests
+  for delete using (user_id = auth.uid());
+
+-- ---------- founding ----------
+create or replace function public.create_community(p_name text, p_address text, p_code text)
+returns public.communities
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  c public.communities;
+begin
+  if auth.uid() is null then
+    raise exception 'not_signed_in' using errcode = 'insufficient_privilege';
+  end if;
+  if coalesce(p_name, '') !~ '\S' or coalesce(p_code, '') !~ '\S' then
+    raise exception 'name_and_code_required' using errcode = 'check_violation';
+  end if;
+
+  -- A code already taken raises unique_violation; the app answers that by
+  -- trying another, which is why it is not caught here.
+  insert into public.communities (name, address, code)
+  values (btrim(p_name), coalesce(p_address, ''), btrim(p_code))
+  returning * into c;
+
+  -- First in, so the trigger from 0001 makes this the administrator.
+  insert into public.memberships (user_id, community_id) values (auth.uid(), c.id);
+
+  return c;
+end;
+$$;
+
+-- ---------- joining ----------
+/*
+  status is 'member' when the caller is inside by the time this returns —
+  whether they just walked in or were already there — and 'pending' when the
+  community asks for approval and the request is now waiting.
+
+  A community with nobody in it lets the next person straight in whatever its
+  mode: there is no one left to approve them.
+*/
+create or replace function public.join_community(p_code text)
+returns table (community_id uuid, name text, status text)
+language plpgsql
+security definer
+set search_path = public
+as $$
+#variable_conflict use_column
+declare
+  c public.communities;
+  uid uuid := auth.uid();
+  clean text := btrim(coalesce(p_code, ''));
+begin
+  if uid is null then
+    raise exception 'not_signed_in' using errcode = 'insufficient_privilege';
+  end if;
+
+  select co.* into c from public.communities co where clean <> '' and lower(co.code) = lower(clean);
+  if not found then
+    raise exception 'bad_code' using errcode = 'no_data_found';
+  end if;
+
+  if exists (select 1 from public.memberships m where m.community_id = c.id and m.user_id = uid) then
+    return query select c.id, c.name, 'member'::text;
+    return;
+  end if;
+
+  if c.join_mode = 'approval'
+     and exists (select 1 from public.memberships m where m.community_id = c.id) then
+    insert into public.join_requests (community_id, user_id) values (c.id, uid)
+    on conflict do nothing;
+    return query select c.id, c.name, 'pending'::text;
+    return;
+  end if;
+
+  insert into public.memberships (user_id, community_id) values (uid, c.id);
+  delete from public.join_requests jr where jr.community_id = c.id and jr.user_id = uid;
+  return query select c.id, c.name, 'member'::text;
+end;
+$$;
+
+-- ---------- letting somebody in, or not ----------
+create or replace function public.decide_join_request(p_community uuid, p_user uuid, p_approve boolean)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_admin(p_community) then
+    raise exception 'not_admin' using errcode = 'insufficient_privilege';
+  end if;
+
+  delete from public.join_requests jr where jr.community_id = p_community and jr.user_id = p_user;
+  if not found then
+    raise exception 'no_request' using errcode = 'no_data_found';
+  end if;
+
+  if p_approve then
+    insert into public.memberships (user_id, community_id) values (p_user, p_community)
+    on conflict (user_id, community_id) do nothing;
+  end if;
+end;
+$$;
+
+-- ---------- what am I waiting on? ----------
+-- Somebody waiting cannot read the community they asked to join, so its name
+-- comes from here — the same and only thing the code itself already told them.
+create or replace function public.my_join_requests()
+returns table (community_id uuid, name text, created_at timestamptz)
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select jr.community_id, c.name, jr.created_at
+    from public.join_requests jr
+    join public.communities c on c.id = jr.community_id
+   where jr.user_id = auth.uid();
+$$;
+
+/*
+  An account that has been given up is not waiting for anything.
+
+  delete_my_account empties the profile and stamps deleted_at; a request left
+  behind could still be approved, and would enrol an account nobody is behind.
+  A trigger rather than one more line in that function, so that 0007 stays
+  the one place the function is written.
+*/
+create or replace function public.forget_join_requests()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  delete from public.join_requests where user_id = new.id;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_forget_join_requests on public.profiles;
+create trigger trg_forget_join_requests
+  after update of deleted_at on public.profiles
+  for each row when (new.deleted_at is not null and old.deleted_at is null)
+  execute procedure public.forget_join_requests();
+
+-- ---------- profiles are for people with an account ----------
+/*
+  0009 describes a profile as "readable by anyone signed in". The policy said
+  `using (true)`, and anon has select on the table, so it was readable by
+  anyone holding the public key printed in the page source: every name and
+  flat number on the service, no account needed.
+*/
+drop policy if exists profiles_select on public.profiles;
+create policy profiles_select on public.profiles
+  for select using (auth.uid() is not null);
+
+-- ---------- and the functions are for them too ----------
+/*
+  Every function since 0002 ends "revoke all … from public; grant execute …
+  to authenticated", which reads as though visitors cannot call it. On
+  Supabase they can: anon holds its own grant on every function in this
+  schema, made by default privileges, and a revoke from PUBLIC does not touch
+  it. None of them did anything for a caller with no id — each checks — so
+  this closes a door that led to a wall. It is closed anyway, because the
+  comments said it was.
+
+  Left alone: community_by_code, which is for visitors on purpose, and the
+  helpers policies call (is_member and its kind), which have to answer "no"
+  to a visitor rather than raise.
+*/
+do $revoke$
+declare
+  fn text;
+begin
+  foreach fn in array array[
+    'public.notify_members(uuid, uuid, text, text, text, text)',
+    'public.notify_user(uuid, uuid, text, text, text, text)',
+    'public.claim_push_subscription(text, text, text)',
+    'public.release_push_subscription(text)',
+    'public.delete_my_account()',
+    'public.set_member_role(uuid, uuid, text)',
+    'public.transfer_admin(uuid, uuid)',
+    'public.edit_comment(text, uuid, text)',
+    'public.fund_summary(uuid)',
+    'public.create_community(text, text, text)',
+    'public.join_community(text)',
+    'public.decide_join_request(uuid, uuid, boolean)',
+    'public.my_join_requests()'
+  ] loop
+    if to_regprocedure(fn) is not null then
+      execute format('revoke all on function %s from public, anon', fn);
+      execute format('grant execute on function %s to authenticated', fn);
+    end if;
+  end loop;
+end
+$revoke$;
+
+
+-- =============================================================
+-- 0021_secret_ballot.sql
+-- votul devine secret si fata de vecini si fata de administratie; un singur vot in sondajele cu o varianta; dupa termen nu se mai voteaza
+-- =============================================================
+
+/*
+  A vote that is secret, single, in time and about the right question.
+
+  "The count is public and the ballot is anonymous" is what the product says
+  about its polls, and the screens kept the promise by not showing names. The
+  database did not: every vote is a row with the voter's id on it, and the
+  select policy handed all of them to any member who asked. Four things in
+  this file, all found by tests-db (SON-02, 05, 06, 07, 08):
+
+    * a vote is readable by the person who cast it and by nobody else —
+      not the neighbours, not the administrator
+    * the counts everybody is entitled to come from a function, since the
+      browser can no longer add up rows it is not shown
+    * a poll that takes one answer takes one answer
+    * the deadline is enforced where the vote is written, instead of relying
+      on an administrator remembering to press "close" — which is the third
+      constraint in the case study, word for word
+
+  Safe to run more than once.
+*/
+
+-- ---------- whose vote it is ----------
+drop policy if exists poll_votes_select on public.poll_votes;
+create policy poll_votes_select on public.poll_votes
+  for select using (user_id = auth.uid());
+
+-- ---------- the count ----------
+/*
+  How many, never who. Every option is returned, including the ones nobody
+  chose, so the caller does not have to tell "zero" from "missing".
+
+  security definer, and it asks is_member itself: totals of a community are
+  for that community.
+*/
+create or replace function public.poll_results(p_community uuid)
+returns table (poll_id uuid, option_id uuid, votes int)
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select o.poll_id, o.id, count(v.user_id)::int
+    from public.polls p
+    join public.poll_options o on o.poll_id = p.id
+    left join public.poll_votes v on v.poll_id = p.id and v.option_id = o.id
+   where p.community_id = p_community
+     and public.is_member(p_community)
+   group by o.poll_id, o.id;
+$$;
+
+revoke all on function public.poll_results(uuid) from public, anon;
+grant execute on function public.poll_results(uuid) to authenticated;
+
+-- ---------- what a vote has to be ----------
+/*
+  A trigger rather than a longer policy, for three reasons that each rule
+  brings: the option has to be looked up against the poll (the table carries
+  both ids and nothing ties them), "one answer" is a fact about other rows,
+  and a multi-choice ballot arrives as several rows in one statement, where a
+  row-level trigger sees the ones before it and a policy does not.
+
+  The advisory lock is for the double tap: two requests in flight that would
+  each find no earlier vote. It is held to the end of the transaction, so the
+  second one waits, looks again, and is refused.
+*/
+create or replace function public.check_poll_vote()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  p public.polls;
+begin
+  select * into p from public.polls where id = new.poll_id;
+  if not found then
+    raise exception 'no_such_poll' using errcode = 'foreign_key_violation';
+  end if;
+  if p.closed or p.ends_at <= now() then
+    raise exception 'poll_closed' using errcode = 'check_violation';
+  end if;
+  if not exists (select 1 from public.poll_options o where o.id = new.option_id and o.poll_id = new.poll_id) then
+    raise exception 'option_not_in_poll' using errcode = 'foreign_key_violation';
+  end if;
+  if not p.multi then
+    perform pg_advisory_xact_lock(hashtextextended(new.poll_id::text || ':' || new.user_id::text, 0));
+    if exists (select 1 from public.poll_votes v where v.poll_id = new.poll_id and v.user_id = new.user_id) then
+      raise exception 'already_voted' using errcode = 'unique_violation';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_check_poll_vote on public.poll_votes;
+create trigger trg_check_poll_vote
+  before insert on public.poll_votes
+  for each row execute procedure public.check_poll_vote();
+
+
+-- =============================================================
+-- 0022_what_may_change.sql
+-- moderarea schimba statusul, nu textul; data mesajelor o pune serverul; notificarile se trimit doar prin functii; limite de lungime pentru texte
+-- =============================================================
+
+/*
+  What may be changed, by whom, and when it was written.
+
+  A batch of small rules that were each stated somewhere and enforced nowhere.
+  They share a cause: a policy says who may touch a row, and says nothing
+  about which part of it. "Staff can update status (moderation)" was written
+  as "staff can update", so a moderator could rewrite a neighbour's post; "the
+  author may update" let the author undo the moderator. And every table
+  trusted the client for the one column the fifteen-minute rule in 0015 hangs
+  from.
+
+  All found by tests-db: IZO-28, NOT-03, ROL-05, ROL-06, DAT-02, DAT-03,
+  DAT-05, SES-02, MSG-05 to MSG-08, REA-04.
+
+  Safe to run more than once.
+*/
+
+-- ===========================================================================
+-- Notifications are written by the functions, and only by them.
+-- ===========================================================================
+/*
+  notifications_insert asked that the sender belong to the community named on
+  the row, and never asked who the row was for. Anyone could put a line, with
+  any text and any link, in the list of anyone on the service — and doing it
+  directly skipped the preferences notify_members and notify_user honour.
+  The app has only ever used the two functions, so the policy just goes.
+*/
+drop policy if exists notifications_insert on public.notifications;
+
+-- ===========================================================================
+-- Moderation changes the status. It does not change the words.
+-- ===========================================================================
+/*
+  Column privileges rather than a trigger: "only these columns" is exactly
+  what a column grant says, it cannot be forgotten by the next policy, and
+  the refusal comes from the same place as every other one.
+
+  A discussion: staff may hide it, restore it, or move it to another
+  category. Nobody may edit its text, change its author or move it to another
+  community — there has never been a screen for any of those, only the gap.
+  The author loses the update right altogether, which is what stops a hidden
+  discussion being un-hidden by the person it was hidden from.
+*/
+revoke update on public.discussions from anon, authenticated;
+grant update (status, category) on public.discussions to authenticated;
+
+drop policy if exists discussions_update on public.discussions;
+create policy discussions_update on public.discussions
+  for update using (public.is_staff(community_id)) with check (public.is_staff(community_id));
+
+-- An issue: its status, and nothing else.
+revoke update on public.issues from anon, authenticated;
+grant update (status) on public.issues to authenticated;
+
+/*
+  And where something starts is not the writer's choice either. A report
+  opened as "resolved" by the person reporting it, or a discussion that
+  arrives pre-hidden, are both states nobody decided.
+*/
+drop policy if exists issues_insert on public.issues;
+create policy issues_insert on public.issues for insert with check (
+  public.is_member(community_id) and reporter_id = auth.uid() and status = 'new'
+);
+drop policy if exists discussions_insert on public.discussions;
+create policy discussions_insert on public.discussions for insert with check (
+  public.is_member(community_id) and author_id = auth.uid()
+  and (status = 'approved' or public.is_staff(community_id))
+);
+
+/*
+  0003 let the reporter write "the opening entry" of their own issue's
+  history, and described it that way. What it permitted was any number of
+  entries with the status 'new', at any time, saying anything. The opening
+  entry is the one written when there are none.
+
+  "Are there none" is asked through a function because a policy on
+  issue_history that itself selects from issue_history is a policy inside
+  itself, and PostgreSQL refuses to evaluate it. It answers one bit about an
+  issue the caller could already read.
+*/
+create or replace function public.issue_has_history(p_issue uuid)
+returns boolean language sql security definer stable set search_path = public as $$
+  select exists (select 1 from public.issue_history h where h.issue_id = p_issue);
+$$;
+
+drop policy if exists issue_history_insert on public.issue_history;
+create policy issue_history_insert on public.issue_history for insert with check (
+  by_id = auth.uid()
+  and (
+    exists (
+      select 1 from public.issues i
+      where i.id = issue_id and public.is_staff(i.community_id)
+    )
+    or (
+      status = 'new'
+      and exists (
+        select 1 from public.issues i
+        where i.id = issue_id and i.reporter_id = auth.uid()
+      )
+      and not public.issue_has_history(issue_id)
+    )
+  )
+);
+
+-- ===========================================================================
+-- When something was written is not up to the person writing it.
+-- ===========================================================================
+/*
+  0015 closed the comment tables to updates precisely because "a client
+  permitted to write created_at can extend its own deadline". It could write
+  created_at all along — on the insert. A comment dated ten years ahead is
+  inside its fifteen minutes for ten years; one dated 2020 sits above the
+  messages it is answering.
+
+  Only for requests arriving through the API. Migrations and the SQL editor
+  run as the owner and may still say when something happened, which 0013
+  relied on when it carried the events across with their own dates.
+*/
+create or replace function public.stamp_created_at()
+returns trigger language plpgsql as $$
+begin
+  if current_user in ('authenticated', 'anon') then
+    new.created_at := now();
+  end if;
+  return new;
+end;
+$$;
+
+-- The same, for the tables that also carry the mark of a later correction:
+-- nothing is born already edited.
+create or replace function public.stamp_created_unedited()
+returns trigger language plpgsql as $$
+begin
+  if current_user in ('authenticated', 'anon') then
+    new.created_at := now();
+    new.edited_at := null;
+  end if;
+  return new;
+end;
+$$;
+
+create or replace function public.stamp_history_at()
+returns trigger language plpgsql as $$
+begin
+  if current_user in ('authenticated', 'anon') then
+    new.at := now();
+  end if;
+  return new;
+end;
+$$;
+
+do $stamps$
+declare
+  t text;
+begin
+  foreach t in array array[
+    'announcements', 'discussions', 'issues', 'polls', 'poll_votes', 'reactions',
+    'funds', 'fund_payments', 'documents'
+  ] loop
+    execute format('drop trigger if exists trg_stamp_created_at on public.%I', t);
+    execute format('create trigger trg_stamp_created_at before insert on public.%I for each row execute procedure public.stamp_created_at()', t);
+  end loop;
+  foreach t in array array['issue_comments', 'discussion_replies'] loop
+    execute format('drop trigger if exists trg_stamp_created_at on public.%I', t);
+    execute format('create trigger trg_stamp_created_at before insert on public.%I for each row execute procedure public.stamp_created_unedited()', t);
+  end loop;
+end
+$stamps$;
+
+drop trigger if exists trg_stamp_history_at on public.issue_history;
+create trigger trg_stamp_history_at before insert on public.issue_history
+  for each row execute procedure public.stamp_history_at();
+
+-- ===========================================================================
+-- Correcting a message: still yours, still fifteen minutes, still a member.
+-- ===========================================================================
+/*
+  Two things added to 0015's function. It never asked whether the author was
+  still in the community, so somebody removed a minute after posting kept the
+  other fourteen. And "cannot be edited into nothing" was tested with
+  btrim(), which strips spaces and nothing else: a message of blank lines
+  passed.
+*/
+create or replace function public.edit_comment(p_kind text, p_id uuid, p_body text)
+returns timestamptz language plpgsql security definer set search_path = public as $$
+declare
+  v_edited timestamptz;
+begin
+  if coalesce(p_body, '') !~ '\S' then
+    raise exception 'a comment cannot be edited into nothing';
+  end if;
+
+  if p_kind = 'comment' then
+    update public.issue_comments c
+       set body = p_body, edited_at = now()
+     where c.id = p_id
+       and c.author_id = auth.uid()
+       and c.created_at > now() - interval '15 minutes'
+       and exists (select 1 from public.issues i where i.id = c.issue_id and public.is_member(i.community_id))
+    returning c.edited_at into v_edited;
+  elsif p_kind = 'reply' then
+    update public.discussion_replies r
+       set body = p_body, edited_at = now()
+     where r.id = p_id
+       and r.author_id = auth.uid()
+       and r.created_at > now() - interval '15 minutes'
+       and exists (select 1 from public.discussions d where d.id = r.discussion_id and public.is_member(d.community_id))
+    returning r.edited_at into v_edited;
+  else
+    raise exception 'unknown kind: %', p_kind;
+  end if;
+
+  if v_edited is null then
+    raise exception 'not yours to edit, or the fifteen minutes are up';
+  end if;
+  return v_edited;
+end;
+$$;
+
+revoke all on function public.edit_comment(text, uuid, text) from public, anon;
+grant execute on function public.edit_comment(text, uuid, text) to authenticated;
+
+-- ===========================================================================
+-- Taking your heart back after you have left.
+-- ===========================================================================
+/*
+  0014 kept this open on purpose — "the one direction worth keeping open" —
+  with a delete policy that asks only whose heart it is. It did not work.
+  A delete has to find the row first, finding is governed by the select
+  policy, and the select policy asks for membership. The heart stayed,
+  counted, with nobody able to remove it. Your own are now always visible to
+  you, which is all the delete needed.
+*/
+drop policy if exists reactions_select on public.reactions;
+create policy reactions_select on public.reactions
+  for select using (user_id = auth.uid() or public.can_react(issue_comment_id, reply_id));
+
+-- ===========================================================================
+-- Text has to be something, and cannot be anything.
+-- ===========================================================================
+/*
+  Every column here was `not null`, which the empty string satisfies, and
+  none had a length. The app loads a community's comments when it opens; one
+  two-megabyte comment is everyone's slow start.
+
+  The limits are far above anything the screens are for — the longest
+  announcement in production is under a hundred characters — so nobody
+  meets them by writing. `not valid` so that rows already there are left
+  alone whatever they hold: the rule is for what arrives from now on, and a
+  migration that refuses to run because of one old row is worse than the row.
+*/
+do $limits$
+declare
+  r record;
+begin
+  for r in
+    select * from (values
+      ('announcements',      'announcements_title_text',   $c$ title ~ '\S' and char_length(title) <= 300 $c$),
+      ('announcements',      'announcements_body_len',     $c$ char_length(body) <= 20000 and char_length(location) <= 300 $c$),
+      ('discussions',        'discussions_title_text',     $c$ title ~ '\S' and char_length(title) <= 300 $c$),
+      ('discussions',        'discussions_body_text',      $c$ body ~ '\S' and char_length(body) <= 20000 $c$),
+      ('discussion_replies', 'discussion_replies_body_text', $c$ body ~ '\S' and char_length(body) <= 5000 $c$),
+      ('issues',             'issues_title_text',          $c$ title ~ '\S' and char_length(title) <= 300 $c$),
+      ('issues',             'issues_description_text',    $c$ description ~ '\S' and char_length(description) <= 20000 and char_length(coalesce(location, '')) <= 300 $c$),
+      ('issue_comments',     'issue_comments_body_text',   $c$ body ~ '\S' and char_length(body) <= 5000 $c$),
+      ('issue_history',      'issue_history_note_len',     $c$ char_length(note) <= 2000 and char_length(status) <= 40 $c$),
+      ('polls',              'polls_question_text',        $c$ question ~ '\S' and char_length(question) <= 500 $c$),
+      ('poll_options',       'poll_options_label_text',    $c$ label ~ '\S' and char_length(label) <= 200 $c$),
+      ('notifications',      'notifications_text_len',     $c$ char_length(title) <= 300 and char_length(body) <= 2000 and char_length(link) <= 500 and char_length(type) <= 40 $c$),
+      ('funds',              'funds_text',                 $c$ title ~ '\S' and char_length(title) <= 300 and char_length(description) <= 20000 $c$),
+      ('fund_payments',      'fund_payments_note_len',     $c$ char_length(note) <= 1000 $c$),
+      ('documents',          'documents_text',             $c$ title ~ '\S' and char_length(title) <= 300 and char_length(path) <= 500 and char_length(kind) <= 40 $c$),
+      ('communities',        'communities_text',           $c$ name ~ '\S' and char_length(name) <= 200 and char_length(code) between 1 and 40 and char_length(coalesce(address, '')) <= 300 and char_length(coalesce(description, '')) <= 5000 $c$),
+      ('profiles',           'profiles_text_len',          $c$ char_length(full_name) <= 120 and char_length(coalesce(apartment, '')) <= 60 $c$),
+      ('member_phones',      'member_phones_len',          $c$ char_length(coalesce(phone, '')) <= 40 $c$)
+    ) as v(tbl, name, expr)
+  loop
+    execute format('alter table public.%I drop constraint if exists %I', r.tbl, r.name);
+    execute format('alter table public.%I add constraint %I check (%s) not valid', r.tbl, r.name, r.expr);
+  end loop;
+end
+$limits$;
+
+
+-- =============================================================
+-- 0023_fund_totals.sql
+-- totalul strans la un fond nu mai scade cand pleaca cineva care a platit; platile doar pe numele membrilor; sume absurde refuzate
+-- =============================================================
+
+/*
+  A ledger that still adds up after somebody moves out.
+
+  fund_summary counted, as "collected", only the payments of people who were
+  members at the moment of asking. When a neighbour who had paid left the
+  community — or gave up their account — their money left the total with
+  them, while the row recording it sat untouched in the ledger. A collection
+  could go from 350 lei to 100 without anyone having been refunded. Found by
+  tests-db (FON-07, STE-07), along with four smaller things about the same
+  tables (FON-08, FON-10, IZO-37, IZO-38).
+
+  Safe to run more than once.
+*/
+
+-- ---------- which community a fund belongs to, for those in it ----------
+/*
+  This ran as its owner and answered anybody, visitor included: given a
+  fund's id, here is its community. The policies that call it only ever need
+  the answer for the caller's own communities, so that is all it now gives.
+  For everyone else it is null, and is_staff(null) is false, which is what
+  those policies want.
+*/
+create or replace function public.fund_community(p_fund uuid)
+returns uuid language sql security definer stable set search_path = public as $$
+  select f.community_id from public.funds f
+   where f.id = p_fund and public.is_member(f.community_id);
+$$;
+
+-- ---------- a payment is recorded for somebody who lives there ----------
+/*
+  Nothing tied the person on a payment to the fund's community. A payment
+  entered against the wrong name showed that person — who might live
+  anywhere — a line from another association's ledger, since "your own line"
+  is what the select policy promises. The same for a quota.
+
+  Restrictive, and for inserts only: it narrows what the existing policies
+  allow rather than replacing them, and it leaves staff free to correct or
+  remove the payment of someone who has since left.
+*/
+create or replace function public.lives_where_fund_is(p_fund uuid, p_user uuid)
+returns boolean language sql security definer stable set search_path = public as $$
+  select exists (
+    select 1
+      from public.funds f
+      join public.memberships m on m.community_id = f.community_id
+     where f.id = p_fund and m.user_id = p_user
+       -- and the one asking is in that community too, so this cannot be used
+       -- to find out where a stranger lives
+       and public.is_member(f.community_id)
+  );
+$$;
+
+drop policy if exists fund_payments_members_only on public.fund_payments;
+create policy fund_payments_members_only on public.fund_payments
+  as restrictive for insert
+  with check (public.lives_where_fund_is(fund_id, user_id));
+
+drop policy if exists fund_quotas_members_only on public.fund_quotas;
+create policy fund_quotas_members_only on public.fund_quotas
+  as restrictive for insert
+  with check (public.lives_where_fund_is(fund_id, user_id));
+
+-- ---------- an amount is an amount ----------
+/*
+  The totals are a sum cast back to bigint. One fund with an amount near the
+  top of the type made that cast fail, and the failure took the totals of
+  every fund in the community with it — one typo, and the funds screen is
+  empty for everybody. A hundred million lei per home is not a collection
+  anyone is running; refusing it keeps the arithmetic far from the edge.
+*/
+alter table public.funds drop constraint if exists funds_amount_sane;
+alter table public.funds add constraint funds_amount_sane
+  check (amount_bani <= 10000000000) not valid;
+alter table public.fund_quotas drop constraint if exists fund_quotas_amount_sane;
+alter table public.fund_quotas add constraint fund_quotas_amount_sane
+  check (amount_bani <= 10000000000) not valid;
+alter table public.fund_payments drop constraint if exists fund_payments_amount_sane;
+alter table public.fund_payments add constraint fund_payments_amount_sane
+  check (amount_bani <= 10000000000) not valid;
+
+-- ---------- the totals ----------
+/*
+  Unchanged in everything but one line: collected_bani is every payment the
+  fund has received, whoever made it and wherever they live now.
+
+  What is owed is still worked out from the people who are members today —
+  somebody who has left is not being asked for anything — so a collection
+  whose payers have moved away can show more collected than is currently
+  due. That is the truth of it, and better than money that vanishes.
+*/
+create or replace function public.fund_summary(p_community uuid)
+returns table (
+  fund_id      uuid,
+  target_bani  bigint,
+  collected_bani bigint,
+  homes        int,
+  homes_paid   int,
+  my_due_bani  bigint,
+  my_paid_bani bigint
+) language sql security definer stable set search_path = public as $$
+  with allowed as (
+    select p_community as cid where public.is_member(p_community)
+  ),
+  f as (
+    select fu.id, fu.amount_bani from public.funds fu, allowed a where fu.community_id = a.cid
+  ),
+  due as (
+    select f.id as fund_id, m.user_id,
+           coalesce(q.amount_bani, f.amount_bani) as due_bani
+      from f
+      join public.memberships m on m.community_id = p_community
+      left join public.fund_quotas q on q.fund_id = f.id and q.user_id = m.user_id
+  ),
+  paid as (
+    select p.fund_id, p.user_id, sum(p.amount_bani) as paid_bani
+      from public.fund_payments p
+      join f on f.id = p.fund_id
+     group by p.fund_id, p.user_id
+  ),
+  received as (
+    select p.fund_id, sum(p.paid_bani) as all_bani from paid p group by p.fund_id
+  )
+  select
+    d.fund_id,
+    sum(d.due_bani)::bigint                                        as target_bani,
+    coalesce(max(r.all_bani), 0)::bigint                           as collected_bani,
+    count(*)::int                                                  as homes,
+    count(*) filter (where coalesce(pd.paid_bani, 0) >= d.due_bani)::int as homes_paid,
+    max(d.due_bani) filter (where d.user_id = auth.uid())::bigint  as my_due_bani,
+    coalesce(max(pd.paid_bani) filter (where d.user_id = auth.uid()), 0)::bigint as my_paid_bani
+  from due d
+  left join paid pd on pd.fund_id = d.fund_id and pd.user_id = d.user_id
+  left join received r on r.fund_id = d.fund_id
+  group by d.fund_id;
+$$;
+
+revoke all on function public.fund_summary(uuid) from public, anon;
+grant execute on function public.fund_summary(uuid) to authenticated;
+
+-- ---------- the map of old photos is for the community it describes ----------
+-- 0019 let any signed-in account read it: the paths of the pre-0018 photos,
+-- which carry their uploader's id, and whose community they are.
+drop policy if exists legacy_issue_photos_select on public.legacy_issue_photos;
+create policy legacy_issue_photos_select on public.legacy_issue_photos
+  for select using (public.is_member(community_id));
 
 commit;

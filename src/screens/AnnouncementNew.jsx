@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams, Navigate } from 'react-router-
 import { useApp } from '../state/store.jsx';
 import { ScreenHeader } from '../components/ui.jsx';
 import { useBack } from '../lib/useBack.js';
+import { LIMITS } from '../lib/limits.js';
 
 /*
   Writing an announcement, and editing one, in the same form — they ask for
@@ -124,7 +125,7 @@ export default function AnnouncementNew() {
         <label className="field-label" htmlFor="ann-title">
           {t('ann_f_title')} <span className="faint">· {t('required')}</span>
         </label>
-        <input id="ann-title" className="input" value={title}
+        <input maxLength={LIMITS.title} id="ann-title" className="input" value={title}
           onChange={(e) => { setTitle(e.target.value); setErr(''); }}
           placeholder="Ex: Adunarea generală" style={{ marginBottom: 16 }} />
 
@@ -133,7 +134,7 @@ export default function AnnouncementNew() {
         <label className="field-label" htmlFor="ann-body">
           {t('ann_f_body')} <span className="faint">· {t('optional')}</span>
         </label>
-        <textarea id="ann-body" className="input" rows={7} value={body}
+        <textarea maxLength={LIMITS.body} id="ann-body" className="input" rows={7} value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder="Scrie mesajul pentru vecini…" style={{ marginBottom: 20, resize: 'vertical' }} />
 
@@ -172,7 +173,7 @@ export default function AnnouncementNew() {
             <label className="field-label" htmlFor="ann-loc">
               {t('ev_f_loc')} <span className="faint">· {t('optional')}</span>
             </label>
-            <input id="ann-loc" className="input" value={loc} onChange={(e) => setLoc(e.target.value)}
+            <input maxLength={LIMITS.location} id="ann-loc" className="input" value={loc} onChange={(e) => setLoc(e.target.value)}
               placeholder="Ex: Holul scării A" style={{ marginBottom: 18 }} />
           </>
         )}

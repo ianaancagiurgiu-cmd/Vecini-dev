@@ -96,6 +96,23 @@ export async function serveCommunity(page, { signedIn = true } = {}) {
     return route.fulfill({ status: 200, contentType: 'application/json', headers: CORS, body: JSON.stringify(hit) });
   });
 
+  /*
+    Poll totals. The app asks poll_results for them since the ballot became
+    secret (migration 0021): the rows of poll_votes only ever hold the
+    viewer's own vote now. Answered from the same seeded votes, so the
+    recording shows the counts it always did.
+  */
+  await page.route(/\/rest\/v1\/rpc\/poll_results/, (route) => {
+    const req = route.request();
+    if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS, body: '' });
+    const rows = (TABLES.poll_options || []).map((o) => ({
+      poll_id: o.poll_id,
+      option_id: o.id,
+      votes: (TABLES.poll_votes || []).filter((v) => v.poll_id === o.poll_id && v.option_id === o.id).length,
+    }));
+    return route.fulfill({ status: 200, contentType: 'application/json', headers: CORS, body: JSON.stringify(rows) });
+  });
+
   await page.route(/\/auth\/v1\//, (route) => {
     const req = route.request();
     if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS, body: '' });

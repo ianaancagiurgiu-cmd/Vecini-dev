@@ -3,6 +3,7 @@ import { useNavigate, Navigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { ScreenHeader } from '../components/ui.jsx';
 import { inviteLink } from '../lib/invite.js';
+import { LIMITS } from '../lib/limits.js';
 
 export default function CommunitySettings() {
   const nav = useNavigate();
@@ -76,10 +77,10 @@ export default function CommunitySettings() {
         </div>
 
         <label className="field-label">{t('admin_s_name')}</label>
-        <input className="input" value={name} onChange={(e) => setName(e.target.value)} style={{ marginBottom: 16 }} />
+        <input maxLength={LIMITS.communityName} className="input" value={name} onChange={(e) => setName(e.target.value)} style={{ marginBottom: 16 }} />
 
         <label className="field-label">{t('admin_s_desc')}</label>
-        <textarea className="input" value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} style={{ marginBottom: 16 }} />
+        <textarea maxLength={LIMITS.communityDescription} className="input" value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} style={{ marginBottom: 16 }} />
 
         <label className="field-label">{t('admin_kind')}</label>
         <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45, marginTop: -4, marginBottom: 9 }}>{t('admin_kind_hint')}</div>

@@ -1,6 +1,7 @@
 import { useState, useRef, useLayoutEffect } from 'react';
 import { useApp } from '../state/store.jsx';
 import { untilLabel } from '../lib/format.js';
+import { LIMITS } from '../lib/limits.js';
 
 export const LANGS = [
   { code: 'ro', flag: '🇷🇴', short: 'RO', name: 'Română' },
@@ -301,6 +302,7 @@ export function Composer({ value, onChange, onSend, placeholder, style, editing,
         <textarea
           ref={ref}
           rows={1}
+          maxLength={LIMITS.message}
           className="input composer-input"
           style={{ flex: 1 }}
           value={value}

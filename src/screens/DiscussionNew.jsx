@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { ScreenHeader, Avatar } from '../components/ui.jsx';
 import { CATEGORIES, catLabel, DISC_CATS, timeAgo } from '../lib/format.js';
+import { LIMITS } from '../lib/limits.js';
 
 export default function DiscussionNew() {
   const nav = useNavigate();
@@ -48,7 +49,7 @@ export default function DiscussionNew() {
         ) : (
           <>
             <label className="field-label">{t('disc_f_title')} <span className="faint">· {t('required')}</span></label>
-            <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Idei pentru locul de joacă" style={{ marginBottom: 16 }} />
+            <input maxLength={LIMITS.title} className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Idei pentru locul de joacă" style={{ marginBottom: 16 }} />
             <label className="field-label">{t('disc_f_cat')} <span className="faint">· {t('required')}</span></label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
               {DISC_CATS.map((c) => (
@@ -56,7 +57,7 @@ export default function DiscussionNew() {
               ))}
             </div>
             <label className="field-label">{t('disc_f_body')} <span className="faint">· {t('required')}</span></label>
-            <textarea className="input" value={body} onChange={(e) => setBody(e.target.value)} rows={6} placeholder="Descrie subiectul…" style={{ marginBottom: 20 }} />
+            <textarea maxLength={LIMITS.body} className="input" value={body} onChange={(e) => setBody(e.target.value)} rows={6} placeholder="Descrie subiectul…" style={{ marginBottom: 20 }} />
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn btn--ghost" onClick={() => setPreview(true)} disabled={!valid} style={{ flex: 1 }}>{t('disc_preview')}</button>
               <button className="btn btn--primary" onClick={submit} disabled={!valid || busy} style={{ flex: 1 }}>{t('disc_publish')}</button>
