@@ -116,6 +116,7 @@ const SCREENS = [
   ['/#/app/settings/account', 'the account'],
   ['/#/app/admin', 'the admin panel'],
   ['/#/app/search', 'the search'],
+  ['/#/privacy', 'the privacy policy'],
 ];
 
 test.describe('No source code on screen', () => {

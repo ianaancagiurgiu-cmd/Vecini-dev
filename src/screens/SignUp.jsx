@@ -101,6 +101,12 @@ export default function SignUp() {
           onChange={(e) => { setPw2(e.target.value); setErr(''); }} style={{ marginBottom: 16 }} />
         {err &&<div style={{ color: 'var(--terracotta)', fontSize: 13.5, fontWeight: 600, marginBottom: 12 }}>{err}</div>}
         <button className="btn btn--primary" type="submit" disabled={busy}>{t('auth_signup')}</button>
+        {/* Said before the button is pressed, not after: this is the moment
+            somebody is about to hand their details over. */}
+        <p className="muted" style={{ fontSize: 12.5, lineHeight: 1.5, margin: '12px 0 0', textAlign: 'center' }}>
+          {t('signup_privacy_note')}{' '}
+          <Link to="/privacy" style={{ color: 'var(--green-600)', fontWeight: 700 }}>{t('privacy_link')}</Link>
+        </p>
       </form>
     </AuthShell>
   );

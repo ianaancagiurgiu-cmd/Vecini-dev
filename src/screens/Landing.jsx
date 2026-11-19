@@ -1,4 +1,4 @@
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
 import { LangSwitch } from '../components/ui.jsx';
 
@@ -58,6 +58,10 @@ export default function Landing() {
         <button className="btn btn--primary" onClick={() => nav('/signup')}>{t('landing_cta_primary')}</button>
         <button className="btn btn--ghost" onClick={() => nav('/join')}>{t('landing_cta_secondary')}</button>
         <button onClick={() => nav('/login')} style={{ background: 'none', border: 'none', color: 'var(--ink-400)', fontSize: 14, fontWeight: 600, marginTop: 4, textAlign: 'center' }}>{t('landing_signin')}</button>
+      </div>
+
+      <div className="pad" style={{ paddingTop: 24, textAlign: 'center' }}>
+        <Link to="/privacy" style={{ color: 'var(--ink-400)', fontSize: 13, textDecoration: 'underline' }}>{t('privacy_link')}</Link>
       </div>
     </div>
   );

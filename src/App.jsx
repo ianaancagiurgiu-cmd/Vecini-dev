@@ -16,6 +16,7 @@ import ChangePassword from './screens/ChangePassword.jsx';
 import ChangeEmail from './screens/ChangeEmail.jsx';
 import DeleteAccount from './screens/DeleteAccount.jsx';
 import Join from './screens/Join.jsx';
+import Privacy from './screens/Privacy.jsx';
 import CreateCommunity from './screens/CreateCommunity.jsx';
 
 import Dashboard from './screens/Dashboard.jsx';
@@ -114,6 +115,8 @@ export default function App() {
         <Route path="/forgot" element={<Forgot />} />
         <Route path="/new-password" element={<NewPassword />} />
         <Route path="/join" element={<Join />} />
+        {/* Outside /app on purpose: it has to be readable before signing up. */}
+        <Route path="/privacy" element={<Privacy />} />
         {/* Shared invite links land here with the code already filled in. */}
         <Route path="/join/:code" element={<Join />} />
         <Route path="/create" element={<CreateCommunity />} />

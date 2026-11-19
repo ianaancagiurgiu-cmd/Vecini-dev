@@ -19,27 +19,11 @@
   <!-- The mark on its own tile: at 16 px on a tab strip, a shape with no
        ground behind it is two smudges of colour. -->
   <link rel="icon" href="/favicon.svg" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <!--
-    Loaded without blocking the first paint.
-
-    A plain stylesheet here holds up rendering until it arrives — and it comes
-    from a third-party host, so on mobile data that is a DNS lookup and a TLS
-    handshake before anything of ours is allowed on screen. Measured: with the
-    font request taking 800ms the waiting screen appeared at 832ms, and at
-    2500ms it appeared at 2536ms. One for one. Which defeats the entire point
-    of drawing that screen inline — it exists to be on screen in the first
-    frame, and it was waiting on Google.
-
-    media="print" is not applicable to a screen, so the browser fetches it at
-    low priority and paints without it; onload promotes it to the real thing.
-    The URL already asks for display=swap, so text shows immediately in
-    Georgia and the real faces swap in when they land.
+    No font requests here. The typefaces come bundled with the app's own CSS
+    (see src/main.jsx), so the first paint waits on nothing from another host
+    and no visitor's address is sent to Google for the sake of a font.
   -->
-  <link rel="stylesheet" media="print" onload="this.media='all'"
-        href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
-  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" /></noscript>
   <!--
     The waiting screen lives here, in the document itself, rather than in a
     component. Everything React draws arrives after a 566 KB bundle has been
@@ -81,7 +65,7 @@
     }
     #splash .by-name {
       display: block;
-      font-family: 'Newsreader', Georgia, 'Times New Roman', serif;
+      font-family: 'Newsreader Variable', 'Newsreader', Georgia, 'Times New Roman', serif;
       font-style: italic; font-size: 27px; color: #2f6b4f; letter-spacing: .01em;
     }
 
