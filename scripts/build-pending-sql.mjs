@@ -61,6 +61,8 @@ const DESCRIERI = {
     'moderarea schimba statusul, nu textul; data mesajelor o pune serverul; notificarile se trimit doar prin functii; limite de lungime pentru texte',
   '0023_fund_totals.sql':
     'totalul strans la un fond nu mai scade cand pleaca cineva care a platit; platile doar pe numele membrilor; sume absurde refuzate',
+  '0024_apartment_for_neighbours.sql':
+    'apartamentul din profil il vad doar vecinii din aceeasi comunitate, ca si telefonul',
 };
 
 const files = readdirSync(dir)

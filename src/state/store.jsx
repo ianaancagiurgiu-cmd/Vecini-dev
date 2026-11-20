@@ -60,6 +60,20 @@ function loadPrefs() {
   return { lang: 'ro' };
 }
 
+/*
+  The profile columns anybody signed in may read. Not `*`: since migration
+  0024 the flat is not among them — it comes from apartments_of(), which
+  answers only for yourself and your neighbours — and asking for a column you
+  may not read fails the whole request rather than leaving it out.
+*/
+const PROFILE_COLUMNS = 'id,full_name,avatar_color,created_at,deleted_at';
+
+// Your own flat, which apartments_of always answers for.
+async function ownApartment(uid) {
+  const { data } = await supabase.rpc('apartments_of', { p_users: [uid] });
+  return (Array.isArray(data) ? data[0]?.apartment : null) || '';
+}
+
 const emptyData = () => ({
   users: {},
   members: [],
@@ -210,12 +224,13 @@ export function AppProvider({ children }) {
   useEffect(() => {
     if (!userId) { setProfile(null); return; }
     (async () => {
-      let { data: row } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+      let { data: row } = await supabase.from('profiles').select(PROFILE_COLUMNS).eq('id', userId).maybeSingle();
       if (!row) {
         const fullName = session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Vecin';
-        const { data: created } = await supabase.from('profiles').insert({ id: userId, full_name: fullName }).select('*').single();
+        const { data: created } = await supabase.from('profiles').insert({ id: userId, full_name: fullName }).select(PROFILE_COLUMNS).single();
         row = created;
       }
+      if (row) row = { ...row, apartment: await ownApartment(userId) };
       if (mounted.current) setProfile(row);
     })();
   }, [userId]);
@@ -362,16 +377,26 @@ export function AppProvider({ children }) {
       (requestRows || []).forEach((r) => note(r.user_id));
 
       const peopleIds = [...needed];
-      const { data: profilesRows } = peopleIds.length
-        ? await supabase.from('profiles').select('*').in('id', peopleIds)
-        : { data: [] };
+      /*
+        Names for everybody who appears on a screen; flats only for the people
+        this person shares a community with, which is all apartments_of will
+        answer for. The profile row itself no longer carries the flat to
+        anyone (migration 0024).
+      */
+      const [{ data: profilesRows }, { data: flatRows }] = peopleIds.length
+        ? await Promise.all([
+            supabase.from('profiles').select(PROFILE_COLUMNS).in('id', peopleIds),
+            supabase.rpc('apartments_of', { p_users: peopleIds }),
+          ])
+        : [{ data: [] }, { data: [] }];
+      const flats = new Map((flatRows || []).map((r) => [r.id, r.apartment]));
       const phones = {};
       (phoneRows || []).forEach((r) => { phones[r.user_id] = { phone: r.phone || '', visible: !!r.visible }; });
 
       const users = {};
       (profilesRows || []).forEach((p) => {
         users[p.id] = {
-          id: p.id, name: p.full_name, apartment: p.apartment, color: p.avatar_color,
+          id: p.id, name: p.full_name, apartment: flats.get(p.id) || '', color: p.avatar_color,
           /*
             Present only when its owner turned it on. Your own row comes back
             either way, because you may always read your own — so filtering on
@@ -708,9 +733,9 @@ export function AppProvider({ children }) {
     const v = String(name || '').trim().replace(/\s+/g, ' ');
     if (v.length < 2) throw taggedError('name_too_short');
     const { data: row, error } = await supabase.from('profiles')
-      .update({ full_name: v }).eq('id', userId).select('*').single();
+      .update({ full_name: v }).eq('id', userId).select(PROFILE_COLUMNS).single();
     if (error) throw error;
-    setProfile(row);
+    setProfile((p) => ({ ...row, apartment: p?.apartment || '' }));
     // Best effort, and deliberately not fatal: the app never reads this copy.
     try { await supabase.auth.updateUser({ data: { full_name: v } }); } catch { /* ignore */ }
     await refreshAll();
@@ -725,9 +750,9 @@ export function AppProvider({ children }) {
   const setApartment = async (apartment) => {
     const v = String(apartment || '').trim();
     const { data: row, error } = await supabase.from('profiles')
-      .update({ apartment: v }).eq('id', userId).select('*').single();
+      .update({ apartment: v }).eq('id', userId).select(PROFILE_COLUMNS).single();
     if (error) throw error;
-    setProfile(row);
+    setProfile({ ...row, apartment: v });
     await refreshAll();
   };
 

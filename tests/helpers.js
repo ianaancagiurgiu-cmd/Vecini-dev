@@ -181,6 +181,9 @@ function derived(table, fixtures) {
       votes: (fixtures.poll_votes || []).filter((v) => v.poll_id === o.poll_id && v.option_id === o.id).length,
     }));
   }
+  if (table === 'rpc/apartments_of') {
+    return (fixtures.profiles || []).map((p) => ({ id: p.id, apartment: p.apartment || '' }));
+  }
   return [];
 }
 

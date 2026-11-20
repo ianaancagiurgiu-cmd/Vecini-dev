@@ -14,4 +14,4 @@ export const CONTACT_EMAIL = 'admin@vecini.app';
 
 // The date shown as "last updated". Change it whenever the text changes in
 // substance, so people can tell that something did.
-export const POLICY_UPDATED = '2026-11-19';
+export const POLICY_UPDATED = '2026-11-20';

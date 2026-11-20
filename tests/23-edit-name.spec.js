@@ -59,6 +59,17 @@ async function asSelf(page, { name = 'Iana Giurgiu', apartment = 'Ap. 12', kind 
     });
   });
 
+  // The flat is read through apartments_of since migration 0024; answered
+  // from the same mutable copy, as the real function reads the same row.
+  await page.route(/\/rest\/v1\/rpc\/apartments_of/, (route) => {
+    if (route.request().method() === 'OPTIONS') return route.fallback();
+    return route.fulfill({
+      status: 200, contentType: 'application/json',
+      headers: { 'access-control-allow-origin': '*' },
+      body: JSON.stringify([{ id: current.id, apartment: current.apartment || '' }]),
+    });
+  });
+
   await stubAuth(page, 'user', () => ({ status: 200, body: { id: me.id } }));
   return me;
 }

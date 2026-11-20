@@ -99,7 +99,8 @@ scenario('ANO-07', 'Funcțiile rezervate oamenilor cu cont, văzute dinspre un v
         where n.nspname = 'public' and p.prokind = 'f'
           and p.proname in ('notify_members', 'notify_user', 'claim_push_subscription', 'release_push_subscription',
                             'delete_my_account', 'set_member_role', 'transfer_admin', 'edit_comment', 'fund_summary',
-                            'create_community', 'join_community', 'decide_join_request', 'my_join_requests', 'poll_results')
+                            'create_community', 'join_community', 'decide_join_request', 'my_join_requests', 'poll_results',
+                            'apartments_of')
           and has_function_privilege('anon', p.oid, 'execute')`);
     assert.deepEqual(reserved.map((r) => r.proname), [], 'apelabile fără cont');
     // The one that is for visitors still is.

@@ -102,6 +102,14 @@ export async function serveCommunity(page, { signedIn = true } = {}) {
     viewer's own vote now. Answered from the same seeded votes, so the
     recording shows the counts it always did.
   */
+  // Flats come from apartments_of since migration 0024, not from the profile row.
+  await page.route(/\/rest\/v1\/rpc\/apartments_of/, (route) => {
+    const req = route.request();
+    if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS, body: '' });
+    const rows = (TABLES.profiles || []).map((p) => ({ id: p.id, apartment: p.apartment || '' }));
+    return route.fulfill({ status: 200, contentType: 'application/json', headers: CORS, body: JSON.stringify(rows) });
+  });
+
   await page.route(/\/rest\/v1\/rpc\/poll_results/, (route) => {
     const req = route.request();
     if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS, body: '' });

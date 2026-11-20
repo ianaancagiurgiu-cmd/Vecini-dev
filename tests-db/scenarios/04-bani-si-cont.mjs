@@ -247,13 +247,45 @@ scenario('TEL-06', 'Cineva schimbă numele sau apartamentul din profilul altcuiv
     assert.equal((await sql(`select full_name from public.profiles where id = $1`, [U.ioana]))[0].full_name, 'Ioana Rusu');
   }, { doc: 'Migrarea 0001.' });
 
-scenario('TEL-07', 'Cineva cu cont, din altă comunitate sau din niciuna, citește numele și apartamentele tuturor',
-  'Astăzi reușește: orice om cu cont vede numele și apartamentul oricărui utilizator al platformei.',
+scenario('TEL-07', 'Cineva cu cont, din altă comunitate sau din niciuna, încearcă să afle apartamentele',
+  'Vede numele oamenilor (ca să apară lângă ce au scris), dar nu și apartamentul. Apartamentul îl văd doar vecinii din aceeași comunitate și omul însuși.',
   async ({ as }) => {
-    const rows = await as(U.radu).rows(`select full_name, apartment from public.profiles`);
-    assert.equal(rows.length, 8);
-    assert.ok(rows.some((r) => r.apartment === 'Ap. 12'));
-  }, { decide: 'Migrarea 0009 spune explicit că e intenționat pentru nume și apartament. Dar înseamnă că oricine își face un cont, fără să fie în vreo comunitate, poate descărca lista cu numele și apartamentul fiecărui utilizator din toate comunitățile. Studiul de caz numește datele personale „neobișnuit de sensibile”. De reconsiderat: profilul vizibil doar vecinilor din aceeași comunitate.' });
+    // Straight from the table: the column is not theirs to read at all.
+    for (const who of [U.radu, U.carmen, U.dan]) {
+      const r = await as(who).run(`select apartment from public.profiles where id = $1`, [U.ioana]);
+      assert.ok(r.error && /permission denied/.test(r.error.message), 'apartamentul se poate citi direct din profil');
+      const all = await as(who).run(`select * from public.profiles`);
+      assert.ok(all.error, '„select *” ocolește restricția pe apartament');
+    }
+    // Names stay readable, so bylines work everywhere.
+    assert.equal(await as(U.radu).count(`select full_name from public.profiles where id = $1`, [U.ioana]), 1);
+    // Through the function: neighbours yes, everybody else nothing.
+    const flatOf = async (who, of) => (await as(who).rows(`select id, apartment from public.apartments_of($1::uuid[])`, [[of]]))[0]?.apartment;
+    assert.equal(await flatOf(U.dan, U.ioana), 'Ap. 12', 'un vecin din aceeași comunitate trebuie să vadă apartamentul');
+    assert.equal(await flatOf(U.ioana, U.ioana), 'Ap. 12', 'fiecare își vede propriul apartament');
+    assert.equal(await flatOf(U.maria, U.carmen), 'Casa 3', 'Maria e și în B');
+    assert.equal(await flatOf(U.carmen, U.ioana), undefined, 'un vecin din altă comunitate vede apartamentul');
+    assert.equal(await flatOf(U.bogdan, U.ioana), undefined, 'un administrator din altă comunitate vede apartamentul');
+    assert.equal(await flatOf(U.radu, U.ioana), undefined, 'cineva fără comunitate vede apartamentul');
+  }, { doc: 'Decizia din 20 noiembrie 2026: numărul de telefon și apartamentul sunt doar pentru cei din comunitate. Migrarea 0024.' });
+
+scenario('TEL-08', 'Un vecin pleacă din comunitate',
+  'Din acel moment nu mai vede apartamentele foștilor vecini, iar ei nu îl mai văd pe al lui. Numele rămâne, lângă ce a scris.',
+  async ({ as }) => {
+    await as(U.ioana).run(`delete from public.memberships where user_id = $1 and community_id = $2`, [U.ioana, C.A]);
+    assert.equal((await as(U.dan).rows(`select * from public.apartments_of($1::uuid[])`, [[U.ioana]])).length, 0);
+    assert.equal((await as(U.ioana).rows(`select * from public.apartments_of($1::uuid[])`, [[U.dan]])).length, 0);
+    assert.equal(await as(U.dan).count(`select full_name from public.profiles where id = $1`, [U.ioana]), 1);
+    // Her own is still hers.
+    assert.equal((await as(U.ioana).rows(`select apartment from public.apartments_of($1::uuid[])`, [[U.ioana]]))[0].apartment, 'Ap. 12');
+  }, { doc: 'Migrarea 0024; același principiu ca la telefon (TEL-04).' });
+
+scenario('TEL-09', 'Un vizitator fără cont cere apartamentele',
+  'Nu poate nici apela funcția.',
+  async ({ anon }) => {
+    const r = await anon().run(`select * from public.apartments_of($1::uuid[])`, [[U.ioana]]);
+    assert.ok(r.error || r.rowCount === 0);
+  }, { doc: 'Migrarea 0024.' });
 
 // ===========================================================================
 area('STE', 'Ștergerea contului', 'Contul se golește, nu dispare: omul pleacă, ce a scris rămâne.');

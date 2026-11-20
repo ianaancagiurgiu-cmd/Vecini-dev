@@ -45,7 +45,8 @@ with expected(fisier, obiect, tip, la_ce_e) as (values
   ('0020_entering_a_community', 'public.decide_join_request', 'function', 'aprobarea sau respingerea unei cereri'),
   ('0021_secret_ballot',     'public.poll_results',        'function', 'rezultatele sondajelor, fără nume'),
   ('0022_what_may_change',   'public.issue_has_history',   'function', 'prima linie din istoricul sesizării, o singură dată'),
-  ('0023_fund_totals',       'public.lives_where_fund_is', 'function', 'plățile doar pe numele membrilor')
+  ('0023_fund_totals',       'public.lives_where_fund_is', 'function', 'plățile doar pe numele membrilor'),
+  ('0024_apartment_for_neighbours', 'public.apartments_of', 'function', 'apartamentul, doar pentru vecini')
 )
 select
   e.fisier,
@@ -71,6 +72,7 @@ select
                   when 'public.poll_results'    then 'uuid'
                   when 'public.issue_has_history' then 'uuid'
                   when 'public.lives_where_fund_is' then 'uuid,uuid'
+                  when 'public.apartments_of'   then 'uuid[]'
                   when 'public.edit_comment'    then 'text,uuid,text'
                   when 'public.shares_community' then 'uuid'
                   when 'public.set_member_role'  then 'uuid,uuid,text'
@@ -161,6 +163,12 @@ select '0021_secret_ballot',
           where polrelid = 'public.poll_votes'::regclass and polname = 'poll_votes_select'
             and pg_get_expr(polqual, polrelid) not like '%is_member%'
        )
+union all
+-- Funcția există și fără ca regula să fie aplicată; asta e regula.
+select '0024_apartment_for_neighbours',
+       'profiles.apartment',
+       'nu se mai poate citi direct din profil',
+       not has_column_privilege('authenticated', 'public.profiles', 'apartment', 'select')
 union all
 -- Singurul rând care e adevărat prin absență: dacă tabelul vechi mai există,
 -- migrarea nu a ajuns până la capăt și undeva mai sunt evenimente pe care

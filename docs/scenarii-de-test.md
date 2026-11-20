@@ -4,14 +4,14 @@
 
 ## Pe scurt
 
-Rulat la 15 noiembrie 2026, pe o bază de date PostgreSQL reală, cu toate cele 23 migrări aplicate în ordine.
+Rulat la 20 noiembrie 2026, pe o bază de date PostgreSQL reală, cu toate cele 24 migrări aplicate în ordine.
 
 | | |
 |---|---|
-| Scenarii rulate | **152** |
-| Trec | **152** |
+| Scenarii rulate | **154** |
+| Trec | **154** |
 | Probleme confirmate | **0** |
-| De decis (comportament nedocumentat) | **6** |
+| De decis (comportament nedocumentat) | **5** |
 | Eșecuri neașteptate | **0** |
 
 
@@ -51,7 +51,6 @@ Scenariile de mai jos trec: ele doar fixează ce se întâmplă astăzi. Dar ce 
 | INT-15 | Toți membrii pleacă dintr-o comunitate, apoi cineva intră cu vechiul cod | Astăzi, primul venit devine administrator și moștenește toată arhiva: registrul de plăți, documentele, discuțiile. | O comunitate rămasă fără niciun membru își păstrează conținutul și codul. Primul care intră ulterior îi devine administrator și vede tot ce a fost acolo, inclusiv cine cât a plătit. Variante: comunitatea goală se arhivează, sau codul ei se dezactivează când pleacă ultimul om. |
 | SON-10 | După ce oamenii au votat, administratorul schimbă întrebarea sondajului | Astăzi reușește: voturile date pentru „Schimbăm poarta?” rămân lipite de noua întrebare. | Administrația poate schimba întrebarea, termenul și tipul unui sondaj după ce s-a votat, poate redeschide unul închis și poate adăuga variante noi. Variantele existente și voturile sunt protejate, întrebarea nu. Dacă sondajele țin loc de „cine a fost de acord cu ce”, întrebarea ar trebui înghețată după primul vot. |
 | FON-09 | Un moderator își trece singur plata ca făcută | Astăzi reușește: administrația poate înregistra o plată și pe propriul nume. | Regula din documentație e că „cine a dat banii nu e niciodată cel care a scris plata”. Pentru un vecin simplu, baza de date o impune. Pentru un moderator sau administrator care își plătește propria cotă, nu — își poate confirma singur plata. Variante: cere ca plata proprie să fie înregistrată de alt membru al administrației, sau acceptă situația ca firească în asociațiile mici. |
-| TEL-07 | Cineva cu cont, din altă comunitate sau din niciuna, citește numele și apartamentele tuturor | Astăzi reușește: orice om cu cont vede numele și apartamentul oricărui utilizator al platformei. | Migrarea 0009 spune explicit că e intenționat pentru nume și apartament. Dar înseamnă că oricine își face un cont, fără să fie în vreo comunitate, poate descărca lista cu numele și apartamentul fiecărui utilizator din toate comunitățile. Studiul de caz numește datele personale „neobișnuit de sensibile”. De reconsiderat: profilul vizibil doar vecinilor din aceeași comunitate. |
 | NOT-05 | Un vecin simplu trimite tuturor o notificare care arată ca un anunț oficial, cu un link din afara aplicației | Astăzi reușește: funcția de trimitere verifică doar că ești membru, nu și ce trimiți. | Notificările sunt create de aplicația fiecărui utilizator, nu de server. Orice vecin poate deci trimite celorlalți o notificare cu orice titlu și orice link, inclusiv una care imită un anunț al administrației sau duce în afara aplicației. Variante: notificările să fie create de baza de date atunci când apare anunțul/comentariul (declanșatoare), sau măcar linkul să fie limitat la adrese din aplicație. |
 
 ## Toate scenariile
@@ -270,7 +269,9 @@ Ana și Dan și-au făcut numărul vizibil. Ioana are un număr salvat, dar ascu
 | TEL-04 | Un vecin pleacă din comunitate | Din acea clipă nu mai vede numerele foștilor vecini, iar ei nu îl mai văd pe al lui. | ✅ trece | Migrarea 0009: „only by the people they actually live near”. |
 | TEL-05 | Cineva schimbă numărul altcuiva sau i-l face vizibil | Refuzat, inclusiv pentru administrator. | ✅ trece | Migrarea 0009: „Your own row, always, to read and to change.” |
 | TEL-06 | Cineva schimbă numele sau apartamentul din profilul altcuiva | Refuzat: fiecare își schimbă doar profilul lui. | ✅ trece | Migrarea 0001. |
-| TEL-07 | Cineva cu cont, din altă comunitate sau din niciuna, citește numele și apartamentele tuturor | Astăzi reușește: orice om cu cont vede numele și apartamentul oricărui utilizator al platformei. | ⚠️ trece, de decis | — (nedocumentat) |
+| TEL-07 | Cineva cu cont, din altă comunitate sau din niciuna, încearcă să afle apartamentele | Vede numele oamenilor (ca să apară lângă ce au scris), dar nu și apartamentul. Apartamentul îl văd doar vecinii din aceeași comunitate și omul însuși. | ✅ trece | Decizia din 20 noiembrie 2026: numărul de telefon și apartamentul sunt doar pentru cei din comunitate. Migrarea 0024. |
+| TEL-08 | Un vecin pleacă din comunitate | Din acel moment nu mai vede apartamentele foștilor vecini, iar ei nu îl mai văd pe al lui. Numele rămâne, lângă ce a scris. | ✅ trece | Migrarea 0024; același principiu ca la telefon (TEL-04). |
+| TEL-09 | Un vizitator fără cont cere apartamentele | Nu poate nici apela funcția. | ✅ trece | Migrarea 0024. |
 
 ### STE — Ștergerea contului
 

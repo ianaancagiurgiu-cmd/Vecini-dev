@@ -57,7 +57,7 @@ export const PRIVACY = {
         h: 'Cine vede datele',
         list: [
           'Vecinii din aceeași comunitate văd ce se publică acolo, cu numele și apartamentul autorilor.',
-          'Numele și apartamentul din profilul tău pot fi văzute de orice utilizator autentificat al aplicației, ca să poată apărea lângă ce ai scris. De aceea apartamentul e opțional. Fără cont, profilul nu poate fi văzut.',
+          'Apartamentul tău îl văd doar vecinii din aceeași comunitate, la fel ca telefonul. Numele tău îl pot vedea utilizatorii autentificați ai aplicației, ca să poată apărea lângă ce ai scris. Fără cont, nimic din profil nu poate fi văzut.',
           'Numărul de telefon îl văd doar vecinii din aceeași comunitate, și doar dacă ai ales să-l arăți.',
           'La fonduri, fiecare vecin își vede doar propria situație și totalul strâns. Lista cu cine cât a plătit o vede doar administrația comunității.',
           'Votul tău nu îl vede nimeni, nici administrația.',
@@ -159,7 +159,7 @@ export const PRIVACY = {
         h: 'Who sees the data',
         list: [
           'Neighbours in the same community see what is published there, with the authors\' names and flats.',
-          'The name and flat in your profile can be seen by any signed-in user of the app, so that they can appear next to what you wrote. That is why the flat is optional. Without an account, profiles cannot be seen.',
+          'Your flat is visible only to neighbours in the same community, like your phone number. Your name can be seen by signed-in users of the app, so that it can appear next to what you wrote. Without an account, nothing in your profile can be seen.',
           'Your phone number is visible only to neighbours in the same community, and only if you chose to show it.',
           'For collections, each neighbour sees only their own line and the total raised. The list of who paid what is visible only to the community\'s administration.',
           'Nobody sees your vote, not even the administration.',
@@ -261,7 +261,7 @@ export const PRIVACY = {
         h: 'Ki látja az adatokat',
         list: [
           'Az ugyanazon közösségben élő szomszédok látják, ami ott megjelenik, a szerzők nevével és lakásával.',
-          'A profilodban szereplő nevet és lakást az alkalmazás bármely bejelentkezett felhasználója láthatja, hogy megjelenhessenek amellett, amit írtál. Ezért nem kötelező a lakás megadása. Fiók nélkül a profilok nem láthatók.',
+          'A lakásodat csak az ugyanazon közösség szomszédai látják, ahogy a telefonszámodat is. A nevedet az alkalmazás bejelentkezett felhasználói láthatják, hogy megjelenhessen amellett, amit írtál. Fiók nélkül a profilodból semmi nem látható.',
           'A telefonszámodat csak az ugyanazon közösség szomszédai látják, és csak ha így döntöttél.',
           'Gyűjtéseknél mindenki csak a saját sorát és az összegyűlt összeget látja. Azt, hogy ki mennyit fizetett, csak a közösség vezetése látja.',
           'A szavazatodat senki nem látja, még a vezetés sem.',
