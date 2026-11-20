@@ -4,12 +4,12 @@
 
 ## Pe scurt
 
-Rulat la 20 noiembrie 2026, pe o bază de date PostgreSQL reală, cu toate cele 24 migrări aplicate în ordine.
+Rulat la 20 noiembrie 2026, pe o bază de date PostgreSQL reală, cu toate cele 25 migrări aplicate în ordine.
 
 | | |
 |---|---|
-| Scenarii rulate | **154** |
-| Trec | **154** |
+| Scenarii rulate | **157** |
+| Trec | **157** |
 | Probleme confirmate | **0** |
 | De decis (comportament nedocumentat) | **5** |
 | Eșecuri neașteptate | **0** |
@@ -269,9 +269,12 @@ Ana și Dan și-au făcut numărul vizibil. Ioana are un număr salvat, dar ascu
 | TEL-04 | Un vecin pleacă din comunitate | Din acea clipă nu mai vede numerele foștilor vecini, iar ei nu îl mai văd pe al lui. | ✅ trece | Migrarea 0009: „only by the people they actually live near”. |
 | TEL-05 | Cineva schimbă numărul altcuiva sau i-l face vizibil | Refuzat, inclusiv pentru administrator. | ✅ trece | Migrarea 0009: „Your own row, always, to read and to change.” |
 | TEL-06 | Cineva schimbă numele sau apartamentul din profilul altcuiva | Refuzat: fiecare își schimbă doar profilul lui. | ✅ trece | Migrarea 0001. |
-| TEL-07 | Cineva cu cont, din altă comunitate sau din niciuna, încearcă să afle apartamentele | Vede numele oamenilor (ca să apară lângă ce au scris), dar nu și apartamentul. Apartamentul îl văd doar vecinii din aceeași comunitate și omul însuși. | ✅ trece | Decizia din 20 noiembrie 2026: numărul de telefon și apartamentul sunt doar pentru cei din comunitate. Migrarea 0024. |
-| TEL-08 | Un vecin pleacă din comunitate | Din acel moment nu mai vede apartamentele foștilor vecini, iar ei nu îl mai văd pe al lui. Numele rămâne, lângă ce a scris. | ✅ trece | Migrarea 0024; același principiu ca la telefon (TEL-04). |
+| TEL-07 | Cineva cu cont, din altă comunitate sau din niciuna, încearcă să afle apartamentele | Vede numele oamenilor (ca să apară lângă ce au scris), dar nu și apartamentul. Apartamentul îl văd doar vecinii din aceeași comunitate și omul însuși. | ✅ trece | Decizia din 20 noiembrie 2026: numărul de telefon și apartamentul sunt doar pentru cei din comunitate. Migrările 0024 și 0025. |
+| TEL-08 | Un vecin pleacă din comunitate | Din acel moment nu mai vede apartamentele foștilor vecini, iar ei nu îl mai văd pe al lui. Apartamentul lui de acolo pleacă odată cu el. Numele rămâne, lângă ce a scris. | ✅ trece | Migrările 0024 și 0025; același principiu ca la telefon (TEL-04). |
 | TEL-09 | Un vizitator fără cont cere apartamentele | Nu poate nici apela funcția. | ✅ trece | Migrarea 0024. |
+| TEL-10 | Același om e în două asociații și stă altundeva în fiecare | Maria e la Ap. 4 în A și la Casa 7 în B. Vecinii din A văd doar „Ap. 4”, cei din B doar „Casa 7”; niciunii nu află unde mai stă ea. Maria își vede ambele. | ✅ trece | Migrarea 0025: apartamentul ține de apartenența la o comunitate, nu de cont. |
+| TEL-11 | Își schimbă apartamentul într-una din asociații | Se schimbă doar acolo. În cealaltă rămâne ce era. Spațiile de la margini nu contează. | ✅ trece | Migrarea 0025, set_my_apartment. |
+| TEL-12 | Încearcă să scrie apartamentul altcuiva, sau într-o comunitate în care nu e | Nu merge pe nicio cale: nici prin funcție, nici direct în tabel. Rolul nu se poate schimba pe ocolite. Un text mai lung de 60 de caractere e refuzat. | ✅ trece | Migrarea 0025: memberships nu are politică de modificare din 0020; singura cale e set_my_apartment, doar pentru rândul tău. |
 
 ### STE — Ștergerea contului
 

@@ -4,7 +4,9 @@ import { ScreenHeader, Avatar, LANGS } from '../components/ui.jsx';
 
 export default function Settings() {
   const nav = useNavigate();
-  const { t, lang, setLang, currentUser, role, isStaff, data, signOut } = useApp();
+  const { t, lang, setLang, currentUser, role, isStaff, data, signOut, myCommunities, activeCommunityId } = useApp();
+  // New notifications waiting in your other communities, if you have any.
+  const unreadElsewhere = (myCommunities || []).filter((c) => c.id !== activeCommunityId).reduce((n, c) => n + c.unread, 0);
 
   const roleLabel = role === 'admin' ? t('role_admin') : role === 'moderator' ? t('role_moderator') : t('role_member');
   const roleBg = role === 'admin' ? '#13211b' : role === 'moderator' ? 'var(--status-new-bg)' : 'var(--section-bg)';
@@ -51,6 +53,14 @@ export default function Settings() {
               them live behind this one row now. The password used to be linked
               straight from here, while the sign-in address appeared nowhere. */}
           <Item icon="👤" label={t('acc_title')} onClick={() => nav('/app/settings/account')} />
+          {/* Always offered, not only to people already in two: it is also
+              the way in to a second one. */}
+          <Item icon="🏘️" label={t('set_communities')} onClick={() => nav('/app/settings/communities')}
+            right={unreadElsewhere > 0
+              ? <span className="badge" style={{ background: 'var(--terracotta)', color: '#fff' }}>{unreadElsewhere}</span>
+              : (myCommunities || []).length > 1
+                ? <span className="faint" style={{ fontSize: 13, fontWeight: 700 }}>{myCommunities.length} ›</span>
+                : null} />
           <Item icon="🏠" label={t('nb_title')} onClick={() => nav('/app/neighbours')} />
           <Item icon="📄" label={t('doc_title')} onClick={() => nav('/app/documents')} />
           <Item icon="🔔" label={t('notif_prefs')} onClick={() => nav('/app/notifications')} />

@@ -68,7 +68,7 @@ function Row({ label, value, faint, last }) {
 
 export default function Account() {
   const nav = useNavigate();
-  const { t, currentUser, role, data, session, pendingEmail, hasPasswordLogin, setName, setApartment, setContact, showToast } = useApp();
+  const { t, currentUser, role, data, session, pendingEmail, hasPasswordLogin, setName, setApartment, setContact, showToast, myCommunities } = useApp();
 
   const [name, setNameField] = useState(currentUser.name);
   const [nameErr, setNameErr] = useState('');
@@ -197,6 +197,13 @@ export default function Account() {
             placeholder={t(`acc_apartment_ph_${kind}`)}
             onChange={(e) => setApartmentField(e.target.value)} />
           <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45, marginTop: 8 }}>{t(`acc_apartment_hint_${kind}`)}</div>
+          {/* Someone in more than one association lives somewhere different
+              in each; say which one this field is for. */}
+          {(myCommunities || []).length > 1 && (
+            <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45, marginTop: 6 }} data-testid="apartment-only-here">
+              {t('acc_apartment_only_here').replace('{name}', data.community?.name || '')}
+            </div>
+          )}
           {apartmentChanged && (
             <button className="btn btn--primary" style={{ marginTop: 12 }} disabled={savingApartment} onClick={saveApartment}>
               {t('save')}

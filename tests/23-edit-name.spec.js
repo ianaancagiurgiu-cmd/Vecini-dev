@@ -59,15 +59,26 @@ async function asSelf(page, { name = 'Iana Giurgiu', apartment = 'Ap. 12', kind 
     });
   });
 
-  // The flat is read through apartments_of since migration 0024; answered
-  // from the same mutable copy, as the real function reads the same row.
-  await page.route(/\/rest\/v1\/rpc\/apartments_of/, (route) => {
-    if (route.request().method() === 'OPTIONS') return route.fallback();
+  /*
+    The flat sits on the membership since migration 0025, and is written by
+    set_my_apartment for the community on screen. Both answered from one
+    mutable membership, so a save is what every later read sees.
+  */
+  let membership = { id: 'm1', user_id: me.id, community_id: 'c1', role: 'member', joined_at: new Date().toISOString(), apartment };
+  await page.route(/\/rest\/v1\/memberships/, (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    const wantsOne = (route.request().headers()['accept'] || '').includes('pgrst.object');
     return route.fulfill({
       status: 200, contentType: 'application/json',
-      headers: { 'access-control-allow-origin': '*' },
-      body: JSON.stringify([{ id: current.id, apartment: current.apartment || '' }]),
+      headers: { 'access-control-allow-origin': '*', 'content-range': '0-0/1' },
+      body: JSON.stringify(wantsOne ? membership : [membership]),
     });
+  });
+  await page.route(/\/rest\/v1\/rpc\/set_my_apartment/, (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    const args = JSON.parse(route.request().postData() || '{}');
+    if (args.p_community === membership.community_id) membership = { ...membership, apartment: args.p_apartment };
+    return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*' }, body: '' });
   });
 
   await stubAuth(page, 'user', () => ({ status: 200, body: { id: me.id } }));

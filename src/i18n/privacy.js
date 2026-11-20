@@ -35,7 +35,7 @@ export const PRIVACY = {
         p: ['Doar ce e nevoie ca aplicația să funcționeze:'],
         list: [
           'Contul: adresa de email și parola (păstrată doar sub formă criptată, pe care nu o poate citi nimeni). Dacă intri cu Google, primim de la Google numele și adresa de email.',
-          'Profilul: numele, apartamentul sau casa (opțional) și o culoare pentru inițiale.',
+          'Profilul: numele și o culoare pentru inițiale. Pentru fiecare comunitate în care ești, apartamentul sau casa ta de acolo (opțional).',
           'Numărul de telefon, doar dacă îl adaugi tu. E ascuns până alegi să-l arăți vecinilor.',
           'Comunitățile în care ești și rolul tău (vecin, moderator, administrator).',
           'Ce scrii: anunțuri, discuții, răspunsuri, sesizări, comentarii, aprecieri și pozele atașate la sesizări.',
@@ -57,7 +57,7 @@ export const PRIVACY = {
         h: 'Cine vede datele',
         list: [
           'Vecinii din aceeași comunitate văd ce se publică acolo, cu numele și apartamentul autorilor.',
-          'Apartamentul tău îl văd doar vecinii din aceeași comunitate, la fel ca telefonul. Numele tău îl pot vedea utilizatorii autentificați ai aplicației, ca să poată apărea lângă ce ai scris. Fără cont, nimic din profil nu poate fi văzut.',
+          'Apartamentul tău dintr-o comunitate îl văd doar vecinii din acea comunitate, la fel ca telefonul. Dacă ești în mai multe asociații, vecinii dintr-una nu află unde stai în cealaltă, iar când ieși dintr-o comunitate apartamentul tău de acolo se șterge. Numele tău îl pot vedea utilizatorii autentificați ai aplicației, ca să poată apărea lângă ce ai scris. Fără cont, nimic din profil nu poate fi văzut.',
           'Numărul de telefon îl văd doar vecinii din aceeași comunitate, și doar dacă ai ales să-l arăți.',
           'La fonduri, fiecare vecin își vede doar propria situație și totalul strâns. Lista cu cine cât a plătit o vede doar administrația comunității.',
           'Votul tău nu îl vede nimeni, nici administrația.',
@@ -137,7 +137,7 @@ export const PRIVACY = {
         p: ['Only what the app needs to work:'],
         list: [
           'Your account: email address and password (stored only in encrypted form, which nobody can read). If you sign in with Google, Google gives us your name and email address.',
-          'Your profile: name, flat or house (optional) and a colour for your initials.',
+          'Your profile: name and a colour for your initials. For each community you are in, your flat or house there (optional).',
           'Your phone number, only if you add it. It stays hidden until you choose to show it to your neighbours.',
           'The communities you belong to and your role (neighbour, moderator, administrator).',
           'What you write: announcements, discussions, replies, reports, comments, likes and photos attached to reports.',
@@ -159,7 +159,7 @@ export const PRIVACY = {
         h: 'Who sees the data',
         list: [
           'Neighbours in the same community see what is published there, with the authors\' names and flats.',
-          'Your flat is visible only to neighbours in the same community, like your phone number. Your name can be seen by signed-in users of the app, so that it can appear next to what you wrote. Without an account, nothing in your profile can be seen.',
+          'Your flat in a community is visible only to neighbours in that community, like your phone number. If you are in several associations, neighbours in one do not learn where you live in the other, and when you leave a community your flat there is deleted. Your name can be seen by signed-in users of the app, so that it can appear next to what you wrote. Without an account, nothing in your profile can be seen.',
           'Your phone number is visible only to neighbours in the same community, and only if you chose to show it.',
           'For collections, each neighbour sees only their own line and the total raised. The list of who paid what is visible only to the community\'s administration.',
           'Nobody sees your vote, not even the administration.',
@@ -239,7 +239,7 @@ export const PRIVACY = {
         p: ['Csak azt, ami a működéshez szükséges:'],
         list: [
           'A fiókod: e-mail-cím és jelszó (csak titkosított formában tárolva, amit senki nem tud elolvasni). Ha Google-fiókkal lépsz be, a Google átadja a neved és az e-mail-címed.',
-          'A profilod: név, lakás vagy ház (nem kötelező) és egy szín a monogramodhoz.',
+          'A profilod: név és egy szín a monogramodhoz. Minden közösségben, amelynek tagja vagy, az ottani lakásod vagy házad (nem kötelező).',
           'A telefonszámod, csak ha megadod. Rejtve marad, amíg úgy nem döntesz, hogy megmutatod a szomszédaidnak.',
           'A közösségek, amelyeknek tagja vagy, és a szereped (szomszéd, moderátor, adminisztrátor).',
           'Amit írsz: hirdetmények, beszélgetések, válaszok, bejelentések, hozzászólások, kedvelések és a bejelentésekhez csatolt fényképek.',
@@ -261,7 +261,7 @@ export const PRIVACY = {
         h: 'Ki látja az adatokat',
         list: [
           'Az ugyanazon közösségben élő szomszédok látják, ami ott megjelenik, a szerzők nevével és lakásával.',
-          'A lakásodat csak az ugyanazon közösség szomszédai látják, ahogy a telefonszámodat is. A nevedet az alkalmazás bejelentkezett felhasználói láthatják, hogy megjelenhessen amellett, amit írtál. Fiók nélkül a profilodból semmi nem látható.',
+          'Egy közösségbeli lakásodat csak az adott közösség szomszédai látják, ahogy a telefonszámodat is. Ha több társasházhoz tartozol, az egyik szomszédai nem tudják meg, hol laksz a másikban, és ha kilépsz egy közösségből, az ottani lakásod törlődik. A nevedet az alkalmazás bejelentkezett felhasználói láthatják, hogy megjelenhessen amellett, amit írtál. Fiók nélkül a profilodból semmi nem látható.',
           'A telefonszámodat csak az ugyanazon közösség szomszédai látják, és csak ha így döntöttél.',
           'Gyűjtéseknél mindenki csak a saját sorát és az összegyűlt összeget látja. Azt, hogy ki mennyit fizetett, csak a közösség vezetése látja.',
           'A szavazatodat senki nem látja, még a vezetés sem.',

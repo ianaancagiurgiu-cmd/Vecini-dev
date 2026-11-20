@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../state/store.jsx';
+import { ElsewhereNotice } from './Communities.jsx';
 import { useBack } from '../lib/useBack.js';
 import { ScreenHeader, Empty } from '../components/ui.jsx';
 import { timeAgo } from '../lib/format.js';
@@ -95,6 +96,7 @@ export default function Notifications() {
 
       {tab === 'list' ? (
         <div className="pad" style={{ paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 9 }}>
+          <ElsewhereNotice />
           {list.length === 0 && <Empty icon="🔔">{t('notif_empty')}</Empty>}
           {list.map((n) => (
             <button key={n.id} onClick={() => { actions.markRead(n.id); nav(n.link); }}

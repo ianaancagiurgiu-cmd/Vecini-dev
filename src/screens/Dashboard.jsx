@@ -3,6 +3,7 @@ import { useApp } from '../state/store.jsx';
 import { Avatar, PriorityBadge } from '../components/ui.jsx';
 import { timeAgo, isPriority, eventDay, eventWhen, isPast, daysBetween, lei } from '../lib/format.js';
 import { Progress } from '../components/FundBits.jsx';
+import { ElsewhereNotice } from './Communities.jsx';
 
 function TopBar() {
   const nav = useNavigate();
@@ -43,7 +44,7 @@ function StatTile({ n, label, tint, onClick }) {
 
 export default function Dashboard() {
   const nav = useNavigate();
-  const { data, t, L, lang, counted, currentUser, userById, isStaff } = useApp();
+  const { data, t, L, lang, counted, currentUser, userById, isStaff, myCommunities } = useApp();
 
   const openIssues = data.issues.filter((i) => i.status !== 'resolved').length;
   const activePolls = data.polls.filter((p) => !p.closed && p.endsAt > Date.now()).length;
@@ -100,7 +101,15 @@ export default function Dashboard() {
       <div className="pad" style={{ paddingTop: 18 }}>
         <h1 className="display" style={{ fontSize: 28, margin: '0 0 4px' }}>{t('dash_hi')}, {currentUser.name.split(' ')[0]}</h1>
         <div className="muted" style={{ fontSize: 14 }}>
-          {data.community.name} ·{' '}
+          {/* With more than one community, the name is also the way to the
+              others — the place someone looks when they wonder which one
+              they are in. */}
+          {(myCommunities || []).length > 1 ? (
+            <button onClick={() => nav('/app/settings/communities')} data-testid="switch-community"
+              style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', fontWeight: 700 }}>
+              {data.community.name} <span style={{ color: 'var(--green-600)' }}>⇄</span>
+            </button>
+          ) : data.community.name} ·{' '}
           {/* The neighbour count is the natural way in to the list of them. */}
           <button onClick={() => nav('/app/neighbours')} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--green-600)', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 3 }}>
             {counted('dash_members', data.community.memberCount)}
@@ -114,6 +123,8 @@ export default function Dashboard() {
           {t(`tagline_${data.community.kind || 'bloc'}`)}
         </div>
       </div>
+
+      <div className="pad" style={{ paddingTop: 12 }}><ElsewhereNotice /></div>
 
       {/* stat tiles */}
       <div className="pad" style={{ paddingTop: 18, display: 'flex', gap: 11 }}>

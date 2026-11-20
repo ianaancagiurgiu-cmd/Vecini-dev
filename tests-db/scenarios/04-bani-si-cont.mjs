@@ -267,18 +267,20 @@ scenario('TEL-07', 'Cineva cu cont, din altă comunitate sau din niciuna, încea
     assert.equal(await flatOf(U.carmen, U.ioana), undefined, 'un vecin din altă comunitate vede apartamentul');
     assert.equal(await flatOf(U.bogdan, U.ioana), undefined, 'un administrator din altă comunitate vede apartamentul');
     assert.equal(await flatOf(U.radu, U.ioana), undefined, 'cineva fără comunitate vede apartamentul');
-  }, { doc: 'Decizia din 20 noiembrie 2026: numărul de telefon și apartamentul sunt doar pentru cei din comunitate. Migrarea 0024.' });
+  }, { doc: 'Decizia din 20 noiembrie 2026: numărul de telefon și apartamentul sunt doar pentru cei din comunitate. Migrările 0024 și 0025.' });
 
 scenario('TEL-08', 'Un vecin pleacă din comunitate',
-  'Din acel moment nu mai vede apartamentele foștilor vecini, iar ei nu îl mai văd pe al lui. Numele rămâne, lângă ce a scris.',
+  'Din acel moment nu mai vede apartamentele foștilor vecini, iar ei nu îl mai văd pe al lui. Apartamentul lui de acolo pleacă odată cu el. Numele rămâne, lângă ce a scris.',
   async ({ as }) => {
     await as(U.ioana).run(`delete from public.memberships where user_id = $1 and community_id = $2`, [U.ioana, C.A]);
     assert.equal((await as(U.dan).rows(`select * from public.apartments_of($1::uuid[])`, [[U.ioana]])).length, 0);
     assert.equal((await as(U.ioana).rows(`select * from public.apartments_of($1::uuid[])`, [[U.dan]])).length, 0);
+    assert.equal(await as(U.dan).count(`select user_id from public.memberships where user_id = $1`, [U.ioana]), 0);
     assert.equal(await as(U.dan).count(`select full_name from public.profiles where id = $1`, [U.ioana]), 1);
-    // Her own is still hers.
-    assert.equal((await as(U.ioana).rows(`select apartment from public.apartments_of($1::uuid[])`, [[U.ioana]]))[0].apartment, 'Ap. 12');
-  }, { doc: 'Migrarea 0024; același principiu ca la telefon (TEL-04).' });
+    // The flat described where she lived in that community; it does not
+    // linger on her account once she is no longer part of it.
+    assert.equal((await as(U.ioana).rows(`select apartment from public.apartments_of($1::uuid[])`, [[U.ioana]])).length, 0);
+  }, { doc: 'Migrările 0024 și 0025; același principiu ca la telefon (TEL-04).' });
 
 scenario('TEL-09', 'Un vizitator fără cont cere apartamentele',
   'Nu poate nici apela funcția.',
@@ -286,6 +288,56 @@ scenario('TEL-09', 'Un vizitator fără cont cere apartamentele',
     const r = await anon().run(`select * from public.apartments_of($1::uuid[])`, [[U.ioana]]);
     assert.ok(r.error || r.rowCount === 0);
   }, { doc: 'Migrarea 0024.' });
+
+scenario('TEL-10', 'Același om e în două asociații și stă altundeva în fiecare',
+  'Maria e la Ap. 4 în A și la Casa 7 în B. Vecinii din A văd doar „Ap. 4”, cei din B doar „Casa 7”; niciunii nu află unde mai stă ea. Maria își vede ambele.',
+  async ({ as }) => {
+    const flatsOf = async (who, of) => (await as(who).rows(
+      `select community_id, apartment from public.memberships where user_id = $1 order by apartment`, [of])).map((r) => r.apartment);
+    assert.deepEqual(await flatsOf(U.dan, U.maria), ['Ap. 4'], 'un vecin din A vede altceva decât apartamentul din A');
+    assert.deepEqual(await flatsOf(U.ana, U.maria), ['Ap. 4'], 'administratorul din A află apartamentul din B');
+    assert.deepEqual(await flatsOf(U.carmen, U.maria), ['Casa 7'], 'un vecin din B vede altceva decât casa din B');
+    assert.deepEqual(await flatsOf(U.bogdan, U.maria), ['Casa 7'], 'administratorul din B află apartamentul din A');
+    assert.deepEqual(await flatsOf(U.radu, U.maria), [], 'cineva fără comunitate vede apartamentele');
+    assert.deepEqual(await flatsOf(U.maria, U.maria), ['Ap. 4', 'Casa 7'], 'Maria trebuie să-și vadă ambele apartamente');
+    // The older function, kept for the app still open on someone's phone,
+    // answers the same way: one community's flat, never the other's.
+    const viaOld = async (who) => (await as(who).rows(`select apartment from public.apartments_of($1::uuid[])`, [[U.maria]]))[0]?.apartment;
+    assert.equal(await viaOld(U.dan), 'Ap. 4');
+    assert.equal(await viaOld(U.carmen), 'Casa 7');
+    assert.equal(await viaOld(U.radu), undefined);
+  }, { doc: 'Migrarea 0025: apartamentul ține de apartenența la o comunitate, nu de cont.' });
+
+scenario('TEL-11', 'Își schimbă apartamentul într-una din asociații',
+  'Se schimbă doar acolo. În cealaltă rămâne ce era. Spațiile de la margini nu contează.',
+  async ({ as, sql }) => {
+    expectOk(await as(U.maria).run(`select public.set_my_apartment($1, $2)`, [C.B, '  Casa 9 ']));
+    const rows = await sql(`select community_id, apartment from public.memberships where user_id = $1`, [U.maria]);
+    const by = Object.fromEntries(rows.map((r) => [r.community_id, r.apartment]));
+    assert.equal(by[C.B], 'Casa 9');
+    assert.equal(by[C.A], 'Ap. 4', 'schimbarea din B a atins și apartamentul din A');
+    // Empty is a real answer: not wanting to say.
+    expectOk(await as(U.maria).run(`select public.set_my_apartment($1, '')`, [C.A]));
+    assert.equal((await sql(`select apartment from public.memberships where user_id = $1 and community_id = $2`, [U.maria, C.A]))[0].apartment, '');
+  }, { doc: 'Migrarea 0025, set_my_apartment.' });
+
+scenario('TEL-12', 'Încearcă să scrie apartamentul altcuiva, sau într-o comunitate în care nu e',
+  'Nu merge pe nicio cale: nici prin funcție, nici direct în tabel. Rolul nu se poate schimba pe ocolite. Un text mai lung de 60 de caractere e refuzat.',
+  async ({ as, anon, sql }) => {
+    expectError(await as(U.dan).run(`select public.set_my_apartment($1, 'Ap. 1')`, [C.B]), /not_a_member/);
+    expectError(await as(U.radu).run(`select public.set_my_apartment($1, 'Ap. 1')`, [C.A]), /not_a_member/);
+    // Direct writes: there is no update policy on memberships, for anyone.
+    const direct = await as(U.ana).run(`update public.memberships set apartment = 'Ap. 99' where user_id = $1 and community_id = $2`, [U.ioana, C.A]);
+    assert.ok(direct.error || direct.rowCount === 0, 'administratorul a scris apartamentul altcuiva direct în tabel');
+    const own = await as(U.dan).run(`update public.memberships set apartment = 'Ap. 2', role = 'admin' where user_id = $1 and community_id = $2`, [U.dan, C.A]);
+    assert.ok(own.error || own.rowCount === 0, 'un vecin și-a scris rândul direct, cu tot cu rol');
+    const [d] = await sql(`select role, apartment from public.memberships where user_id = $1 and community_id = $2`, [U.dan, C.A]);
+    assert.equal(d.role, 'member'); assert.equal(d.apartment, '');
+    assert.equal((await sql(`select apartment from public.memberships where user_id = $1 and community_id = $2`, [U.ioana, C.A]))[0].apartment, 'Ap. 12');
+    expectError(await as(U.dan).run(`select public.set_my_apartment($1, $2)`, [C.A, 'x'.repeat(61)]), /too_long/);
+    const a = await anon().run(`select public.set_my_apartment($1, 'Ap. 1')`, [C.A]);
+    assert.ok(a.error, 'un vizitator fără cont a putut apela funcția');
+  }, { doc: 'Migrarea 0025: memberships nu are politică de modificare din 0020; singura cale e set_my_apartment, doar pentru rândul tău.' });
 
 // ===========================================================================
 area('STE', 'Ștergerea contului', 'Contul se golește, nu dispare: omul pleacă, ce a scris rămâne.');

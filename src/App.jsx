@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Routes, Route, Navigate, Outlet, useLocation, useParams } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useApp } from './state/store.jsx';
 import { hideSplash } from './lib/splash.js';
 import { PhoneChrome } from './components/Chrome.jsx';
@@ -40,6 +40,7 @@ import Search from './screens/Search.jsx';
 import Notifications from './screens/Notifications.jsx';
 import Settings from './screens/Settings.jsx';
 import Account from './screens/Account.jsx';
+import Communities from './screens/Communities.jsx';
 import Admin from './screens/Admin.jsx';
 import Moderation from './screens/Moderation.jsx';
 import Members from './screens/Members.jsx';
@@ -59,12 +60,39 @@ function OldEventLink({ edit }) {
 }
 
 function AppLayout() {
-  const { authed, authLoading, hasCommunity, membershipResolved, data } = useApp();
+  const { authed, authLoading, hasCommunity, membershipResolved, data, activeCommunityId, myCommunities, switchCommunity } = useApp();
   const loc = useLocation();
+  const navigate = useNavigate();
+
+  /*
+    A link from a notification names its community (?c=…). Someone in two
+    associations, looking at one, who taps a push about the other, is moved
+    there first — otherwise the item they tapped is "not found", because it
+    is, in the place they happen to be looking.
+
+    Only to a community they are actually in: the list says which. A link
+    naming any other is simply ignored, and the screen behind it answers as
+    it would anyway.
+  */
+  const wanted = new URLSearchParams(loc.search).get('c');
+  const knownHere = !!wanted && Array.isArray(myCommunities) && myCommunities.some((c) => c.id === wanted);
+  const elsewhere = !!wanted && wanted !== activeCommunityId && (myCommunities === null || knownHere);
+  useEffect(() => {
+    if (!wanted) return;
+    if (wanted !== activeCommunityId) {
+      if (knownHere) switchCommunity(wanted);
+      else if (Array.isArray(myCommunities)) navigate(loc.pathname, { replace: true });
+      return;
+    }
+    // Arrived. Drop the marker so the address is an ordinary one again.
+    navigate(loc.pathname, { replace: true });
+  }, [wanted, activeCommunityId, knownHere, myCommunities]);
+
   if (authLoading) return null;
   if (!authed) return <Navigate to="/" replace state={{ from: loc.pathname }} />;
   if (!membershipResolved) return null; // still checking whether you already belong to a community
   if (!hasCommunity) return <Navigate to="/join" replace />;
+  if (elsewhere) return null; // moving to the community the link is about
   if (!data.community) return null; // still loading the community's data for the first time
   return (
     <>
@@ -159,6 +187,7 @@ export default function App() {
           <Route path="notifications" element={<Notifications />} />
           <Route path="settings" element={<Settings />} />
           <Route path="settings/account" element={<Account />} />
+          <Route path="settings/communities" element={<Communities />} />
           <Route path="settings/password" element={<ChangePassword />} />
           <Route path="settings/email" element={<ChangeEmail />} />
           <Route path="settings/delete" element={<DeleteAccount />} />

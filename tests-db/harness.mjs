@@ -90,8 +90,6 @@ async function seed(c) {
     );
     await c.query('insert into auth.identities (user_id, identity_data) values ($1, $2)', [id, JSON.stringify({ email: `${key}@exemplu.ro` })]);
   }
-  await c.query(`update public.profiles set apartment = 'Ap. 12' where id = $1`, [U.ioana]);
-  await c.query(`update public.profiles set apartment = 'Casa 3' where id = $1`, [U.carmen]);
 
   await c.query(
     `insert into public.communities (id, name, address, description, code, kind) values
@@ -109,6 +107,15 @@ async function seed(c) {
   await join(U.dan, C.A, 700); await join(U.maria, C.A, 600);
   await join(U.bogdan, C.B, 1000); await join(U.carmen, C.B, 900); await join(U.maria, C.B, 800);
   await c.query(`update public.memberships set role = 'moderator' where user_id = $1 and community_id = $2`, [U.mihai, C.A]);
+  /*
+    The flat belongs to the membership (0025). Maria is in both communities and
+    lives somewhere different in each — the case one field on the profile could
+    not hold.
+  */
+  const flat = (user, community, apartment) => c.query(
+    `update public.memberships set apartment = $3 where user_id = $1 and community_id = $2`, [user, community, apartment]);
+  await flat(U.ioana, C.A, 'Ap. 12'); await flat(U.carmen, C.B, 'Casa 3');
+  await flat(U.maria, C.A, 'Ap. 4'); await flat(U.maria, C.B, 'Casa 7');
 
   // ---- A ----
   await c.query(

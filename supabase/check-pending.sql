@@ -46,7 +46,9 @@ with expected(fisier, obiect, tip, la_ce_e) as (values
   ('0021_secret_ballot',     'public.poll_results',        'function', 'rezultatele sondajelor, fără nume'),
   ('0022_what_may_change',   'public.issue_has_history',   'function', 'prima linie din istoricul sesizării, o singură dată'),
   ('0023_fund_totals',       'public.lives_where_fund_is', 'function', 'plățile doar pe numele membrilor'),
-  ('0024_apartment_for_neighbours', 'public.apartments_of', 'function', 'apartamentul, doar pentru vecini')
+  ('0024_apartment_for_neighbours', 'public.apartments_of', 'function', 'apartamentul, doar pentru vecini'),
+  ('0025_apartment_per_community', 'memberships.apartment', 'column', 'apartamentul, separat în fiecare comunitate'),
+  ('0025_apartment_per_community', 'public.set_my_apartment', 'function', 'fiecare își scrie doar apartamentul lui, într-o comunitate în care e')
 )
 select
   e.fisier,
@@ -73,6 +75,7 @@ select
                   when 'public.issue_has_history' then 'uuid'
                   when 'public.lives_where_fund_is' then 'uuid,uuid'
                   when 'public.apartments_of'   then 'uuid[]'
+                  when 'public.set_my_apartment' then 'uuid,text'
                   when 'public.edit_comment'    then 'text,uuid,text'
                   when 'public.shares_community' then 'uuid'
                   when 'public.set_member_role'  then 'uuid,uuid,text'

@@ -63,6 +63,8 @@ const DESCRIERI = {
     'totalul strans la un fond nu mai scade cand pleaca cineva care a platit; platile doar pe numele membrilor; sume absurde refuzate',
   '0024_apartment_for_neighbours.sql':
     'apartamentul din profil il vad doar vecinii din aceeasi comunitate, ca si telefonul',
+  '0025_apartment_per_community.sql':
+    'un cont poate fi in mai multe asociatii: apartamentul tine de fiecare comunitate in parte, nu de cont; vecinii dintr-una nu vad apartamentul din cealalta',
 };
 
 const files = readdirSync(dir)

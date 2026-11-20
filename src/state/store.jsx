@@ -62,16 +62,25 @@ function loadPrefs() {
 
 /*
   The profile columns anybody signed in may read. Not `*`: since migration
-  0024 the flat is not among them — it comes from apartments_of(), which
-  answers only for yourself and your neighbours — and asking for a column you
-  may not read fails the whole request rather than leaving it out.
+  0024 the flat is not among them, and asking for a column you may not read
+  fails the whole request rather than leaving it out.
+
+  The flat is not on the profile at all any more (0025): one account can be in
+  several associations and live somewhere different in each, so it sits on the
+  membership, and comes with the list of the community's members.
 */
 const PROFILE_COLUMNS = 'id,full_name,avatar_color,created_at,deleted_at';
 
-// Your own flat, which apartments_of always answers for.
-async function ownApartment(uid) {
-  const { data } = await supabase.rpc('apartments_of', { p_users: [uid] });
-  return (Array.isArray(data) ? data[0]?.apartment : null) || '';
+/*
+  A notification's link names the community it is about. Somebody in two
+  associations who taps a push from the one they are not looking at would
+  otherwise land on "not found": the item exists, just in the other place.
+  The app reads `c` on arrival and switches first (see AppLayout).
+*/
+export function linkInCommunity(link, communityId) {
+  const l = link || '';
+  if (!l || !communityId || /[?&]c=/.test(l)) return l;
+  return l + (l.includes('?') ? '&' : '?') + 'c=' + communityId;
 }
 
 const emptyData = () => ({
@@ -105,6 +114,8 @@ export function AppProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [activeCommunityId, setActiveCommunityId] = useState(() => localStorage.getItem(ACTIVE_COMMUNITY_KEY) || null);
   const [membershipResolved, setMembershipResolved] = useState(false);
+  // Every community this account belongs to, for the switcher. null = not yet loaded.
+  const [myCommunities, setMyCommunities] = useState(null);
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [data, setData] = useState(emptyData);
   const [dataLoading, setDataLoading] = useState(false);
@@ -230,7 +241,6 @@ export function AppProvider({ children }) {
         const { data: created } = await supabase.from('profiles').insert({ id: userId, full_name: fullName }).select(PROFILE_COLUMNS).single();
         row = created;
       }
-      if (row) row = { ...row, apartment: await ownApartment(userId) };
       if (mounted.current) setProfile(row);
     })();
   }, [userId]);
@@ -249,6 +259,40 @@ export function AppProvider({ children }) {
     })();
   }, [userId, activeCommunityId === null]);
 
+  /*
+    The communities this account is in, each with your role there, your flat
+    there and how many unread notifications wait in it. Kept apart from
+    refreshAll, which loads one community and nothing about the others.
+  */
+  const loadMyCommunities = useCallback(async () => {
+    if (!userId) { setMyCommunities(null); return; }
+    const [{ data: mine, error }, { data: unreadRows }] = await Promise.all([
+      supabase.from('memberships').select('community_id,role,apartment,joined_at').eq('user_id', userId).order('joined_at', { ascending: true }),
+      supabase.from('notifications').select('community_id').eq('user_id', userId).eq('read', false),
+    ]);
+    // Unknown is not "none": keep what was there, but never leave it unloaded,
+    // or a screen waiting on the list would wait for good.
+    if (error) { if (mounted.current) setMyCommunities((prev) => prev || []); return; }
+    const ids = (mine || []).map((m) => m.community_id);
+    const { data: rows } = ids.length
+      ? await supabase.from('communities').select('id,name,kind').in('id', ids)
+      : { data: [] };
+    const byId = new Map((rows || []).map((c) => [c.id, c]));
+    const unread = new Map();
+    (unreadRows || []).forEach((n) => unread.set(n.community_id, (unread.get(n.community_id) || 0) + 1));
+    if (!mounted.current) return;
+    setMyCommunities((mine || [])
+      .filter((m) => byId.has(m.community_id))
+      .map((m) => ({
+        id: m.community_id,
+        name: byId.get(m.community_id).name,
+        kind: byId.get(m.community_id).kind || 'bloc',
+        role: m.role,
+        apartment: m.apartment || '',
+        unread: unread.get(m.community_id) || 0,
+      })));
+  }, [userId]);
+
   // ---- data loading ----
   const refreshAll = useCallback(async () => {
     if (!userId || !activeCommunityId) { setData(emptyData()); return; }
@@ -259,7 +303,19 @@ export function AppProvider({ children }) {
         supabase.from('communities').select('*').eq('id', cid).maybeSingle(),
         supabase.from('memberships').select('*').eq('community_id', cid).order('joined_at', { ascending: true }),
       ]);
-      if (!community) { setData(emptyData()); setDataLoading(false); return; }
+      if (!community) {
+        setData(emptyData());
+        setDataLoading(false);
+        /*
+          No longer a member here — removed by an administrator, or left from
+          another device. Forget it, and the effect above moves on to another
+          community this account is still in, or to the join screen.
+        */
+        setActiveCommunityId((cur) => (cur === cid ? null : cur));
+        loadMyCommunities();
+        return;
+      }
+      loadMyCommunities();
 
       const memberIds = (members || []).map((m) => m.user_id);
 
@@ -378,18 +434,15 @@ export function AppProvider({ children }) {
 
       const peopleIds = [...needed];
       /*
-        Names for everybody who appears on a screen; flats only for the people
-        this person shares a community with, which is all apartments_of will
-        answer for. The profile row itself no longer carries the flat to
-        anyone (migration 0024).
+        Names for everybody who appears on a screen. Flats only for the people
+        who are members here, and only the flat they have here: it comes off
+        their membership in this community (migration 0025), so a neighbour
+        never sees where the same person lives in another association.
       */
-      const [{ data: profilesRows }, { data: flatRows }] = peopleIds.length
-        ? await Promise.all([
-            supabase.from('profiles').select(PROFILE_COLUMNS).in('id', peopleIds),
-            supabase.rpc('apartments_of', { p_users: peopleIds }),
-          ])
-        : [{ data: [] }, { data: [] }];
-      const flats = new Map((flatRows || []).map((r) => [r.id, r.apartment]));
+      const { data: profilesRows } = peopleIds.length
+        ? await supabase.from('profiles').select(PROFILE_COLUMNS).in('id', peopleIds)
+        : { data: [] };
+      const flats = new Map((members || []).map((m) => [m.user_id, m.apartment || '']));
       const phones = {};
       (phoneRows || []).forEach((r) => { phones[r.user_id] = { phone: r.phone || '', visible: !!r.visible }; });
 
@@ -483,7 +536,7 @@ export function AppProvider({ children }) {
       if (!mounted.current) return;
       setData({
         users,
-        members: (members || []).map((m) => ({ userId: m.user_id, role: m.role, joinedAt: new Date(m.joined_at).getTime() })),
+        members: (members || []).map((m) => ({ userId: m.user_id, role: m.role, apartment: m.apartment || '', joinedAt: new Date(m.joined_at).getTime() })),
         joinRequests: (requestRows || []).map((r) => ({ userId: r.user_id, createdAt: new Date(r.created_at).getTime() })),
         community: { id: community.id, name: community.name, address: community.address, description: community.description, code: community.code, joinMode: community.join_mode, kind: community.kind || 'bloc', memberCount: (members || []).length, staircases: 1 },
         /*
@@ -525,9 +578,21 @@ export function AppProvider({ children }) {
     } finally {
       if (mounted.current) setDataLoading(false);
     }
-  }, [userId, activeCommunityId]);
+  }, [userId, activeCommunityId, loadMyCommunities]);
 
   useEffect(() => { refreshAll(); }, [refreshAll]);
+
+  /*
+    Moving to another of your communities. The old one's data is dropped first,
+    so for the moment it takes to load nothing on screen belongs to the wrong
+    place — a title from one block under the name of another would be worse
+    than a blank.
+  */
+  const switchCommunity = useCallback((id) => {
+    if (!id || id === activeCommunityId) return;
+    setData(emptyData());
+    setActiveCommunityId(id);
+  }, [activeCommunityId]);
 
   /*
     Keep the data fresh without a manual reload. Fetching only on mount makes a
@@ -583,8 +648,10 @@ export function AppProvider({ children }) {
   }, [userId, data.notifPrefs.push]);
 
   // ---- identity & role (real, enforced server-side by RLS — no override) ----
-  const currentUser = profile ? { id: profile.id, name: profile.full_name, apartment: profile.apartment, color: profile.avatar_color } : { id: userId, name: '…', apartment: '', color: '#999' };
   const membership = data.members.find((m) => m.userId === userId);
+  // Your flat is the one you have in the community on screen.
+  const myApartment = membership?.apartment || '';
+  const currentUser = profile ? { id: profile.id, name: profile.full_name, apartment: myApartment, color: profile.avatar_color } : { id: userId, name: '…', apartment: '', color: '#999' };
   const role = membership ? membership.role : 'member';
   const isStaff = role === 'admin' || role === 'moderator';
 
@@ -745,15 +812,34 @@ export function AppProvider({ children }) {
     Which apartment or house is yours, so a neighbour looking for you can tell
     which door to knock on. Unlike the name, empty is a real answer here —
     someone may not want to say, or may not have gotten to it yet — so this
-    accepts '' and writes it as the column's own default rather than refusing.
+    accepts '' rather than refusing.
+
+    It is set for the community on screen only. Someone in two associations
+    lives somewhere different in each, and changing one must not rewrite the
+    other.
   */
   const setApartment = async (apartment) => {
     const v = String(apartment || '').trim();
-    const { data: row, error } = await supabase.from('profiles')
-      .update({ apartment: v }).eq('id', userId).select(PROFILE_COLUMNS).single();
+    const { error } = await supabase.rpc('set_my_apartment', { p_community: activeCommunityId, p_apartment: v });
     if (error) throw error;
-    setProfile({ ...row, apartment: v });
     await refreshAll();
+  };
+
+  /*
+    Leaving the community on screen. The database refuses if you are its last
+    administrator and others remain (keep_one_admin) — the caller turns that
+    into "hand it over first". Afterwards you land in another community you
+    are still in, or on the join screen if there is none.
+  */
+  const leaveCommunity = async () => {
+    const leaving = activeCommunityId;
+    const { error } = await supabase.from('memberships').delete().eq('community_id', leaving).eq('user_id', userId);
+    if (error) throw error;
+    const next = (myCommunities || []).find((c) => c.id !== leaving);
+    setData(emptyData());
+    setActiveCommunityId(next ? next.id : null);
+    await loadMyCommunities();
+    return next || null;
   };
 
   const setContact = async ({ phone, visible }) => {
@@ -846,7 +932,11 @@ export function AppProvider({ children }) {
     if (error) throw error;
     const row = Array.isArray(rows) ? rows[0] : rows;
     if (!row?.community_id) throw new Error('bad_code');
-    if (row.status === 'member') setActiveCommunityId(row.community_id);
+    if (row.status === 'member') {
+      if (row.community_id !== activeCommunityId) setData(emptyData());
+      setActiveCommunityId(row.community_id);
+      loadMyCommunities();
+    }
     return { id: row.community_id, name: row.name, status: row.status };
   };
   // Giving up on a request that is still waiting.
@@ -870,7 +960,9 @@ export function AppProvider({ children }) {
       else if (error) throw error;
     }
     if (!community) throw new Error('could_not_create');
+    setData(emptyData());
     setActiveCommunityId(community.id);
+    loadMyCommunities();
     return community;
   };
 
@@ -908,7 +1000,7 @@ export function AppProvider({ children }) {
       // missing or broken function was previously invisible — which is exactly
       // how a wrong function name went unnoticed. Always inspect the result.
       const { data, error } = await supabase.functions.invoke(PUSH_FUNCTION, {
-        body: { communityId: cid, userIds, type, title, body, link: link || '', lang },
+        body: { communityId: cid, userIds, type, title, body, link: linkInCommunity(link, cid), lang },
       });
       if (error) console.error(`push: function '${PUSH_FUNCTION}' failed`, error);
       else console.info('push:', data);
@@ -926,7 +1018,7 @@ export function AppProvider({ children }) {
   */
   const notifyMembers = async (excludeUserId, type, title, body, link) => {
     const { data: rows, error } = await supabase.rpc('notify_members', {
-      cid, exclude_user: excludeUserId || null, ntype: type, ntitle: title, nbody: body, nlink: link || '',
+      cid, exclude_user: excludeUserId || null, ntype: type, ntitle: title, nbody: body, nlink: linkInCommunity(link, cid),
     });
     if (error) {
       console.error('notify_members failed', error);
@@ -937,7 +1029,7 @@ export function AppProvider({ children }) {
   const insertNotifyUser = async (targetUserId, type, title, body, link) => {
     if (!targetUserId || targetUserId === userId) return [];
     const { data: rows, error } = await supabase.rpc('notify_user', {
-      cid, target_user: targetUserId, ntype: type, ntitle: title, nbody: body, nlink: link || '',
+      cid, target_user: targetUserId, ntype: type, ntitle: title, nbody: body, nlink: linkInCommunity(link, cid),
     });
     if (error) {
       console.error('notify_user failed', error);
@@ -1528,6 +1620,7 @@ export function AppProvider({ children }) {
     data, lang, t, L, setLang, counted, plural,
     currentUser, role, isStaff,
     authed, session, hasCommunity: !!activeCommunityId,
+    activeCommunityId, myCommunities, switchCommunity, leaveCommunity, loadMyCommunities,
     authLoading: session === undefined, dataLoading, membershipResolved,
     userById, actions, toast, showToast,
     signUpEmail, signInEmail, resendSignupEmail, signInGoogle, sendPasswordReset, signOut,

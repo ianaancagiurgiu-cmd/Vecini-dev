@@ -239,7 +239,17 @@ export async function signedInAs(page, { user = fakeUser(), tables = {}, onboard
 
     const url = new URL(req.url());
     const table = url.pathname.split('/rest/v1/')[1].split('?')[0];
-    const rows = applyQuery(fixtures[table] || derived(table, fixtures), url.searchParams);
+    /*
+      The flat lives on the membership since 0025. Specs written before that
+      put it on the profile; a membership that does not name one takes the
+      profile's, so they keep describing the same people.
+    */
+    const source = table === 'memberships'
+      ? (fixtures.memberships || []).map((m) => ({
+          apartment: (fixtures.profiles || []).find((p) => p.id === m.user_id)?.apartment || '', ...m,
+        }))
+      : fixtures[table] || derived(table, fixtures);
+    const rows = applyQuery(source, url.searchParams);
     // PostgREST answers a single object, not a list, when the caller asked for
     // one — which is how .single() / .maybeSingle() are sent over the wire.
     const wantsOne = (req.headers()['accept'] || '').includes('pgrst.object');
